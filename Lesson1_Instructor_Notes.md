@@ -3,7 +3,7 @@
 
 This companion goes with two notebooks, one intuition guide, and one helper file:
 
-- `Lesson1_Data_Types_and_Structures.ipynb` — the runnable teaching demo (present top-to-bottom).
+- `notebooks/Lesson1_Data_Types_and_Structures.ipynb` — the runnable teaching demo (present top-to-bottom).
 - `Lesson1_Exercises.ipynb` — student exercises (concept-first).
 - `note.md` — intuition, importance, and real-world applications for each property.
 - `test_lesson1.py` — the auto-checker the exercise notebook imports. Keep it in the same folder.

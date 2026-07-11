@@ -10,7 +10,7 @@ A hands-on Intro to Computer Science course for non-CS students, taught through 
 
 #### Lesson 1 — Data Types and Data Structures ✅
 
-`[Lesson1_Data_Types_and_Structures.ipynb](Lesson1_Data_Types_and_Structures.ipynb)` · [Instructor notes](Lesson1_Instructor_Notes.md) · [Teaching notes on properties](note.md)
+[Lesson1_Data_Types_and_Structures.ipynb](notebooks/Lesson1_Data_Types_and_Structures.ipynb) · [Instructor notes](Lesson1_Instructor_Notes.md) · [Teaching notes on properties](note.md)
 
 This lesson builds the representation mindset: choose native Python
 structures by the operations they support, then connect mutability, references,
@@ -20,7 +20,7 @@ stacks, queues, NumPy arrays, DataFrames, and file representations.
 
 #### Lesson 2 — Files and pandas ✅
 
-`[Lesson2_Files_and_pandas.ipynb](Lesson2_Files_and_pandas.ipynb)`
+[Lesson2_Files_and_pandas.ipynb](notebooks/Lesson2_Files_and_pandas.ipynb)
 
 This lesson treats files as persistence with tradeoffs: load and inspect CSV,
 JSON, Excel, and Parquet; select, filter, sort, transform, clean, group, merge,
@@ -50,7 +50,7 @@ requirements, and at least three meaningful commits.
 
 #### Lesson 4 — Algorithms and Big-O ✅
 
-`[Lesson3_Algorithms_and_BigO.ipynb](Lesson3_Algorithms_and_BigO.ipynb)`
+[Lesson3_Algorithms_and_BigO.ipynb](notebooks/Lesson3_Algorithms_and_BigO.ipynb)
 
 This lesson turns everyday data tasks into algorithms: searching, sorting,
 aggregation, matching, and hash joins, with Big-O used to explain why an
@@ -65,6 +65,8 @@ problems plus a Big-O question bank.
 
 #### Lesson 5 — Code Quality, Functional Programming, Testing
 
+[Lesson5_Code_Quality_and_Testing.ipynb](notebooks/Lesson5_Code_Quality_and_Testing.ipynb)
+
 **Three sessions.** Functions as contracts; pure versus side-effecting
 functions; type hints; comprehensions, `map`, `filter`, `sorted`, `zip`, and
 `enumerate`; pandas method chains and vectorization; naming, refactoring,
@@ -78,6 +80,8 @@ a failing test suite pass, with Git checkpoints for each step.
 
 #### Lesson 6 — Why Databases Exist + SQLite
 
+[Lesson6_Databases_and_SQLite.ipynb](notebooks/Lesson6_Databases_and_SQLite.ipynb)
+
 **Two sessions.** File failure modes such as leading-zero loss and inconsistent
 customer data → tables, schemas, keys, `NOT NULL`, primary keys, and foreign
 keys → Python and SQLite with `sqlite3`, `to_sql`, and `read_sql` →
@@ -87,6 +91,8 @@ demonstrates an intentional integrity rejection.
 
 #### Lesson 7 — SQL Fundamentals
 
+[Lesson7_SQL_Fundamentals.ipynb](notebooks/Lesson7_SQL_Fundamentals.ipynb)
+
 **Two to three sessions.** `SELECT`, `WHERE`, `ORDER BY`, `LIMIT`, and
 `DISTINCT` beside pandas equivalents → aggregates and `GROUP BY` → `HAVING`
 versus `WHERE` → `NULL`, `IS NULL`, `COALESCE`, and dates → logical query
@@ -94,6 +100,8 @@ evaluation order. The exercise computes monthly revenue by country in SQL and
 pandas, then uses `assert_frame_equal` to prove the results agree.
 
 #### Lesson 8 — SQL Joins and Analytics
+
+[Lesson8_SQL_Joins_and_Analytics.ipynb](notebooks/Lesson8_SQL_Joins_and_Analytics.ipynb)
 
 **Three sessions.** `INNER JOIN` and `LEFT JOIN` beside pandas `merge` →
 `CASE WHEN` and conditional aggregation → CTEs and subqueries → window
@@ -109,6 +117,8 @@ established interview-style drills.
 
 #### Lesson 9 — APIs and HTTP
 
+[Lesson9_APIs_and_HTTP.ipynb](notebooks/Lesson9_APIs_and_HTTP.ipynb)
+
 **Two sessions.** Clients, servers, URLs, endpoints, requests, responses,
 headers, methods, and status codes → `requests` and FRED → API keys in
 environment variables → JSON to DataFrame → rate limits, retries, pagination,
@@ -117,6 +127,8 @@ fetches two FRED series, caches them, makes them monthly, and stores them in
 the Lesson 6 SQLite database.
 
 #### Lesson 10 — LLMs: First API Call
+
+[Lesson10_LLM_First_API_Call.ipynb](notebooks/Lesson10_LLM_First_API_Call.ipynb)
 
 **Two sessions.** Tokens, next-token prediction, context windows, temperature,
 and hallucination → messages and system/user prompts → raw HTTP and SDK calls
