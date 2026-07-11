@@ -1,0 +1,38 @@
+{
+  "assignment": "One Analysis, Two Engines (Assignment A3)",
+  "database_built_by": "utils/data_setup.py -> data/retail.sqlite (git-ignored, rebuildable)",
+  "source_extracts": {
+    "dataset": "UCI Online Retail",
+    "source_url": "https://archive.ics.uci.edu/dataset/352/online+retail",
+    "license": "CC BY 4.0",
+    "note": "Verbatim copies of the course's course_data/ extracts, vendored here so the assignment is self-contained and needs no network.",
+    "files": [
+      {
+        "path": "data_source/customers_base.csv",
+        "rows": 10,
+        "sha256": "9baae6cc22a45210448b86f3959d477b1fa8e9b405804b433e101cc055d945f6"
+      },
+      {
+        "path": "data_source/transactions_base.csv",
+        "rows": 60,
+        "sha256": "30a038e0ca739dc7ea9f1b65ad4b58608efa18da7bd9baa91180416cbcfdfac9"
+      }
+    ]
+  },
+  "authored_teaching_fixtures": {
+    "note": "These are invented for the exercise, NOT part of the real UCI extract. They exist so specific SQL patterns have something real to find.",
+    "no_order_customers": {
+      "ids": ["C99001", "C99002"],
+      "why": "Two customers with zero transactions, so LEFT JOIN + IS NULL returns real rows (the 'customers who never bought' question)."
+    },
+    "duplicate_transaction": {
+      "transaction_id": "536381-01",
+      "why": "One exact-duplicate transaction line, so ROW_NUMBER()/DISTINCT de-duplication has something to bite on (drill D2 rediscovers it)."
+    }
+  },
+  "tables_built": {
+    "customers": {"rows": 12, "detail": "10 real + 2 authored no-order fixtures; customer_id is PRIMARY KEY"},
+    "transactions": {"rows": 61, "detail": "60 real + 1 authored duplicate; transaction_id deliberately NOT unique"},
+    "transactions_big": {"rows": 60000, "detail": "60 real lines x 1000 unique-id copies; used ONLY by the Part 3 benchmark"}
+  }
+}

@@ -7,7 +7,7 @@ All Part-0 logic lives here so the notebook cells stay 1-3 lines. Public functio
 - download_fred_excel()     -> data/fred_macro.xlsx    (multi-sheet Excel, FRED export style)
 - download_stocks_parquet() -> data/stock_market.parquet (long/tidy OHLCV via yfinance)
 - inject_chaos(stocks)      -> deterministically messes up the stock table (Part 2)
-- use_offline_data()        -> copies data_offline/* into data/ when downloads fail
+- use_offline_data()        -> copies dated data_offline snapshots into data/ when downloads fail
 """
 from __future__ import annotations
 
@@ -315,7 +315,12 @@ def inject_chaos(stocks: pd.DataFrame, seed: int = 42) -> pd.DataFrame:
 
 
 def use_offline_data(data_dir: str | Path = "data", offline_dir: str | Path = "data_offline") -> None:
-    """Copy the pre-generated fallback files into data/ (for when downloads fail)."""
+    """Copy dated FRED/Yahoo snapshot files into ``data/`` when downloads fail.
+
+    ``data_offline/manifest.json`` records when a snapshot was captured and its
+    redistribution note. The generated broker portfolio remains an instructional
+    fixture because public trade-level portfolios are not privacy-safe course data.
+    """
     data_dir, offline_dir = Path(data_dir), Path(offline_dir)
     data_dir.mkdir(parents=True, exist_ok=True)
     names = ["DGS10.csv", "portfolio.json", "fred_macro.xlsx", "stock_market.parquet"]
@@ -327,6 +332,15 @@ def use_offline_data(data_dir: str | Path = "data", offline_dir: str | Path = "d
             )
         shutil.copy(src, data_dir / name)
         print(f"Copied {src} -> {data_dir / name}")
+    manifest_path = offline_dir / "manifest.json"
+    if manifest_path.exists():
+        manifest = json.loads(manifest_path.read_text())
+        print(
+            "Offline snapshot captured:",
+            manifest.get("captured_at_utc", "unknown date"),
+            "|",
+            manifest.get("market_terms", "see assignment README"),
+        )
     print(
         "Offline data in place. Note: the offline stock file is already chaosed — "
         "skip the inject_chaos cell in Part 2."

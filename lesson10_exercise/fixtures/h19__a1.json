@@ -1,0 +1,17 @@
+{
+  "id": "msg_fixture_80057576",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-4-5-20251001",
+  "content": [
+    {
+      "type": "text",
+      "text": "This headline is about job losses in the manufacturing sector."
+    }
+  ],
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 60,
+    "output_tokens": 16
+  }
+}

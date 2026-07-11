@@ -1,0 +1,17 @@
+{
+  "id": "msg_fixture_79471075",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-4-5-20251001",
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"category\": \"markets\", \"confidence\": 0.93}"
+    }
+  ],
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 62,
+    "output_tokens": 11
+  }
+}

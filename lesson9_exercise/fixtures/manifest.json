@@ -1,0 +1,49 @@
+{
+  "kind": "authored teaching fixtures",
+  "what_these_are": "FRED /series/observations-shaped JSON reformatted from data ALREADY pinned in this repository for Assignment 1. No live FRED retrieval was performed to create these files; they exist so the lesson runs fully offline.",
+  "shape": "Each file mirrors the real FRED observations endpoint response: a top-level envelope (realtime_start/end, units, count, ...) plus an 'observations' list of {realtime_start, realtime_end, date, value} objects. Every value is a string; '.' marks a missing observation, exactly as FRED serves it.",
+  "derivation": [
+    "Rows dated 2021-01-01 or later were kept (the era Assignment 1 uses; where DGS10 begins).",
+    "Daily DGS10 values are copied verbatim from the CSV, '.' tokens included.",
+    "Monthly CPIAUCSL/UNRATE values are formatted to FRED's decimal precision (3 and 1).",
+    "The source Monthly sheet has no October 2025 row, so the monthly fixtures skip that month.",
+    "Envelope fields (count, observation_start/end) describe the reformatted rows honestly."
+  ],
+  "regenerate_with": "python3 lesson9_exercise/fixtures/make_fixtures.py",
+  "realtime_date": "2026-07-11",
+  "files": [
+    {
+      "path": "DGS10.json",
+      "series_id": "DGS10",
+      "description": "Market Yield on U.S. 10-Year Treasury (daily, percent)",
+      "derived_from": "pandas-finance-assignment/data_offline/DGS10.csv (columns DATE, DGS10)",
+      "observation_start": "2021-01-04",
+      "observation_end": "2026-07-09",
+      "count": 1439,
+      "missing_value_dots": 60,
+      "sha256": "b621dbbcfc27b7d6cf7c2b996dc3b12d68ef952dc8ba53da2c2e22ff0da02315"
+    },
+    {
+      "path": "CPIAUCSL.json",
+      "series_id": "CPIAUCSL",
+      "description": "Consumer Price Index for All Urban Consumers: All Items (monthly, index)",
+      "derived_from": "pandas-finance-assignment/data_offline/fred_macro.xlsx, sheet 'Monthly', column CPIAUCSL",
+      "observation_start": "2021-01-01",
+      "observation_end": "2026-05-01",
+      "count": 64,
+      "missing_value_dots": 0,
+      "sha256": "6a14468119fc7641b504a7c7c7dfa3d91a335922d33a85bb1c1158ead00e1706"
+    },
+    {
+      "path": "UNRATE.json",
+      "series_id": "UNRATE",
+      "description": "Unemployment Rate (monthly, percent)",
+      "derived_from": "pandas-finance-assignment/data_offline/fred_macro.xlsx, sheet 'Monthly', column UNRATE",
+      "observation_start": "2021-01-01",
+      "observation_end": "2026-06-01",
+      "count": 65,
+      "missing_value_dots": 0,
+      "sha256": "5204adcb7f6ece40d2789e393f1ca5a16c51d9a02a17179542e8dc9c011d0608"
+    }
+  ]
+}

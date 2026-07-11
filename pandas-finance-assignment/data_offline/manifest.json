@@ -1,0 +1,34 @@
+{
+  "captured_at_utc": "2026-07-11T08:35:26.556282+00:00",
+  "fred_series": [
+    "DGS10",
+    "CPIAUCSL",
+    "UNRATE"
+  ],
+  "market_source": "Yahoo Finance via yfinance",
+  "market_terms": "Private educational-course snapshot; do not redistribute.",
+  "tickers": [
+    "AAPL",
+    "MSFT",
+    "SPY"
+  ],
+  "stock_start": "2021-01-01",
+  "files": [
+    {
+      "path": "DGS10.csv",
+      "sha256": "224cf8c13b202951f9ba4a3390eda9d96f24402c5ee506de26a5d79146ffb7d0"
+    },
+    {
+      "path": "portfolio.json",
+      "sha256": "30eeee81c6e2ec4c74a6f96629d8165ad8125a1156771a16adf16d83b5525fe4"
+    },
+    {
+      "path": "fred_macro.xlsx",
+      "sha256": "384dc8718458c360d41d726af688cf8fd5a74ce9de3b52fa2b31a032977397be"
+    },
+    {
+      "path": "stock_market.parquet",
+      "sha256": "1ecb40e2067f8a026cf680f6e0e2ebd79510d95014018dbdd929367fb37c708c"
+    }
+  ]
+}

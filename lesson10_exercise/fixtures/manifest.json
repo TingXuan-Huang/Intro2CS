@@ -1,0 +1,45 @@
+{
+  "what_this_is": "Authored teaching fixtures for Lesson 10. Each file is a single response in the exact Anthropic Messages API wire shape. These were HAND-WRITTEN to teach validation and retry logic offline; they are NOT recordings of live API calls, and the token counts are plausible estimates, not measured usage.",
+  "headlines": {
+    "count": 20,
+    "style": "economic-news-STYLE wording, authored for teaching; not real quotations",
+    "file": "../headlines.csv"
+  },
+  "fixtures": {
+    "total_response_files": 27,
+    "malformed_response_files": 8,
+    "wire_shape_keys": [
+      "id",
+      "type",
+      "role",
+      "model",
+      "content",
+      "stop_reason",
+      "usage"
+    ],
+    "naming": "<headline_id>__a<attempt>.json, replayed in attempt order",
+    "index": "index.json maps the exact headline text -> ordered list of response files"
+  },
+  "malformed_kinds_included": [
+    "code-fence-wrapped JSON (h06 a1, h19 a2)",
+    "valid JSON with surrounding prose (h08 a1)",
+    "missing required key 'confidence' (h13 a1)",
+    "confidence out of the 0..1 range (h20 a1)",
+    "category outside the allowed set (h19 a3, h20 a2)",
+    "not JSON at all (h19 a1)"
+  ],
+  "pinned_reference_run": {
+    "note": "A correct solution (MAX_ATTEMPTS=3) reproduces these exactly.",
+    "category_counts": {
+      "monetary_policy": 3,
+      "inflation": 3,
+      "employment": 3,
+      "markets": 4,
+      "trade": 3,
+      "housing": 3
+    },
+    "total_retries": 7,
+    "retried_headlines": 5,
+    "failures": 1
+  }
+}

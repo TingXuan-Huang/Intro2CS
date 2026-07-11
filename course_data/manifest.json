@@ -1,0 +1,25 @@
+{
+  "dataset": "UCI Online Retail",
+  "source_url": "https://archive.ics.uci.edu/dataset/352/online+retail",
+  "download_url": "https://archive.ics.uci.edu/static/public/352/online+retail.zip",
+  "license": "CC BY 4.0",
+  "retrieved_at_utc": "2026-07-11T08:31:47.917813+00:00",
+  "selection": "Ten customers with at least six positive-price, non-cancellation transactions; first six qualifying transactions per customer.",
+  "files": [
+    {
+      "path": "online_retail_sample.csv",
+      "rows": 60,
+      "sha256": "144b5986efdd0bbc53a328048d24cd180b4b5131d8bc196f062362d9dfa75b87"
+    },
+    {
+      "path": "lesson2_customers_base.csv",
+      "rows": 10,
+      "sha256": "9baae6cc22a45210448b86f3959d477b1fa8e9b405804b433e101cc055d945f6"
+    },
+    {
+      "path": "lesson2_transactions_base.csv",
+      "rows": 60,
+      "sha256": "30a038e0ca739dc7ea9f1b65ad4b58608efa18da7bd9baa91180416cbcfdfac9"
+    }
+  ]
+}

@@ -52,9 +52,9 @@ enables `%autoreload`, so the loop is simply:
 
 ## Offline mode
 
-No network, or a download failed? The repo ships **simulated but
-schema-identical** files in `data_offline/`. Either uncomment and run the
-`use_offline_data()` cell in Part 0, or copy the files by hand:
+No network, or a download failed? The repo ships dated snapshots from the same
+FRED and Yahoo Finance acquisition paths in `data_offline/`. Either uncomment
+and run the `use_offline_data()` cell in Part 0, or copy the files by hand:
 
 ```bash
 cp data_offline/* data/
@@ -62,8 +62,9 @@ cp data_offline/* data/
 
 Everything — every task, every check — works identically. One difference: the
 offline stock file already contains the Part-2 mess, so skip the chaos cell
-(it detects this and skips itself). To regenerate the offline files:
-`python utils/make_offline_data.py` (deterministic, seed 42).
+(it detects this and skips itself). To intentionally refresh the dated snapshots,
+run `python utils/make_offline_data.py`. The script records source metadata and
+checksums in `data_offline/manifest.json`.
 
 ## Data sources
 
@@ -71,11 +72,13 @@ offline stock file already contains the Part-2 mess, so skip the chaos cell
 |---|---|---|
 | `DGS10.csv` | FRED: 10-Year Treasury Constant Maturity | https://fred.stlouisfed.org/series/DGS10 |
 | `fred_macro.xlsx` | FRED: CPI + Unemployment | https://fred.stlouisfed.org/series/CPIAUCSL · https://fred.stlouisfed.org/series/UNRATE |
-| `stock_market.parquet` | Yahoo Finance via [yfinance](https://github.com/ranaroussi/yfinance) | AAPL, MSFT, SPY since 2021 |
+| `stock_market.parquet` | Yahoo Finance via [yfinance](https://ranaroussi.github.io/yfinance/) | AAPL, MSFT, SPY since 2021 |
 | `portfolio.json` | generated locally (broker-API style) | — |
 
-The `data_offline/` files are *simulated* with the same schemas — fine for
-learning the mechanics, not for real analysis.
+The FRED snapshots are public economic data. The Yahoo-derived snapshot is for
+this private educational course only and must not be redistributed. The nested
+`portfolio.json` remains a deterministic instructional scenario so the exercises
+and grader have a safe, reproducible trade history.
 
 ## Rubric
 

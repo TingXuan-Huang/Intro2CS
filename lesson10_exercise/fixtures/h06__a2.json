@@ -1,0 +1,17 @@
+{
+  "id": "msg_fixture_24830564",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-4-5-20251001",
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"category\": \"housing\", \"confidence\": 0.92}"
+    }
+  ],
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 60,
+    "output_tokens": 11
+  }
+}
