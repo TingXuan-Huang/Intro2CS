@@ -1,0 +1,45 @@
+{
+  "owner": "Student Investor",
+  "currency": "USD",
+  "opened": "2021-01-04",
+  "holdings": [
+    {
+      "ticker": "AAPL",
+      "shares": 50,
+      "trades": [
+        {
+          "date": "2021-01-04",
+          "shares": 30,
+          "price": 129.41
+        },
+        {
+          "date": "2022-06-15",
+          "shares": 20,
+          "price": 135.87
+        }
+      ]
+    },
+    {
+      "ticker": "MSFT",
+      "shares": 25,
+      "trades": [
+        {
+          "date": "2021-03-10",
+          "shares": 25,
+          "price": 232.42
+        }
+      ]
+    },
+    {
+      "ticker": "SPY",
+      "shares": 40,
+      "trades": [
+        {
+          "date": "2021-01-04",
+          "shares": 40,
+          "price": 368.79
+        }
+      ]
+    }
+  ]
+}
