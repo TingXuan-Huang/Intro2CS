@@ -1,179 +1,133 @@
-"""Tests for the Lesson 10 headline-classification exercise.
+"""Offline checker for the Lesson 10 Spark exercise.
 
-These tests import from ``classify.py`` -- the module YOU complete. In the
-shipped state its three functions raise NotImplementedError, so every test
-below fails on purpose: that is the intended starting point, not something
-you broke. Implement validate_response, classify_headline, and
-summarize_run until they pass.
-
-Run from inside lesson10_exercise/ :
-
-    python3 -m pytest test_lesson10.py -v
-
-What the checker pins down:
-
-  * validation REJECTS every malformed shape (missing key, out-of-range or
-    non-numeric confidence, unknown category, extra keys, non-dict) and
-    ACCEPTS a well-formed payload;
-  * a headline whose first reply is malformed but whose retry is valid
-    reports exactly one retry;
-  * a headline that never returns a valid payload within MAX_ATTEMPTS is
-    reported failed -- never classified from an invalid payload;
-  * the whole run reproduces the pinned reference: 19 classified, 1 failed,
-    7 retries, and the fixed per-category counts below.
-
-The reference numbers come from the authored fixtures with MAX_ATTEMPTS = 3.
-They are outcomes of correct validate + retry logic; you cannot shortcut
-them by guessing, only by making the pipeline behave.
+Run from ``lesson10_exercise/`` with ``python3 -m pytest test_lesson10.py -v``.
+The test creates one local Spark session and reads only committed course CSVs;
+it never contacts a cluster or the network.
 """
 
+from pathlib import Path
+import shutil
+
+import pandas as pd
 import pytest
 
-from classify import (
-    CATEGORIES,
-    MAX_ATTEMPTS,
-    classify_headline,
-    load_headlines,
-    summarize_run,
-    validate_response,
-)
+if shutil.which("java") is None:
+    pytest.exit(
+        "Lesson 10 requires a local Java 17+ runtime. Install Java, then rerun this checker.",
+        returncode=2,
+    )
 
-# Pinned reference for the full run (authored fixtures, MAX_ATTEMPTS = 3).
-REFERENCE_COUNTS = {
-    "monetary_policy": 3,
-    "inflation": 3,
-    "employment": 3,
-    "markets": 4,
-    "trade": 3,
-    "housing": 3,
-}
-REFERENCE_RETRIES = 7
-REFERENCE_CLASSIFIED = 19
-REFERENCE_FAILED = 1
+try:
+    import pyspark  # noqa: F401
+except ModuleNotFoundError:
+    pytest.exit(
+        "Lesson 10 requires pyspark. Run `pip install pyspark`, then rerun this checker.",
+        returncode=2,
+    )
 
+import os
+import sys
 
-def headline_text(headline_id):
-    """The exact headline text for an id, read from headlines.csv."""
-    for row in load_headlines():
-        if row["id"] == headline_id:
-            return row["headline"]
-    raise AssertionError(f"no headline with id {headline_id!r}")
+# Spark workers must run the same Python minor version as this driver; without
+# this pin they spawn whatever `python3` is on PATH and fail on version skew.
+os.environ.setdefault("PYSPARK_PYTHON", sys.executable)
+os.environ.setdefault("PYSPARK_DRIVER_PYTHON", sys.executable)
+
+from pyspark.sql import SparkSession
+
+from spark_queries import customer_revenue_rank, monthly_revenue_by_country
+
+ROOT = Path(__file__).resolve().parent.parent
 
 
-# ------------------------------------------------------------- validation
-
-def test_validate_accepts_a_well_formed_payload():
-    assert validate_response({"category": "inflation", "confidence": 0.9}) is True
-
-
-def test_validate_accepts_confidence_at_the_boundaries():
-    assert validate_response({"category": "markets", "confidence": 0.0}) is True
-    assert validate_response({"category": "markets", "confidence": 1.0}) is True
-
-
-def test_validate_rejects_a_missing_required_key():
-    assert validate_response({"category": "employment"}) is False
+@pytest.fixture(scope="session")
+def spark():
+    session = (
+        SparkSession.builder.master("local[1]")
+        .appName("intro-cs-lesson10-tests")
+        .config("spark.ui.enabled", "false")
+        .config("spark.sql.shuffle.partitions", "1")
+        .getOrCreate()
+    )
+    yield session
+    session.stop()
 
 
-def test_validate_rejects_confidence_out_of_range():
-    assert validate_response({"category": "markets", "confidence": 1.4}) is False
+@pytest.fixture
+def retail_frames(spark):
+    customers = pd.read_csv(ROOT / "course_data" / "lesson2_customers_base.csv")
+    transactions = pd.read_csv(ROOT / "course_data" / "lesson2_transactions_base.csv")
+    return spark.createDataFrame(transactions), spark.createDataFrame(customers)
 
 
-def test_validate_rejects_non_numeric_confidence():
-    assert validate_response({"category": "markets", "confidence": "high"}) is False
+def pandas_monthly_revenue_reference():
+    customers = pd.read_csv(ROOT / "course_data" / "lesson2_customers_base.csv")
+    transactions = pd.read_csv(
+        ROOT / "course_data" / "lesson2_transactions_base.csv",
+        parse_dates=["transaction_date"],
+    )
+    joined = transactions.merge(customers, on="customer_id")
+    joined["month"] = joined["transaction_date"].dt.strftime("%Y-%m")
+    joined["revenue"] = joined["quantity"] * joined["unit_price"]
+    return (
+        joined.groupby(["country", "month"], as_index=False)
+        .agg(revenue=("revenue", "sum"), line_items=("transaction_id", "size"))
+        .sort_values(["country", "month"])
+        .reset_index(drop=True)
+    )
 
 
-def test_validate_rejects_a_boolean_confidence():
-    # bool is a subclass of int in Python -- a validator must not let True
-    # sneak through as the number 1.
-    assert validate_response({"category": "markets", "confidence": True}) is False
+def test_monthly_revenue_by_country_matches_pinned_values(retail_frames):
+    transactions, customers = retail_frames
+    actual = monthly_revenue_by_country(transactions, customers).toPandas()
+    actual = actual.sort_values(["country", "month"]).reset_index(drop=True)
+    expected = pd.DataFrame(
+        [
+            ("EIRE", "2010-12", 148.88, 6),
+            ("Netherlands", "2010-12", 23.41, 6),
+            ("United Kingdom", "2010-12", 1209.90, 36),
+            ("United Kingdom", "2011-01", 17.06, 6),
+            ("United Kingdom", "2011-08", 21.84, 6),
+        ],
+        columns=["country", "month", "revenue", "line_items"],
+    )
+    pd.testing.assert_frame_equal(actual, expected, check_dtype=False, rtol=1e-9, atol=1e-9)
+    pd.testing.assert_frame_equal(
+        actual,
+        pandas_monthly_revenue_reference(),
+        check_dtype=False,
+        rtol=1e-9,
+        atol=1e-9,
+    )
 
 
-def test_validate_rejects_a_category_outside_the_set():
-    assert validate_response({"category": "recession", "confidence": 0.8}) is False
+def test_customer_revenue_rank_matches_pinned_values(retail_frames):
+    transactions, customers = retail_frames
+    actual = customer_revenue_rank(transactions, customers).toPandas()
+    actual = actual.sort_values(["country", "revenue_rank", "customer_id"]).reset_index(drop=True)
+    expected = pd.DataFrame(
+        [
+            ("EIRE", "C14911", 148.88, 1),
+            ("Netherlands", "C14646", 23.41, 1),
+            ("United Kingdom", "C13089", 868.26, 1),
+            ("United Kingdom", "C14298", 181.20, 2),
+            ("United Kingdom", "C15311", 89.57, 3),
+            ("United Kingdom", "C12748", 24.75, 4),
+            ("United Kingdom", "C14606", 24.39, 5),
+            ("United Kingdom", "C14096", 21.84, 6),
+            ("United Kingdom", "C17841", 21.73, 7),
+            ("United Kingdom", "C13263", 17.06, 8),
+        ],
+        columns=["country", "customer_id", "revenue", "revenue_rank"],
+    )
+    pd.testing.assert_frame_equal(actual, expected, check_dtype=False, rtol=1e-9, atol=1e-9)
 
 
-def test_validate_rejects_extra_keys():
-    payload = {"category": "trade", "confidence": 0.7, "reason": "tariffs"}
-    assert validate_response(payload) is False
-
-
-def test_validate_rejects_a_non_dict_payload():
-    assert validate_response(["markets", 0.9]) is False
-    assert validate_response("markets") is False
-
-
-def test_validate_covers_every_legal_category():
-    for category in CATEGORIES:
-        assert validate_response({"category": category, "confidence": 0.5}) is True
-
-
-# ------------------------------------------------------- single headline
-
-def test_clean_headline_needs_no_retries():
-    # h01's first reply is already valid JSON matching the schema.
-    result = classify_headline(headline_text("h01"))
-    assert result["ok"] is True
-    assert result["category"] in CATEGORIES
-    assert result["retries"] == 0
-
-
-def test_recoverable_headline_reports_one_retry():
-    # h06's first reply is code-fence-wrapped (unparseable); its retry is clean.
-    result = classify_headline(headline_text("h06"))
-    assert result["ok"] is True
-    assert result["category"] == "housing"
-    assert result["retries"] == 1
-
-
-def test_headline_that_never_validates_is_reported_failed():
-    # h19's three replies are all malformed (prose, wrong key, unknown
-    # category): it must fail, not slip through classified.
-    result = classify_headline(headline_text("h19"))
-    assert result["ok"] is False
-    assert result["category"] is None
-    assert result["confidence"] is None
-    assert result["retries"] == MAX_ATTEMPTS - 1
-
-
-def test_headline_recovers_on_the_last_allowed_attempt():
-    # h20 is invalid twice, then valid on the third attempt.
-    result = classify_headline(headline_text("h20"))
-    assert result["ok"] is True
-    assert result["category"] == "markets"
-    assert result["retries"] == 2
-
-
-# ------------------------------------------------------------- whole run
-
-def test_run_category_counts_match_reference():
-    assert dict(summarize_run()["category_counts"]) == REFERENCE_COUNTS
-
-
-def test_run_total_retries_match_reference():
-    assert summarize_run()["retries"] == REFERENCE_RETRIES
-
-
-def test_run_classified_and_failed_counts():
-    summary = summarize_run()
-    assert summary["classified"] == REFERENCE_CLASSIFIED
-    assert summary["failed"] == REFERENCE_FAILED
-
-
-def test_run_totals_are_internally_consistent():
-    summary = summarize_run()
-    assert summary["classified"] + summary["failed"] == len(load_headlines())
-    assert sum(summary["category_counts"].values()) == summary["classified"]
-
-
-def test_no_headline_is_classified_from_an_invalid_payload():
-    # Every headline reported ok must carry a legal category and an in-range
-    # confidence; every failed one must carry neither.
-    for row in load_headlines():
-        result = classify_headline(row["headline"])
-        if result["ok"]:
-            assert result["category"] in CATEGORIES
-            assert 0.0 <= result["confidence"] <= 1.0
-        else:
-            assert result["category"] is None
-            assert result["confidence"] is None
+def test_queries_do_not_mutate_input_schemas(retail_frames):
+    transactions, customers = retail_frames
+    before_transactions = transactions.columns
+    before_customers = customers.columns
+    monthly_revenue_by_country(transactions, customers)
+    customer_revenue_rank(transactions, customers)
+    assert transactions.columns == before_transactions
+    assert customers.columns == before_customers

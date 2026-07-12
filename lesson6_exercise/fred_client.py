@@ -1,14 +1,14 @@
-"""fred_client.py -- the Lesson 9 API exercise starts here.
+"""fred_client.py -- the Lesson 6 API exercise starts here.
 
 You are building the small client that Assignment 1's snapshots could have come
-from: fetch a FRED economic series, tidy it to a monthly table, and store it in a
-SQLite database -- the data pipeline quietly assembling itself.
+from: fetch a FRED economic series and tidy it to a monthly table. Lesson 7 will
+give that table a schema and durable SQLite storage.
 
-Fill in the three functions below. The checker (test_lesson9.py) runs entirely on
+Fill in the two functions below. The checker (test_lesson6.py) runs entirely on
 the offline fixtures in ./fixtures with NO network and NO API key, so you can
-develop completely offline. Run it from inside lesson9_exercise/ :
+develop completely offline. Run it from inside lesson6_exercise/ :
 
-    python3 -m pytest test_lesson9.py -v
+    python3 -m pytest test_lesson6.py -v
 
 Until you implement a function it raises NotImplementedError and its tests fail
 with that message -- that is the intended starting line, not a bug you
@@ -60,17 +60,10 @@ tidy_monthly(observations) -> pandas.DataFrame
     the frame it is given. An empty input returns an empty frame that still has
     the two columns.
 
-store_series(monthly, db_path, series_id, *, table="observations") -> int
-    Append the tidy rows to a SQLite table at db_path, tag every row with
-    series_id, and return the number of rows written. Create the db/table if
-    needed. Store month as an ISO "YYYY-MM-DD" string, because SQLite has no
-    native date type (a storage-is-not-neutral moment from Lesson 2). The stored
-    columns are (series_id TEXT, month TEXT, value REAL).
 """
 
 import json  # noqa: F401  (you will need this to read/write the JSON cache)
 import os  # noqa: F401  (you will need this to read FRED_API_KEY)
-import sqlite3  # noqa: F401  (you will need this in store_series)
 from pathlib import Path
 
 import pandas as pd
@@ -103,20 +96,11 @@ def tidy_monthly(observations):
     raise NotImplementedError("implement tidy_monthly (see the contract in the module docstring)")
 
 
-def store_series(monthly, db_path, series_id, *, table="observations"):
-    """Append tidy monthly rows to SQLite, tagged with series_id; return the count.
-
-    See the module docstring for the full contract.
-    """
-    raise NotImplementedError("implement store_series (see the contract in the module docstring)")
-
-
 # A tiny manual smoke test, so you can watch the pipeline work before pytest.
-# Runs fully offline (no key) against the fixtures; writes under ./data (ignored).
+# Runs fully offline (no key) against the fixtures; writes the raw JSON cache under
+# ./data (ignored). Lesson 7 is where this tidy table becomes a database table.
 if __name__ == "__main__":
     raw = get_series("DGS10")
     print("raw rows:", len(raw))
     monthly = tidy_monthly(raw)
     print(monthly.head())
-    written = store_series(monthly, CACHE_DIR.parent / "lesson9_econ.sqlite", "DGS10")
-    print("stored", written, "monthly rows for DGS10")

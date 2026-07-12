@@ -1,84 +1,99 @@
-# Lesson 7 exercise — Monthly revenue by country, in SQL and pandas
+# Lesson 7 exercise — Design a schema, load it, break it on purpose
+
+In the notebook you watched a database reject bad rows. Now you build the schema
+yourself. This is Unit 2 in your own hands: **a schema is Lesson 1's property
+checklist, and here you write it down so the software enforces it.**
 
 ## Goal
 
-Compute one small report — **monthly revenue by country** — two ways, and prove
-the two ways agree.
+Finish `build_database.py` so that it:
 
-1. Write it as a **SQL** query string (`monthly_revenue_by_country_sql`).
-2. Write it in **pandas** (`monthly_revenue_by_country_pandas`).
-3. The checker runs both, compares them with `assert_frame_equal`, and checks a
-   few pinned reference numbers.
+1. creates a two-table SQLite database for the retail extract, with the integrity
+   rules declared in the schema —
+   - **customers**: `customer_id` is the `PRIMARY KEY`, `country` is `NOT NULL`;
+   - **transactions**: `transaction_id` is the `PRIMARY KEY`, `customer_id` is
+     `NOT NULL` and a `FOREIGN KEY` referencing `customers(customer_id)`;
+2. loads the real data — 10 customers and 60 transactions — from
+   `../course_data/lesson2_customers_base.csv` and
+   `../course_data/lesson2_transactions_base.csv`;
+3. returns an open connection with foreign keys switched **on**; and
+4. implements `demonstrate_rejection()` — attempt one bad insert (a duplicate key,
+   a blank required field, or an orphan foreign key), catch the
+   `sqlite3.IntegrityError`, and return its message.
 
-This is the whole through-line of the lesson made concrete: a SQL query and its
-pandas twin are two spellings of the same answer. If they disagree, one of them
-is wrong — and the test tells you so without revealing the numbers.
+The full contract is written next to each function in `build_database.py`, and
+again in the docstring of `test_lesson7.py`.
 
-## The report
+## Commands
 
-For the `transactions` table (the real 60-row UCI extract you met in Lessons 2
-and 3):
-
-- **revenue of one line** = `quantity * unit_price`
-- **month** = the `YYYY-MM` part of `transaction_date` (e.g. `2010-12`)
-- one row per **(month, country)** pair, where country is `source_country`
-- **revenue rounded to 2 decimals**
-- sorted by **month** ascending, then **country** ascending
-
-Output columns, in this exact order, with these names and types:
-
-| column    | type  | example          |
-| --------- | ----- | ---------------- |
-| `month`   | str   | `'2010-12'`      |
-| `country` | str   | `'United Kingdom'` |
-| `revenue` | float | `1209.90`        |
-
-## What to edit
-
-Open `queries.py` and fill in the two functions. Their docstrings restate the
-contract; the lesson notebook (Unit 3.4) shows the exact SQL and pandas moves you
-need. Do not change the function names or signatures.
-
-You do **not** build the database — the checker builds its own SQLite file from
-`../course_data/lesson2_transactions_base.csv` (under `data/`, which is
-gitignored) every time it runs.
-
-## Run the checker
-
-From inside this folder:
+Run everything from inside this folder:
 
 ```bash
+cd lesson7_exercise
+
+# See your own rejection message once the functions are written:
+python3 build_database.py
+
+# Grade yourself:
 python3 -m pytest test_lesson7.py -v
 ```
 
+The checker builds your database into a fresh temporary directory, so it never
+leaves files behind. (Running `build_database.py` directly writes to
+`lesson7_exercise/data/`, which is gitignored.)
+
+## Where to start
+
+The shipped functions raise `NotImplementedError`, so the checker fails on every
+test until you implement them — that is the expected starting point. Work in this
+order:
+
+1. Open the connection and turn foreign keys on.
+2. `CREATE TABLE customers (...)` — read the DDL as a list of Lesson 1 properties.
+3. Load customers, then `CREATE TABLE transactions (...)` with the foreign key.
+4. Load transactions (customers must exist first, or the foreign key refuses them).
+5. Write `demonstrate_rejection()` — the satisfying part: make the database say no.
+
+Tip for loading: create the table first, then use
+`df.to_sql(name, conn, if_exists="append", index=False)`. `append` inserts rows
+into the table *you* declared, instead of letting pandas invent a schema with no
+keys (the Unit 3 warning).
+
+### Optional Lesson 6 integration
+
+Once the required retail schema passes, take the tidy `monthly` DataFrame from
+the FRED client and design an `observations` table before calling `to_sql`. Decide
+which columns should be `NOT NULL`, how to represent the series ID, and why
+SQLite stores a month as ISO text. This is intentionally *after* the API lesson:
+fetching and caching are API concerns; choosing a durable schema is a database
+concern.
+
 ## What "done" looks like
 
-- **Before you start:** nothing is implemented yet, so pytest reports
-  `1 failed, 9 errors in 0.14s` — every test ends in the same graceful
-  `NotImplementedError: Fill in ...` message. (Nine ERROR because the stub
-  raises while a fixture is building their input; one — the "does not mutate"
-  test — is marked FAILED because it calls the function in the test body
-  instead, but it is the identical message and cause.) That is the intended
-  starting state, not something you broke.
-- **When you are done:** all tests pass. That means your SQL report and your
-  pandas report are byte-for-byte the same DataFrame, and both match the pinned
-  totals.
+```
+$ python3 -m pytest test_lesson7.py -v
+...
+test_lesson7.py::test_customers_customer_id_is_the_primary_key PASSED
+test_lesson7.py::test_customers_country_is_not_null PASSED
+test_lesson7.py::test_transactions_transaction_id_is_the_primary_key PASSED
+test_lesson7.py::test_transactions_customer_id_is_not_null PASSED
+test_lesson7.py::test_transactions_have_a_foreign_key_to_customers PASSED
+test_lesson7.py::test_customers_row_count_is_10 PASSED
+test_lesson7.py::test_transactions_row_count_is_60 PASSED
+test_lesson7.py::test_foreign_keys_are_enforced_on_the_connection PASSED
+test_lesson7.py::test_duplicate_primary_key_is_rejected PASSED
+test_lesson7.py::test_null_country_is_rejected PASSED
+test_lesson7.py::test_demonstrate_rejection_reports_a_real_integrity_error PASSED
 
-## Hints (only if stuck)
+11 passed
+```
 
-- SQL month: `strftime('%Y-%m', transaction_date)`. Rounding: `ROUND(x, 2)`.
-  Group by the month and the country; order by month then country.
-- pandas month: `df["transaction_date"].str.slice(0, 7)` (or
-  `pd.to_datetime(...).dt.strftime('%Y-%m')`) — both give a `'YYYY-MM'` **string**,
-  not a Period. Group with `groupby([...])`, sum, `round(2)`, `sort_values`, and
-  finish with `reset_index(drop=True)`.
-- If `assert_frame_equal` complains about **dtype**, your `month` is probably a
-  Period, not a string — the contract asks for a string.
-- If it complains about **index**, you forgot `reset_index(drop=True)`.
+All 11 green means your schema enforces the property checklist and your database
+refuses a bad row on its own — no discipline required.
 
 ## Where this leads
 
-"Two tools, one answer, proven equal" is the core move of the "One Analysis,
-Two Engines" assignment (`sql-two-engines-assignment/`): every question there is
-answered in SQL and in pandas and both must agree. This exercise is the dress
-rehearsal for that assignment, one question at a time.
+The two-table schema you design here is the retail database that Lessons 8 and 9
+query, and it is the same design the "One Analysis, Two Engines" assignment
+(`sql-two-engines-assignment/`) grades you against — there you will answer real
+business questions in SQL and pandas on top of exactly this structure.

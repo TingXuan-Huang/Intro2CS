@@ -1,151 +1,211 @@
-"""Tests for the Lesson 7 SQL exercise.
+"""Tests for the Lesson 7 database-design exercise.
 
-These tests import the two functions YOU complete in ``queries.py`` and check
-that your SQL report and your pandas report agree with each other and with a set
-of reference numbers computed from the real data.
-
-In the shipped starter, both functions ``raise NotImplementedError``, so every
-test below ERRORS with that message until you implement them. That is the
-intended starting state, not something you broke.
+These tests import from ``build_database.py`` -- the starter module you finish.
+In its shipped state that module's two functions raise ``NotImplementedError``,
+so every test below fails with that same instructive message until you implement
+them. That is the intended starting point, not something you broke.
 
 Run from inside lesson7_exercise/ :
 
     python3 -m pytest test_lesson7.py -v
 
-What the tests need:
+The checker builds your database into a fresh temporary directory each run, so it
+never leaves a file behind and never depends on a previous attempt.
 
-    * ``../course_data/lesson2_transactions_base.csv`` -- the 60 real rows.
-      This checker builds its own SQLite database from that CSV, under
-      ``lesson7_exercise/data/`` (gitignored), every run. You do not build it.
+Expected module contract (build_database.py):
 
-Expected contract (queries.py):
+    build_database(db_path, customers_csv, transactions_csv) -> sqlite3.Connection
+        Create a brand-new SQLite database at ``db_path`` holding two tables and
+        load the two CSVs into them. Return an OPEN connection that already has
+        ``PRAGMA foreign_keys = ON`` set. The schema must declare:
 
-    monthly_revenue_by_country_sql() -> str
-        A SQL query string. Run against a ``transactions`` table it returns
-        columns [month, country, revenue]: month = strftime('%Y-%m',
-        transaction_date), country = source_country, revenue =
-        ROUND(SUM(quantity*unit_price), 2). One row per (month, country),
-        ordered by month then country.
+          customers
+            - customer_id : the PRIMARY KEY (unique, one row per customer)
+            - country     : NOT NULL (a customer must have a country)
 
-    monthly_revenue_by_country_pandas(transactions_df) -> pandas.DataFrame
-        The SAME report from a DataFrame: columns [month, country, revenue],
-        month as a 'YYYY-MM' string, revenue rounded to 2 decimals, one row per
-        (month, country), sorted by month then country, index reset to 0..n-1.
-        Must not mutate the input frame.
+          transactions
+            - transaction_id : the PRIMARY KEY
+            - customer_id    : NOT NULL, and a FOREIGN KEY referencing
+                               customers(customer_id)
 
-The reference numbers below were computed from the real 60-row extract and are
-pinned on purpose. Decide what the report SHOULD be by reading the contract, not
-by tweaking numbers until the test passes.
+        Keep every column the CSVs carry, so a whole row round-trips. Declare
+        NOT NULL only where a property truly demands it (customers.country and
+        transactions.customer_id); leave the descriptive columns nullable.
+        After loading, customers has 10 rows and transactions has 60 rows -- the
+        two course_data CSVs, unchanged.
+
+    demonstrate_rejection(conn) -> str
+        Attempt ONE insert that the schema must reject -- your choice of a
+        duplicate primary key, a NULL in a NOT NULL column, or an orphan foreign
+        key. Catch the sqlite3.IntegrityError and return ``str(err)``. Every
+        SQLite integrity message contains the word "constraint". If no error is
+        raised, the schema failed its job: raise AssertionError instead of
+        returning.
+
+The enforcement tests below copy one real row and break exactly one rule, then
+insert it themselves -- so each test targets its own constraint no matter what
+extra columns your schema carries.
 """
 
 import sqlite3
 from pathlib import Path
 
-import pandas as pd
 import pytest
-from pandas.testing import assert_frame_equal
 
-from queries import (
-    monthly_revenue_by_country_pandas,
-    monthly_revenue_by_country_sql,
-)
+from build_database import build_database, demonstrate_rejection
 
-HERE = Path(__file__).resolve().parent
-CSV_PATH = HERE.parent / "course_data" / "lesson2_transactions_base.csv"
-DB_PATH = HERE / "data" / "lesson7_retail.sqlite"
+COURSE_DATA = Path(__file__).parent.parent / "course_data"
+CUSTOMERS_CSV = COURSE_DATA / "lesson2_customers_base.csv"
+TRANSACTIONS_CSV = COURSE_DATA / "lesson2_transactions_base.csv"
 
-# ---- Pinned reference values (computed from the real 60-row extract) --------
-EXPECTED_ROWS = 5
-EXPECTED_GRAND_TOTAL = 1421.09
-EXPECTED_CELL = ("2010-12", "United Kingdom", 1209.90)
-EXPECTED_COLUMNS = ["month", "country", "revenue"]
+# A customer_id that is NOT in the customer table -- used for the orphan test.
+ORPHAN_CUSTOMER_ID = "C00000"
 
 
-@pytest.fixture(scope="module")
-def transactions_df():
-    """The transactions table as a DataFrame (input to the pandas function)."""
-    return pd.read_csv(CSV_PATH)
+@pytest.fixture
+def conn(tmp_path):
+    """A freshly built database, as an open connection, rebuilt for every test."""
+    connection = build_database(
+        db_path=str(tmp_path / "lesson7_exercise.sqlite"),
+        customers_csv=str(CUSTOMERS_CSV),
+        transactions_csv=str(TRANSACTIONS_CSV),
+    )
+    yield connection
+    connection.close()
 
 
-@pytest.fixture(scope="module")
-def connection():
-    """A SQLite connection whose ``transactions`` table is the real 60 rows.
+# ----------------------------------------------------------------- helpers
 
-    The database is rebuilt fresh under lesson7_exercise/data/ each run.
-    """
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    if DB_PATH.exists():
-        DB_PATH.unlink()
-    con = sqlite3.connect(DB_PATH)
-    pd.read_csv(CSV_PATH).to_sql("transactions", con, index=False, if_exists="replace")
-    yield con
-    con.close()
+def columns(conn, table):
+    """PRAGMA table_info as {name: {"notnull": int, "pk": int, "type": str}}."""
+    info = {}
+    for _cid, name, col_type, notnull, _default, pk in conn.execute(
+        f"PRAGMA table_info({table})"
+    ):
+        info[name] = {"notnull": notnull, "pk": pk, "type": col_type}
+    return info
 
 
-@pytest.fixture(scope="module")
-def sql_result(connection):
-    """The student's SQL report, run through pd.read_sql."""
-    return pd.read_sql(monthly_revenue_by_country_sql(), connection)
+def foreign_keys(conn, table):
+    """PRAGMA foreign_key_list as a list of (from_column, ref_table, to_column)."""
+    return [(row[3], row[2], row[4]) for row in conn.execute(f"PRAGMA foreign_key_list({table})")]
 
 
-@pytest.fixture(scope="module")
-def pandas_result(transactions_df):
-    """The student's pandas report."""
-    return monthly_revenue_by_country_pandas(transactions_df)
+def one_row(conn, table):
+    """Fetch one existing, valid row of ``table`` as a {column: value} dict."""
+    names = list(columns(conn, table))
+    values = conn.execute(f"SELECT {', '.join(names)} FROM {table} LIMIT 1").fetchone()
+    return dict(zip(names, values))
 
 
-# ---------------------------------------------------------- shape / columns
-
-def test_sql_has_the_contracted_columns(sql_result):
-    assert list(sql_result.columns) == EXPECTED_COLUMNS
-
-
-def test_pandas_has_the_contracted_columns(pandas_result):
-    assert list(pandas_result.columns) == EXPECTED_COLUMNS
-
-
-def test_row_count(sql_result):
-    assert len(sql_result) == EXPECTED_ROWS
+def insert_row(conn, table, row):
+    """Insert a {column: value} dict, naming every column explicitly."""
+    names = list(row)
+    placeholders = ", ".join("?" for _ in names)
+    conn.execute(
+        f"INSERT INTO {table} ({', '.join(names)}) VALUES ({placeholders})",
+        tuple(row[name] for name in names),
+    )
 
 
-# --------------------------------------------------- the two reports agree
+# --------------------------------------------------------------- schema: keys
 
-def test_sql_and_pandas_agree(sql_result, pandas_result):
-    # The whole point of the exercise: same report, two engines, identical frame.
-    assert_frame_equal(sql_result, pandas_result)
-
-
-# ---------------------------------------------------------- pinned numbers
-
-def test_grand_total_revenue(sql_result):
-    assert sql_result["revenue"].sum() == pytest.approx(EXPECTED_GRAND_TOTAL)
+def test_customers_customer_id_is_the_primary_key(conn):
+    info = columns(conn, "customers")
+    assert "customer_id" in info, "customers needs a customer_id column"
+    assert info["customer_id"]["pk"] > 0, "customer_id must be the PRIMARY KEY"
 
 
-def test_one_specific_month_country_cell(sql_result):
-    month, country, revenue = EXPECTED_CELL
-    row = sql_result[(sql_result["month"] == month) & (sql_result["country"] == country)]
-    assert len(row) == 1
-    assert row["revenue"].iloc[0] == pytest.approx(revenue)
+def test_customers_country_is_not_null(conn):
+    info = columns(conn, "customers")
+    assert "country" in info, "customers needs a country column"
+    assert info["country"]["notnull"] == 1, "country must be declared NOT NULL"
 
 
-# ------------------------------------------------------------- properties
-
-def test_month_is_a_yyyy_dash_mm_string(sql_result):
-    first_month = sql_result["month"].iloc[0]
-    assert isinstance(first_month, str)
-    assert len(first_month) == 7 and first_month[4] == "-"
+def test_transactions_transaction_id_is_the_primary_key(conn):
+    info = columns(conn, "transactions")
+    assert "transaction_id" in info, "transactions needs a transaction_id column"
+    assert info["transaction_id"]["pk"] > 0, "transaction_id must be the PRIMARY KEY"
 
 
-def test_sorted_by_month_then_country(pandas_result):
-    ordered = pandas_result.sort_values(["month", "country"]).reset_index(drop=True)
-    assert_frame_equal(pandas_result, ordered)
+def test_transactions_customer_id_is_not_null(conn):
+    info = columns(conn, "transactions")
+    assert "customer_id" in info, "transactions needs a customer_id column"
+    assert info["customer_id"]["notnull"] == 1, "transactions.customer_id must be NOT NULL"
 
 
-def test_pandas_index_is_reset(pandas_result):
-    assert list(pandas_result.index) == list(range(len(pandas_result)))
+def test_transactions_have_a_foreign_key_to_customers(conn):
+    assert ("customer_id", "customers", "customer_id") in foreign_keys(conn, "transactions"), (
+        "transactions.customer_id must be a FOREIGN KEY referencing customers(customer_id)"
+    )
 
 
-def test_pandas_does_not_mutate_its_input(transactions_df):
-    before = transactions_df.copy()
-    monthly_revenue_by_country_pandas(transactions_df)
-    assert_frame_equal(transactions_df, before)
+# --------------------------------------------------------------- row counts
+
+def test_customers_row_count_is_10(conn):
+    (count,) = conn.execute("SELECT COUNT(*) FROM customers").fetchone()
+    assert count == 10
+
+
+def test_transactions_row_count_is_60(conn):
+    (count,) = conn.execute("SELECT COUNT(*) FROM transactions").fetchone()
+    assert count == 60
+
+
+# --------------------------------------------------- enforcement (checker acts)
+
+def test_foreign_keys_are_enforced_on_the_connection(conn):
+    # A real transaction row whose only defect is an orphan customer_id. It is
+    # rejected only when the returned connection has PRAGMA foreign_keys = ON.
+    row = one_row(conn, "transactions")
+    row["transaction_id"] = "ORPHAN-1"          # unique -> no primary-key clash
+    row["customer_id"] = ORPHAN_CUSTOMER_ID     # the one rule this row breaks
+    with pytest.raises(sqlite3.IntegrityError) as caught:
+        insert_row(conn, "transactions", row)
+    conn.rollback()
+    assert "foreign key" in str(caught.value).lower(), (
+        "expected a FOREIGN KEY constraint failure; got: " + str(caught.value)
+    )
+
+
+def test_duplicate_primary_key_is_rejected(conn):
+    # Re-insert a full, valid customer row: the only broken rule is the unique key.
+    row = one_row(conn, "customers")
+    with pytest.raises(sqlite3.IntegrityError) as caught:
+        insert_row(conn, "customers", row)
+    conn.rollback()
+    assert "unique" in str(caught.value).lower()
+
+
+def test_null_country_is_rejected(conn):
+    # A real customer row with a fresh id but a blank country -> only NOT NULL breaks.
+    row = one_row(conn, "customers")
+    row["customer_id"] = "C99999"
+    row["country"] = None
+    with pytest.raises(sqlite3.IntegrityError) as caught:
+        insert_row(conn, "customers", row)
+    conn.rollback()
+    assert "not null" in str(caught.value).lower()
+
+
+# ------------------------------------------------ the student's own rejection
+
+def test_demonstrate_rejection_reports_a_real_integrity_error(conn):
+    before_customers = conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0]
+    before_transactions = conn.execute("SELECT COUNT(*) FROM transactions").fetchone()[0]
+
+    message = demonstrate_rejection(conn)
+    conn.rollback()  # clear any transaction the failed insert left open
+
+    assert isinstance(message, str) and message, (
+        "demonstrate_rejection must return the caught error message as a string"
+    )
+    assert "constraint" in message.lower(), (
+        "the returned message should be a real sqlite3.IntegrityError "
+        "(its text contains 'constraint'); got: " + message
+    )
+    # The rejected row must not have landed.
+    assert conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0] == before_customers
+    assert (
+        conn.execute("SELECT COUNT(*) FROM transactions").fetchone()[0] == before_transactions
+    )

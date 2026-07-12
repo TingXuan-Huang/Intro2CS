@@ -12,9 +12,7 @@ A hands-on Intro to Computer Science course for non-CS students, taught through 
 
 [Lesson1_Data_Types_and_Structures.ipynb](notebooks/Lesson1_Data_Types_and_Structures.ipynb) · [Instructor notes](Lesson1_Instructor_Notes.md) · [Teaching notes on properties](note.md)
 
-This lesson builds the representation mindset: choose native Python
-structures by the operations they support, then connect mutability, references,
-stacks, queues, NumPy arrays, DataFrames, and file representations.
+This lesson builds the representation mindset: choose native Python structures by the operations they support, then connect mutability, references, abstract data structures, NumPy arrays, DataFrames, and file representations.
 
 **Extensions:** [Python data structures](https://docs.python.org/3/tutorial/datastructures.html) · [copying objects](https://docs.python.org/3/library/copy.html) · [NumPy absolute basics](https://numpy.org/doc/stable/user/absolute_beginners.html) · [Think Python](https://allendowney.github.io/ThinkPython/)
 
@@ -39,14 +37,13 @@ A self-grading pandas assignment that carries one financial analysis through CSV
 
 #### Lesson 3 — Bash, Virtual Environments, Git
 
-**Three sessions.** The shell as a REPL for the computer; filesystem trees,
-paths, pipes, and inspecting the retail CSV before pandas reads it; virtual
-environments and dependency snapshots; Git status, commits, diffs, branches,
-merges, and `.gitignore`; and running Python scripts outside Jupyter.
+This lesson covers some workflow tools:
 
-The exercise is a deliberately broken project with a wrong working directory,
-missing dependency, and absent Git history. A checker verifies the environment,
-requirements, and at least three meaningful commits.
+- Shell commends as a REPL for the computer; filesystem trees, paths, pipes, and inspecting the retail text files.
+- virtual environments building and dependency managment. 
+- Git status, commits, diffs, branches, merges, and `.gitignore`; and running Python scripts outside Jupyter.
+
+
 
 #### Lesson 4 — Algorithms and Big-O ✅
 
@@ -76,22 +73,34 @@ and `pytest`.
 The exercise refactors a working-but-awful retail analysis script while making
 a failing test suite pass, with Git checkpoints for each step.
 
-### Phase 2 — Databases, APIs, and LLMs
+### Phase 2 — APIs, Databases, Distributed Data, and LLMs
 
-#### Lesson 6 — Why Databases Exist + SQLite
+#### Lesson 6 — APIs and HTTP
 
-[Lesson6_Databases_and_SQLite.ipynb](notebooks/Lesson6_Databases_and_SQLite.ipynb)
+[Lesson6_APIs_and_HTTP.ipynb](notebooks/Lesson6_APIs_and_HTTP.ipynb)
+
+**Two sessions.** Clients, servers, URLs, endpoints, requests, responses,
+headers, methods, and status codes → `requests` and FRED → API keys in
+environment variables → JSON to DataFrame → rate limits, retries, pagination,
+timeouts, disk caching, and reading unfamiliar API documentation. The exercise
+fetches a FRED series, caches its raw JSON, and makes it monthly; durable storage
+waits for the database lesson.
+
+#### Lesson 7 — Why Databases Exist + SQLite
+
+[Lesson7_Databases_and_SQLite.ipynb](notebooks/Lesson7_Databases_and_SQLite.ipynb)
 
 **Two sessions.** File failure modes such as leading-zero loss and inconsistent
 customer data → tables, schemas, keys, `NOT NULL`, primary keys, and foreign
 keys → Python and SQLite with `sqlite3`, `to_sql`, and `read_sql` →
 parameterized queries → when a database is preferable to a DataFrame or CSV.
 The exercise designs and loads `customers` and `transactions` tables and
-demonstrates an intentional integrity rejection.
+demonstrates an intentional integrity rejection. An optional integration stores
+Lesson 6's tidy API data only after students can design its schema.
 
-#### Lesson 7 — SQL Fundamentals
+#### Lesson 8 — SQL Fundamentals
 
-[Lesson7_SQL_Fundamentals.ipynb](notebooks/Lesson7_SQL_Fundamentals.ipynb)
+[Lesson8_SQL_Fundamentals.ipynb](notebooks/Lesson8_SQL_Fundamentals.ipynb)
 
 **Two to three sessions.** `SELECT`, `WHERE`, `ORDER BY`, `LIMIT`, and
 `DISTINCT` beside pandas equivalents → aggregates and `GROUP BY` → `HAVING`
@@ -99,9 +108,9 @@ versus `WHERE` → `NULL`, `IS NULL`, `COALESCE`, and dates → logical query
 evaluation order. The exercise computes monthly revenue by country in SQL and
 pandas, then uses `assert_frame_equal` to prove the results agree.
 
-#### Lesson 8 — SQL Joins and Analytics
+#### Lesson 9 — SQL Joins and Analytics
 
-[Lesson8_SQL_Joins_and_Analytics.ipynb](notebooks/Lesson8_SQL_Joins_and_Analytics.ipynb)
+[Lesson9_SQL_Joins_and_Analytics.ipynb](notebooks/Lesson9_SQL_Joins_and_Analytics.ipynb)
 
 **Three sessions.** `INNER JOIN` and `LEFT JOIN` beside pandas `merge` →
 `CASE WHEN` and conditional aggregation → CTEs and subqueries → window
@@ -115,20 +124,19 @@ database. A checker compares both engines with reference outputs, benchmarks
 filtered SQL reads against loading everything into pandas, and includes
 established interview-style drills.
 
-#### Lesson 9 — APIs and HTTP
+#### Lesson 10 — Spark and Distributed DataFrames
 
-[Lesson9_APIs_and_HTTP.ipynb](notebooks/Lesson9_APIs_and_HTTP.ipynb)
+[Lesson10_Spark_and_Distributed_DataFrames.ipynb](notebooks/Lesson10_Spark_and_Distributed_DataFrames.ipynb)
 
-**Two sessions.** Clients, servers, URLs, endpoints, requests, responses,
-headers, methods, and status codes → `requests` and FRED → API keys in
-environment variables → JSON to DataFrame → rate limits, retries, pagination,
-timeouts, disk caching, and reading unfamiliar API documentation. The exercise
-fetches two FRED series, caches them, makes them monthly, and stores them in
-the Lesson 6 SQLite database.
+**Two sessions.** Local `SparkSession` and lazy transformations versus actions →
+Spark DataFrames and SQL beside pandas/SQLite equivalents → joins and windows →
+partitioned Parquet, partition pruning, and shuffle tradeoffs → when pandas,
+SQLite, or Spark is the right engine. The exercise runs one local worker and
+checks a join/aggregation and a window query against pinned retail answers.
 
-#### Lesson 10 — LLMs: First API Call
+#### Lesson 11 — LLMs: First API Call
 
-[Lesson10_LLM_First_API_Call.ipynb](notebooks/Lesson10_LLM_First_API_Call.ipynb)
+[Lesson11_LLM_First_API_Call.ipynb](notebooks/Lesson11_LLM_First_API_Call.ipynb)
 
 **Two sessions.** Tokens, next-token prediction, context windows, temperature,
 and hallucination → messages and system/user prompts → raw HTTP and SDK calls
@@ -140,11 +148,14 @@ response, and counts retries.
 #### Assignment A4 — Integrated Mini-Project
 
 Fetch two FRED series through the cached client, store them in SQLite, use SQL
-for aggregates and joins, pandas for derived metrics, and an LLM for a
-structured JSON summary whose numbers Python validates. The checker verifies
-the schema, query results, and detection of a planted wrong number.
+for aggregates and joins, pandas for derived metrics, optionally repeat a
+partitioned transform in Spark, and use an LLM for a structured JSON summary
+whose numbers Python validates. The checker verifies the schema, query results,
+and detection of a planted wrong number.
 
 ### Phase 3 — Uncertainty
+
+
 
 #### Lesson 12 — Visualization with matplotlib
 
@@ -182,6 +193,8 @@ monthly sales and customer churn from retail-derived features.
 
 ### Phase 4 — LLM Systems
 
+
+
 #### Lesson 16 — RAG: Embeddings and Retrieval
 
 Text to vectors and cosine similarity → chunking and brute-force retrieval →
@@ -203,6 +216,8 @@ routing graphs to shortest paths and priority queues. The exercise routes
 twelve questions and compares total cost with an always-largest-model policy.
 
 ### Phase 5 — Machine Learning
+
+
 
 #### Lesson 19 — ML Foundations
 
@@ -231,6 +246,8 @@ varies hidden-layer size and identifies where overfitting begins.
 
 ### Phase 6 — Statistical Extensions
 
+
+
 #### Lesson 22 — Time-Series Forecasting
 
 Trend, seasonality, residuals, lags, and autocorrelation → naive and
@@ -248,6 +265,8 @@ posterior week by week.
 
 ### Phase 7 — Capstone
 
+
+
 #### Lesson 24 — Capstone: Economic Question Agent
 
 Choose an economic question → fetch FRED data through the cached client →
@@ -262,23 +281,23 @@ lesson that taught it. Catching a planted error is required.
 ### Optional lessons
 
 - **O1 — Stacks and Queues in Practice:** implement a stack and expression
-  evaluator, use `deque` for a support-ticket queue, and measure why list
-  front-pops are slow.
+evaluator, use `deque` for a support-ticket queue, and measure why list
+front-pops are slow.
 - **O2 — ANOVA and Poisson Regression:** compare four variants with ANOVA and
-  model order counts with Poisson regression.
+model order counts with Poisson regression.
 - **O3 — Graph Algorithms in Depth:** implement BFS, DFS, Dijkstra, and top-k
-  with `heapq`; practice with established graph problems.
+with `heapq`; practice with established graph problems.
 - **O4 — Advanced Probabilistic Models:** tour survival analysis, HMMs,
-  state-space models, Kalman filtering, and one library-based MCMC example.
+state-space models, Kalman filtering, and one library-based MCMC example.
 
-Assignments are spaced as A1 (Lesson 2), A2 (Lesson 4), A3 (Lesson 8), A4
+Assignments are spaced as A1 (Lesson 2), A2 (Lesson 4), A3 (Lesson 9), A4
 (Lesson 11), A5 (Lesson 14), A6 (Lesson 20), and the capstone (Lesson 24).
 
 ## Dataset provenance and offline use
 
 The course ships small, pinned extracts so class time never depends on a network connection:
 
-- `course_data/online_retail_sample.csv` is a compact extract from the [UCI Online Retail dataset](https://archive.ics.uci.edu/dataset/352/online+retail), licensed CC BY 4.0. Lesson 2 derives its controlled cleaning cases from this extract, and Lesson 3 uses it for one real-data algorithms application.
+- `course_data/online_retail_sample.csv` is a compact extract from the [UCI Online Retail dataset](https://archive.ics.uci.edu/dataset/352/online+retail), licensed CC BY 4.0. Lesson 2 derives its controlled cleaning cases from this extract, and Lesson 4 uses it for one real-data algorithms application.
 - Lesson 1 uses Fisher's Iris data through `scikit-learn` and selected views of the course retail extract.
 - The finance assignment stores dated snapshots in `pandas-finance-assignment/data_offline/`. FRED data is public economic data. The Yahoo-derived snapshot is for this private educational course only and must not be redistributed; see [yfinance's usage notice](https://ranaroussi.github.io/yfinance/).
 
@@ -287,10 +306,14 @@ Each dataset source, retrieval date, row count, and checksum are recorded in `co
 ## Setup
 
 ```bash
-pip install pandas numpy pyarrow openpyxl yfinance matplotlib jupyter scikit-learn
+pip install pandas numpy pyarrow openpyxl yfinance matplotlib jupyter scikit-learn requests pyspark
 ```
 
-Python 3.10+ recommended. A CSV stores textual fields, not pandas column dtypes; pandas may infer types when it reads one. JSON preserves JSON values but not pandas-specific dtypes, datetimes, or indexes. Run each notebook with:
+Python 3.10+ recommended. Spark also needs a local Java 17+ runtime; Lesson 10
+uses `SparkSession.builder` in local mode and never requires a remote cluster. A
+CSV stores textual fields, not pandas column dtypes; pandas may infer types when
+it reads one. JSON preserves JSON values but not pandas-specific dtypes,
+datetimes, or indexes. Run each notebook with:
 
 ```bash
 jupyter lab <notebook>.ipynb

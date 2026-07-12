@@ -1,5 +1,5 @@
 {
-  "what_this_is": "Authored teaching fixtures for Lesson 10. Each file is a single response in the exact Anthropic Messages API wire shape. These were HAND-WRITTEN to teach validation and retry logic offline; they are NOT recordings of live API calls, and the token counts are plausible estimates, not measured usage.",
+  "what_this_is": "Authored teaching fixtures for Lesson 11. Each file is a single response in the exact Anthropic Messages API wire shape. These were HAND-WRITTEN to teach validation and retry logic offline; they are NOT recordings of live API calls, and the token counts are plausible estimates, not measured usage.",
   "headlines": {
     "count": 20,
     "style": "economic-news-STYLE wording, authored for teaching; not real quotations",

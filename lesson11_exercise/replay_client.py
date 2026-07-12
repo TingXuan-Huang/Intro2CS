@@ -1,4 +1,4 @@
-"""Replay client for the Lesson 10 exercise -- PROVIDED, do not edit.
+"""Replay client for the Lesson 11 exercise -- PROVIDED, do not edit.
 
 This is an offline stand-in for a real LLM call. Instead of reaching the
 network, it replays an *authored teaching fixture* recorded in the exact

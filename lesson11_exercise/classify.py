@@ -1,4 +1,4 @@
-"""Lesson 10 exercise -- classify economic-news headlines with validated JSON.
+"""Lesson 11 exercise -- classify economic-news headlines with validated JSON.
 
 An LLM's reply is the first data in this course with NO guaranteed
 properties. You asked for JSON of the shape {"category", "confidence"};
@@ -10,7 +10,7 @@ a source that can hand you anything.
 Fill in the three functions marked TODO, then run the checker from inside
 this folder:
 
-    python3 -m pytest test_lesson10.py -v
+    python3 -m pytest test_lesson11.py -v
 
 You do not make any real API calls. ``replay_client`` replays authored
 teaching fixtures (see fixtures/manifest.json) so the whole exercise runs

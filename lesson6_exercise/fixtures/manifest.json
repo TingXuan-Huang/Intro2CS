@@ -9,7 +9,7 @@
     "The source Monthly sheet has no October 2025 row, so the monthly fixtures skip that month.",
     "Envelope fields (count, observation_start/end) describe the reformatted rows honestly."
   ],
-  "regenerate_with": "python3 lesson9_exercise/fixtures/make_fixtures.py",
+  "regenerate_with": "python3 lesson6_exercise/fixtures/make_fixtures.py",
   "realtime_date": "2026-07-11",
   "files": [
     {

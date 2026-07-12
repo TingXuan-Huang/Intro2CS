@@ -1,14 +1,14 @@
-"""Lesson 6 exercise -- design a schema, load it, and prove it rejects bad data.
+"""Lesson 7 exercise -- design a schema, load it, and prove it rejects bad data.
 
 You will build a two-table SQLite database for the retail extract you have used
 all through the course, and then make the database refuse one bad row on purpose.
 This is Unit 2 in your own hands: a schema is Lesson 1's property checklist, and
 here you are the one writing it down so the software can enforce it.
 
-Fill in the two functions below. The checker (test_lesson6.py) describes the exact
+Fill in the two functions below. The checker (test_lesson7.py) describes the exact
 contract; this file repeats it next to each TODO. Run the checker with:
 
-    python3 -m pytest test_lesson6.py -v
+    python3 -m pytest test_lesson7.py -v
 
 and run THIS file directly to see your own rejection message:
 
@@ -26,7 +26,7 @@ import pandas as pd
 
 HERE = Path(__file__).parent
 COURSE_DATA = HERE.parent / "course_data"
-DEFAULT_DB = HERE / "data" / "lesson6_exercise.sqlite"
+DEFAULT_DB = HERE / "data" / "lesson7_exercise.sqlite"
 
 
 def build_database(db_path, customers_csv, transactions_csv):

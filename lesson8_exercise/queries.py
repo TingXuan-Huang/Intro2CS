@@ -1,7 +1,7 @@
-"""Lesson 7 exercise -- monthly revenue by country, twice.
+"""Lesson 8 exercise -- monthly revenue by country, twice.
 
 You will compute ONE report two ways: once in SQL, once in pandas. The point of
-the exercise is that they must agree exactly -- ``test_lesson7.py`` proves it with
+the exercise is that they must agree exactly -- ``test_lesson8.py`` proves it with
 ``pandas.testing.assert_frame_equal``.
 
 Fill in the two functions below. Do not change their names or signatures. See

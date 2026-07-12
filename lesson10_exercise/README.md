@@ -1,84 +1,41 @@
-# Lesson 10 exercise — Classify headlines with validated JSON
+# Lesson 10 exercise — Spark queries without a cluster
 
-An LLM's reply is the first data in this course with **no guaranteed
-properties**. You will ask a model to sort economic-news headlines into a
-fixed set of categories and to answer in JSON — and then you will refuse to
-believe a single reply until you have checked it against a schema, retrying
-when a reply fails.
+Spark lets the same DataFrame-style analysis run on multiple machines. This
+exercise deliberately uses **one local worker**: the goal is to practice Spark's
+lazy DataFrame and window APIs without hiding the ideas behind cluster setup.
 
-You write no networking code and make no real API calls. A provided
-`replay_client` replays **authored teaching fixtures** (responses written by
-hand in the real Anthropic Messages API wire shape — see
-`fixtures/manifest.json`), so the exercise runs offline and gives the same
-result every time. Some of those replies are deliberately malformed: a
-code-fence wrapper, prose wrapped around the JSON, a missing key, an
-out-of-range confidence, a category that isn't on the list, and one reply
-that is not JSON at all. Your validation has to catch every one.
+## Setup
 
-## Your job
-
-Open `classify.py` and implement the three functions marked `TODO`. The full
-contract is in that file's docstring; in short:
-
-- **`validate_response(payload)`** — return `True` only if `payload` is a dict
-  with exactly the keys `{"category", "confidence"}`, a `category` drawn from
-  the legal set, and a numeric `confidence` in `0.0..1.0`. Never raise on bad
-  input; just return `False`.
-- **`classify_headline(headline)`** — ask the model (via `call_model`) up to
-  `MAX_ATTEMPTS` times, parsing and validating each reply, stopping at the
-  first valid one. Report the category, the confidence, and how many
-  **retries** it took — or that it failed. A headline must never be reported
-  classified from a payload that failed validation.
-- **`summarize_run()`** — classify every headline and tally the run: per-category
-  counts, total retries, how many were classified, and how many failed.
-
-`load_headlines()` and the whole `replay_client` are provided — the exercise
-is about validation and control flow, not I/O.
-
-## Commands
-
-Run from inside this folder:
+Install `pyspark` and a supported Java runtime first. From this folder, run:
 
 ```bash
-cd lesson10_exercise
 python3 -m pytest test_lesson10.py -v
 ```
 
-Before you start, run it once and watch it fail: the three functions raise
-`NotImplementedError`, so every test errors out. That is the intended starting
-state. You are done when the whole suite is green.
+The checker reads the pinned retail CSVs already in `course_data/`. It creates no
+network requests and no remote cluster.
 
-You can also smoke-test your work directly:
+## Your job
 
-```bash
-python3 classify.py
-```
+Open `spark_queries.py` and implement:
 
-## What "done" looks like
+- `monthly_revenue_by_country(transactions, customers)` — a join, derived revenue,
+  month-level aggregation, and deterministic sort.
+- `customer_revenue_rank(transactions, customers)` — the same join and aggregation,
+  then a `dense_rank` window within each country.
 
-- `python3 -m pytest test_lesson10.py -v` reports all tests passing.
-- The full run reproduces the pinned reference: **19** headlines classified,
-  **1** failed, **7** retries in total.
-- No headline is ever reported classified from a reply that failed the schema
-  — the failing headline stays failed, and its revenue-of-trust stays zero.
+Both functions must return a **Spark DataFrame**. Do not use `collect()` or
+`toPandas()` in your solution: those are actions that move results to the driver.
+The checker does that only after your transformation plan is complete.
 
-## Files
+## What done looks like
 
-| File | Role |
-| --- | --- |
-| `headlines.csv` | 20 authored economic-news-style headlines (`id,headline`) |
-| `fixtures/` | 27 authored response fixtures in wire shape + `manifest.json` + `index.json` |
-| `replay_client.py` | Provided offline stand-in for an API call — do not edit |
-| `classify.py` | **You edit this** — three functions to implement |
-| `test_lesson10.py` | The checker — pins the schema, the retry counts, and the run totals |
-
-The categories are `monetary_policy`, `inflation`, `employment`, `markets`,
-`trade`, `housing`. The headlines and the model replies are teaching fixtures
-authored for this exercise, not real quotations or recordings of live calls.
+All three tests pass. The two query tests compare your results with pinned retail
+answers; the last test checks that your functions leave their input schemas alone.
 
 ## Where this leads
 
-Validate-then-trust is the whole game with LLM output. The classify-validate-retry
-loop you build here becomes the LLM layer of the integrated mini-project
-assignment (Lesson 11), where every number the model writes gets checked by your
-Python before anyone believes it.
+Spark uses the joins, groups, and windows from Lesson 9, but its lazy plan can be
+executed across partitions. Lesson 11 returns to HTTP APIs for LLMs, where the
+same discipline applies: inspect a contract, validate outputs, and keep expensive
+work bounded.

@@ -1,90 +1,63 @@
-# Lesson 6 exercise — Design a schema, load it, break it on purpose
+# Lesson 6 exercise — a FRED client with caching and tidy data
 
-In the notebook you watched a database reject bad rows. Now you build the schema
-yourself. This is Unit 2 in your own hands: **a schema is Lesson 1's property
-checklist, and here you write it down so the software enforces it.**
+Assignment 1 handed you dated snapshots of economic data and asked you to trust
+them. This exercise builds the other half: the small client those snapshots could
+have come from. You write three functions and the checker proves they behave — the
+data pipeline quietly assembling itself, one function at a time.
 
-## Goal
+Everything runs **offline**. The checker never touches the network and never needs
+an API key: it reads the pinned JSON fixtures in `fixtures/`, which are FRED
+`/series/observations`-shaped files reformatted from data already in this repo
+(see `fixtures/manifest.json` for the honest provenance).
 
-Finish `build_database.py` so that it:
+## Your job
 
-1. creates a two-table SQLite database for the retail extract, with the integrity
-   rules declared in the schema —
-   - **customers**: `customer_id` is the `PRIMARY KEY`, `country` is `NOT NULL`;
-   - **transactions**: `transaction_id` is the `PRIMARY KEY`, `customer_id` is
-     `NOT NULL` and a `FOREIGN KEY` referencing `customers(customer_id)`;
-2. loads the real data — 10 customers and 60 transactions — from
-   `../course_data/lesson2_customers_base.csv` and
-   `../course_data/lesson2_transactions_base.csv`;
-3. returns an open connection with foreign keys switched **on**; and
-4. implements `demonstrate_rejection()` — attempt one bad insert (a duplicate key,
-   a blank required field, or an orphan foreign key), catch the
-   `sqlite3.IntegrityError`, and return its message.
+Open `fred_client.py` and implement the two functions documented in its
+docstring:
 
-The full contract is written next to each function in `build_database.py`, and
-again in the docstring of `test_lesson6.py`.
+- **`get_series(series_id, ...)`** — return a series' raw observations as a
+  `["date", "value"]` DataFrame, resolving the source in order: **cache hit →
+  live (only if `FRED_API_KEY` is set) → fixture fallback**, and writing the
+  response to the cache so the *second* call is served from disk.
+- **`tidy_monthly(observations)`** — turn the raw string observations into a tidy
+  `["month", "value"]` monthly frame: numbers coerced (`"."` → dropped), collapsed
+  to one row per month.
+The exact contract (types, column order, edge cases) is in the `fred_client.py`
+module docstring. Read it first — it is the specification.
 
 ## Commands
 
-Run everything from inside this folder:
+From **inside this folder** (`lesson6_exercise/`):
 
 ```bash
-cd lesson6_exercise
-
-# See your own rejection message once the functions are written:
-python3 build_database.py
-
-# Grade yourself:
+# see the starting state: every test fails with NotImplementedError
 python3 -m pytest test_lesson6.py -v
+
+# watch your own pipeline run once, end to end (writes under ./data, gitignored)
+python3 fred_client.py
 ```
-
-The checker builds your database into a fresh temporary directory, so it never
-leaves files behind. (Running `build_database.py` directly writes to
-`lesson6_exercise/data/`, which is gitignored.)
-
-## Where to start
-
-The shipped functions raise `NotImplementedError`, so the checker fails on every
-test until you implement them — that is the expected starting point. Work in this
-order:
-
-1. Open the connection and turn foreign keys on.
-2. `CREATE TABLE customers (...)` — read the DDL as a list of Lesson 1 properties.
-3. Load customers, then `CREATE TABLE transactions (...)` with the foreign key.
-4. Load transactions (customers must exist first, or the foreign key refuses them).
-5. Write `demonstrate_rejection()` — the satisfying part: make the database say no.
-
-Tip for loading: create the table first, then use
-`df.to_sql(name, conn, if_exists="append", index=False)`. `append` inserts rows
-into the table *you* declared, instead of letting pandas invent a schema with no
-keys (the Unit 3 warning).
 
 ## What "done" looks like
 
-```
-$ python3 -m pytest test_lesson6.py -v
-...
-test_lesson6.py::test_customers_customer_id_is_the_primary_key PASSED
-test_lesson6.py::test_customers_country_is_not_null PASSED
-test_lesson6.py::test_transactions_transaction_id_is_the_primary_key PASSED
-test_lesson6.py::test_transactions_customer_id_is_not_null PASSED
-test_lesson6.py::test_transactions_have_a_foreign_key_to_customers PASSED
-test_lesson6.py::test_customers_row_count_is_10 PASSED
-test_lesson6.py::test_transactions_row_count_is_60 PASSED
-test_lesson6.py::test_foreign_keys_are_enforced_on_the_connection PASSED
-test_lesson6.py::test_duplicate_primary_key_is_rejected PASSED
-test_lesson6.py::test_null_country_is_rejected PASSED
-test_lesson6.py::test_demonstrate_rejection_reports_a_real_integrity_error PASSED
+`python3 -m pytest test_lesson6.py -v` reports **all tests passing**. That means:
 
-11 passed
-```
+- `get_series` returns the raw two-column frame, writes a JSON cache, and serves
+  the second call from that cache (the checker proves it by pointing the fallback
+  at an empty directory — only the cache could answer).
+- `tidy_monthly` produces the monthly schema (a `datetime64` `month`, a `float64`
+  `value`, ascending, no gaps invented, missing readings dropped) and averages
+  a daily series down to months.
 
-All 11 green means your schema enforces the property checklist and your database
-refuses a bad row on its own — no discipline required.
+## Files
+
+- `fred_client.py` — **you edit this** (the two functions).
+- `test_lesson6.py` — the checker. Read it; it never reveals the implementations.
+- `fixtures/` — pinned FRED-shaped JSON (`DGS10`, `CPIAUCSL`, `UNRATE`) plus
+  `manifest.json` and `make_fixtures.py` (how they were derived — no live fetch).
+- `data/` — created at runtime for the raw JSON cache; gitignored.
 
 ## Where this leads
 
-The two-table schema you design here is the retail database that Lessons 7 and 8
-query, and it is the same design the "One Analysis, Two Engines" assignment
-(`sql-two-engines-assignment/`) grades you against — there you will answer real
-business questions in SQL and pandas on top of exactly this structure.
+Lesson 7 turns this tidy table into a SQLite table with an explicit schema. The
+cached client then becomes the ingestion step for the integrated mini-project
+assignment (A4, after Lesson 11) and the capstone agent.

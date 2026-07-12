@@ -1,211 +1,130 @@
-"""Tests for the Lesson 6 database-design exercise.
+"""Tests for the Lesson 6 FRED-client exercise.
 
-These tests import from ``build_database.py`` -- the starter module you finish.
-In its shipped state that module's two functions raise ``NotImplementedError``,
-so every test below fails with that same instructive message until you implement
-them. That is the intended starting point, not something you broke.
+These tests import the two functions you write in ``fred_client.py`` and
+exercise them entirely against the pinned fixtures in ./fixtures -- NO network
+and NO API key (any real key in your environment is scrubbed below, so it cannot
+leak into the checker). Until you implement a function it raises
+NotImplementedError and its tests fail with that message: that is the intended
+starting line, not something you broke.
 
 Run from inside lesson6_exercise/ :
 
     python3 -m pytest test_lesson6.py -v
 
-The checker builds your database into a fresh temporary directory each run, so it
-never leaves a file behind and never depends on a previous attempt.
+The full contract lives in the fred_client.py module docstring. The pinned
+numbers below come straight from the fixtures (see fixtures/manifest.json):
 
-Expected module contract (build_database.py):
-
-    build_database(db_path, customers_csv, transactions_csv) -> sqlite3.Connection
-        Create a brand-new SQLite database at ``db_path`` holding two tables and
-        load the two CSVs into them. Return an OPEN connection that already has
-        ``PRAGMA foreign_keys = ON`` set. The schema must declare:
-
-          customers
-            - customer_id : the PRIMARY KEY (unique, one row per customer)
-            - country     : NOT NULL (a customer must have a country)
-
-          transactions
-            - transaction_id : the PRIMARY KEY
-            - customer_id    : NOT NULL, and a FOREIGN KEY referencing
-                               customers(customer_id)
-
-        Keep every column the CSVs carry, so a whole row round-trips. Declare
-        NOT NULL only where a property truly demands it (customers.country and
-        transactions.customer_id); leave the descriptive columns nullable.
-        After loading, customers has 10 rows and transactions has 60 rows -- the
-        two course_data CSVs, unchanged.
-
-    demonstrate_rejection(conn) -> str
-        Attempt ONE insert that the schema must reject -- your choice of a
-        duplicate primary key, a NULL in a NOT NULL column, or an orphan foreign
-        key. Catch the sqlite3.IntegrityError and return ``str(err)``. Every
-        SQLite integrity message contains the word "constraint". If no error is
-        raised, the schema failed its job: raise AssertionError instead of
-        returning.
-
-The enforcement tests below copy one real row and break exactly one rule, then
-insert it themselves -- so each test targets its own constraint no matter what
-extra columns your schema carries.
+    DGS10     1439 daily observations, 60 of them "."  -> 67 monthly rows
+    UNRATE      65 monthly observations                 -> 65 monthly rows
+    CPIAUCSL    64 monthly observations                 -> 64 monthly rows
 """
 
-import sqlite3
+import json
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
-from build_database import build_database, demonstrate_rejection
+from fred_client import get_series, tidy_monthly
 
-COURSE_DATA = Path(__file__).parent.parent / "course_data"
-CUSTOMERS_CSV = COURSE_DATA / "lesson2_customers_base.csv"
-TRANSACTIONS_CSV = COURSE_DATA / "lesson2_transactions_base.csv"
-
-# A customer_id that is NOT in the customer table -- used for the orphan test.
-ORPHAN_CUSTOMER_ID = "C00000"
+FIXTURES = Path(__file__).parent / "fixtures"
 
 
-@pytest.fixture
-def conn(tmp_path):
-    """A freshly built database, as an open connection, rebuilt for every test."""
-    connection = build_database(
-        db_path=str(tmp_path / "lesson6_exercise.sqlite"),
-        customers_csv=str(CUSTOMERS_CSV),
-        transactions_csv=str(TRANSACTIONS_CSV),
-    )
-    yield connection
-    connection.close()
+@pytest.fixture(autouse=True)
+def _force_offline(monkeypatch):
+    """No test may depend on a live key -- scrub it for every test."""
+    monkeypatch.delenv("FRED_API_KEY", raising=False)
 
 
-# ----------------------------------------------------------------- helpers
+def raw_frame(series_id):
+    """Read a fixture the way a correct get_series would return it.
 
-def columns(conn, table):
-    """PRAGMA table_info as {name: {"notnull": int, "pk": int, "type": str}}."""
-    info = {}
-    for _cid, name, col_type, notnull, _default, pk in conn.execute(
-        f"PRAGMA table_info({table})"
-    ):
-        info[name] = {"notnull": notnull, "pk": pk, "type": col_type}
-    return info
+    Lets the tidy_monthly tests run on realistic input even before
+    get_series is finished, so you can make progress one function at a time.
+    """
+    payload = json.loads((FIXTURES / f"{series_id}.json").read_text())
+    return pd.DataFrame(payload["observations"])[["date", "value"]]
 
 
-def foreign_keys(conn, table):
-    """PRAGMA foreign_key_list as a list of (from_column, ref_table, to_column)."""
-    return [(row[3], row[2], row[4]) for row in conn.execute(f"PRAGMA foreign_key_list({table})")]
+# ----------------------------------------------- get_series: fetch + caching
+
+def test_get_series_returns_raw_two_column_frame(tmp_path):
+    raw = get_series("DGS10", cache_dir=tmp_path / "cache", fixtures_dir=FIXTURES)
+    assert list(raw.columns) == ["date", "value"]
+    assert len(raw) == 1439
+    assert raw.iloc[0]["date"] == "2021-01-04"
+    # Values arrive as strings in FRED's wire shape, "." included (not yet numbers).
+    assert (raw["value"] == ".").sum() == 60
 
 
-def one_row(conn, table):
-    """Fetch one existing, valid row of ``table`` as a {column: value} dict."""
-    names = list(columns(conn, table))
-    values = conn.execute(f"SELECT {', '.join(names)} FROM {table} LIMIT 1").fetchone()
-    return dict(zip(names, values))
+def test_get_series_writes_a_json_cache_file(tmp_path):
+    cache = tmp_path / "cache"
+    get_series("DGS10", cache_dir=cache, fixtures_dir=FIXTURES)
+    assert (cache / "DGS10.json").exists()          # the cache the next call will reuse
 
 
-def insert_row(conn, table, row):
-    """Insert a {column: value} dict, naming every column explicitly."""
-    names = list(row)
-    placeholders = ", ".join("?" for _ in names)
-    conn.execute(
-        f"INSERT INTO {table} ({', '.join(names)}) VALUES ({placeholders})",
-        tuple(row[name] for name in names),
-    )
+def test_second_call_is_served_from_cache(tmp_path):
+    cache = tmp_path / "cache"
+    first = get_series("UNRATE", cache_dir=cache, fixtures_dir=FIXTURES)
+
+    # Point the fallback at an EMPTY directory. If the second call still returns
+    # the same data, it can only have come from the cache -- exactly the
+    # resolution order the contract requires (cache hit beats everything).
+    empty = tmp_path / "no_fixtures_here"
+    empty.mkdir()
+    second = get_series("UNRATE", cache_dir=cache, fixtures_dir=empty)
+    pd.testing.assert_frame_equal(first, second)
 
 
-# --------------------------------------------------------------- schema: keys
+# --------------------------------------------------------------- tidy_monthly
 
-def test_customers_customer_id_is_the_primary_key(conn):
-    info = columns(conn, "customers")
-    assert "customer_id" in info, "customers needs a customer_id column"
-    assert info["customer_id"]["pk"] > 0, "customer_id must be the PRIMARY KEY"
-
-
-def test_customers_country_is_not_null(conn):
-    info = columns(conn, "customers")
-    assert "country" in info, "customers needs a country column"
-    assert info["country"]["notnull"] == 1, "country must be declared NOT NULL"
+def test_tidy_monthly_schema():
+    monthly = tidy_monthly(raw_frame("DGS10"))
+    assert list(monthly.columns) == ["month", "value"]
+    assert pd.api.types.is_datetime64_any_dtype(monthly["month"])
+    assert pd.api.types.is_float_dtype(monthly["value"])
+    assert monthly["month"].is_monotonic_increasing
+    assert monthly["value"].notna().all()           # missing "." rows were dropped
+    assert list(monthly.index) == list(range(len(monthly)))
 
 
-def test_transactions_transaction_id_is_the_primary_key(conn):
-    info = columns(conn, "transactions")
-    assert "transaction_id" in info, "transactions needs a transaction_id column"
-    assert info["transaction_id"]["pk"] > 0, "transaction_id must be the PRIMARY KEY"
+def test_tidy_monthly_collapses_daily_to_months():
+    monthly = tidy_monthly(raw_frame("DGS10"))
+    assert len(monthly) == 67                        # Jan 2021 .. Jul 2026
+    first = monthly.iloc[0]
+    assert first["month"] == pd.Timestamp("2021-01-01")
+    assert first["value"] == pytest.approx(1.0811, abs=1e-3)   # mean of Jan-2021 dailies
 
 
-def test_transactions_customer_id_is_not_null(conn):
-    info = columns(conn, "transactions")
-    assert "customer_id" in info, "transactions needs a customer_id column"
-    assert info["customer_id"]["notnull"] == 1, "transactions.customer_id must be NOT NULL"
+def test_tidy_monthly_keeps_monthly_series_intact():
+    monthly = tidy_monthly(raw_frame("UNRATE"))
+    assert len(monthly) == 65
+    assert monthly.iloc[0]["month"] == pd.Timestamp("2021-01-01")
+    assert monthly.iloc[0]["value"] == pytest.approx(6.4)
+    assert monthly.iloc[-1]["value"] == pytest.approx(4.2)
 
 
-def test_transactions_have_a_foreign_key_to_customers(conn):
-    assert ("customer_id", "customers", "customer_id") in foreign_keys(conn, "transactions"), (
-        "transactions.customer_id must be a FOREIGN KEY referencing customers(customer_id)"
-    )
+def test_tidy_monthly_averages_and_drops_missing():
+    # Two March readings average to 2.0; April is "." (dropped, NOT reinvented as
+    # an empty month); May stands alone.
+    raw = pd.DataFrame({
+        "date": ["2020-03-05", "2020-03-25", "2020-04-01", "2020-05-10"],
+        "value": ["1.0", "3.0", ".", "5.0"],
+    })
+    monthly = tidy_monthly(raw)
+    assert list(monthly["month"]) == [pd.Timestamp("2020-03-01"), pd.Timestamp("2020-05-01")]
+    assert list(monthly["value"]) == pytest.approx([2.0, 5.0])
 
 
-# --------------------------------------------------------------- row counts
-
-def test_customers_row_count_is_10(conn):
-    (count,) = conn.execute("SELECT COUNT(*) FROM customers").fetchone()
-    assert count == 10
-
-
-def test_transactions_row_count_is_60(conn):
-    (count,) = conn.execute("SELECT COUNT(*) FROM transactions").fetchone()
-    assert count == 60
+def test_tidy_monthly_does_not_mutate_its_input():
+    raw = raw_frame("UNRATE")
+    before = raw.copy()
+    tidy_monthly(raw)
+    pd.testing.assert_frame_equal(raw, before)
 
 
-# --------------------------------------------------- enforcement (checker acts)
-
-def test_foreign_keys_are_enforced_on_the_connection(conn):
-    # A real transaction row whose only defect is an orphan customer_id. It is
-    # rejected only when the returned connection has PRAGMA foreign_keys = ON.
-    row = one_row(conn, "transactions")
-    row["transaction_id"] = "ORPHAN-1"          # unique -> no primary-key clash
-    row["customer_id"] = ORPHAN_CUSTOMER_ID     # the one rule this row breaks
-    with pytest.raises(sqlite3.IntegrityError) as caught:
-        insert_row(conn, "transactions", row)
-    conn.rollback()
-    assert "foreign key" in str(caught.value).lower(), (
-        "expected a FOREIGN KEY constraint failure; got: " + str(caught.value)
-    )
-
-
-def test_duplicate_primary_key_is_rejected(conn):
-    # Re-insert a full, valid customer row: the only broken rule is the unique key.
-    row = one_row(conn, "customers")
-    with pytest.raises(sqlite3.IntegrityError) as caught:
-        insert_row(conn, "customers", row)
-    conn.rollback()
-    assert "unique" in str(caught.value).lower()
-
-
-def test_null_country_is_rejected(conn):
-    # A real customer row with a fresh id but a blank country -> only NOT NULL breaks.
-    row = one_row(conn, "customers")
-    row["customer_id"] = "C99999"
-    row["country"] = None
-    with pytest.raises(sqlite3.IntegrityError) as caught:
-        insert_row(conn, "customers", row)
-    conn.rollback()
-    assert "not null" in str(caught.value).lower()
-
-
-# ------------------------------------------------ the student's own rejection
-
-def test_demonstrate_rejection_reports_a_real_integrity_error(conn):
-    before_customers = conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0]
-    before_transactions = conn.execute("SELECT COUNT(*) FROM transactions").fetchone()[0]
-
-    message = demonstrate_rejection(conn)
-    conn.rollback()  # clear any transaction the failed insert left open
-
-    assert isinstance(message, str) and message, (
-        "demonstrate_rejection must return the caught error message as a string"
-    )
-    assert "constraint" in message.lower(), (
-        "the returned message should be a real sqlite3.IntegrityError "
-        "(its text contains 'constraint'); got: " + message
-    )
-    # The rejected row must not have landed.
-    assert conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0] == before_customers
-    assert (
-        conn.execute("SELECT COUNT(*) FROM transactions").fetchone()[0] == before_transactions
-    )
+def test_tidy_monthly_on_an_empty_frame():
+    empty = raw_frame("UNRATE").head(0)
+    out = tidy_monthly(empty)
+    assert list(out.columns) == ["month", "value"]
+    assert len(out) == 0

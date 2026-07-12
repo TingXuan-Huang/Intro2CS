@@ -1,4 +1,4 @@
-"""Regenerate the Lesson 9 FRED-shaped fixture files from pinned repo data.
+"""Regenerate the Lesson 6 FRED-shaped fixture files from pinned repo data.
 
 These fixtures are AUTHORED TEACHING FIXTURES, not a live retrieval. Every
 observation is copied, value-for-value, from data already pinned in this
@@ -17,7 +17,7 @@ FRED's "." token for a missing daily observation (already present in DGS10.csv).
 This script writes both the *.json fixtures and manifest.json next to itself, so
 the manifest can never drift from the fixtures. Run from anywhere:
 
-    python3 lesson9_exercise/fixtures/make_fixtures.py
+    python3 lesson6_exercise/fixtures/make_fixtures.py
 """
 
 import hashlib
@@ -27,7 +27,7 @@ from pathlib import Path
 
 import openpyxl
 
-HERE = Path(__file__).resolve().parent          # lesson9_exercise/fixtures
+HERE = Path(__file__).resolve().parent          # lesson6_exercise/fixtures
 REPO = HERE.parents[1]                           # repo root
 SOURCE = REPO / "pandas-finance-assignment" / "data_offline"
 
@@ -163,7 +163,7 @@ def main():
             "The source Monthly sheet has no October 2025 row, so the monthly fixtures skip that month.",
             "Envelope fields (count, observation_start/end) describe the reformatted rows honestly.",
         ],
-        "regenerate_with": "python3 lesson9_exercise/fixtures/make_fixtures.py",
+        "regenerate_with": "python3 lesson6_exercise/fixtures/make_fixtures.py",
         "realtime_date": REALTIME,
         "files": manifest_files,
     }
