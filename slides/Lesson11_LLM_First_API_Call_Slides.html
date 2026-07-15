@@ -1,0 +1,2554 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 11 · LLMs: First API Call</title>
+<style>
+  :root {
+    --paper: #f8fafc;
+    --surface: #ffffff;
+    --surface-2: #edf2f7;
+    --ink: #172033;
+    --muted: #536178;
+    --line: #c9d4e2;
+    --navy: #1e3a5f;
+    --blue: #1e5a89;
+    --teal: #0f766e;
+    --purple: #6d4c7d;
+    --amber: #986018;
+    --cyan: #176b80;
+    --green: #176b43;
+    --maroon: #8a3f5f;
+    --slate: #475569;
+    --red: #b42318;
+    --red-bg: #fff1f0;
+    --green-bg: #edf8f2;
+    --yellow-bg: #fff7df;
+    --font-sans: "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif;
+    --font-mono: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; }
+  body {
+    overflow: hidden;
+    background: #111827;
+    color: var(--ink);
+    font-family: var(--font-sans);
+  }
+  a { color: var(--blue); }
+  code, pre, .mono { font-family: var(--font-mono); }
+
+  #stage {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 1280px;
+    height: 720px;
+    transform-origin: center center;
+    overflow: hidden;
+    background: var(--paper);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .48);
+  }
+
+  .slide {
+    --section-color: var(--navy);
+    position: absolute;
+    inset: 0;
+    display: none;
+    background: var(--paper);
+  }
+  .slide.active { display: block; }
+  .slide[data-section="intro"] { --section-color: var(--navy); }
+  .slide[data-section="model"] { --section-color: var(--purple); }
+  .slide[data-section="call"] { --section-color: var(--teal); }
+  .slide[data-section="shape"] { --section-color: var(--blue); }
+  .slide[data-section="trust"] { --section-color: var(--amber); }
+  .slide[data-section="finish"] { --section-color: var(--slate); }
+  .slide::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 7px;
+    background: var(--section-color);
+  }
+
+  .slide-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 46px 72px 78px;
+  }
+  .slide-header { margin-bottom: 20px; }
+  .section-label {
+    margin-bottom: 8px;
+    color: var(--section-color);
+    font-size: 15px;
+    font-weight: 760;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  h1 {
+    max-width: 1080px;
+    font-size: 58px;
+    line-height: 1.08;
+    letter-spacing: -.025em;
+    font-weight: 740;
+  }
+  h2 {
+    max-width: 1120px;
+    font-size: 39px;
+    line-height: 1.13;
+    letter-spacing: -.018em;
+    font-weight: 730;
+  }
+  h3 {
+    font-size: 23px;
+    line-height: 1.23;
+    font-weight: 730;
+  }
+  p, li { font-size: 20px; line-height: 1.4; }
+  .lead {
+    max-width: 930px;
+    color: var(--muted);
+    font-size: 27px;
+    line-height: 1.42;
+  }
+  .small { font-size: 17px; line-height: 1.4; }
+  .tiny { font-size: 14px; line-height: 1.35; }
+  .muted { color: var(--muted); }
+  .strong { color: var(--ink); font-weight: 730; }
+  code.inline {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #e8eef5;
+    color: #1d3654;
+    font-size: .9em;
+  }
+
+  .content {
+    min-height: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .centered {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  .cols-2, .cols-3, .cols-4 {
+    min-height: 0;
+    display: grid;
+    gap: 20px;
+    align-items: stretch;
+  }
+  .cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ratio-3-2 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+  .ratio-2-3 { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+  .ratio-5-4 { grid-template-columns: minmax(0, 5fr) minmax(0, 4fr); }
+  .align-center { align-items: center; }
+
+  .panel {
+    min-width: 0;
+    padding: 18px 21px;
+    border: 1px solid var(--line);
+    border-top: 4px solid var(--section-color);
+    background: var(--surface);
+  }
+  .panel h3 { margin-bottom: 9px; }
+  .panel p + p, .panel ul, .panel ol { margin-top: 8px; }
+  .panel ul, .panel ol { padding-left: 23px; }
+  .panel li + li { margin-top: 5px; }
+  .panel.compact { padding: 13px 16px; }
+  .panel.compact p, .panel.compact li { font-size: 17px; }
+  .panel.warning { border-top-color: var(--red); background: var(--red-bg); }
+  .panel.good { border-top-color: var(--green); background: var(--green-bg); }
+
+  .takeaway {
+    margin-top: auto;
+    padding: 12px 16px;
+    border-left: 5px solid var(--section-color);
+    background: #e9f0f6;
+    color: #24364d;
+    font-size: 19px;
+    line-height: 1.4;
+  }
+  .question {
+    padding: 17px 21px;
+    border: 2px solid var(--blue);
+    background: #edf5fb;
+    color: #173b5d;
+    font-size: 23px;
+    line-height: 1.36;
+    font-weight: 680;
+  }
+  .answer {
+    padding: 15px 19px;
+    border-left: 5px solid var(--green);
+    background: var(--green-bg);
+    font-size: 19px;
+    line-height: 1.4;
+  }
+  .fragment { visibility: hidden; opacity: 0; }
+  .fragment.visible { visibility: visible; opacity: 1; }
+
+  .code-title {
+    margin-bottom: 7px;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 740;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .code-block, .output-block, .pseudo-block {
+    min-width: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    border: 1px solid var(--line);
+    background: #0f172a;
+    color: #e7edf5;
+    padding: 15px 18px;
+    font-family: var(--font-mono);
+    font-size: 17px;
+    line-height: 1.45;
+  }
+  .output-block, .pseudo-block { background: var(--surface); color: #203047; }
+  .pseudo-block { border-left: 4px solid var(--section-color); }
+  .comment { color: #9fb0c5; }
+  .string { color: #8dd3c7; }
+  .number { color: #f4c27a; }
+  .keyword { color: #c6a7e2; }
+  .error { color: #ef6b62; font-weight: 730; }
+  .ok { color: #7ad3a2; font-weight: 730; }
+  .output-block .comment { color: #8494a9; }
+  .output-block .error { color: var(--red); }
+  .output-block .ok { color: var(--green); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    font-size: 18px;
+    line-height: 1.3;
+  }
+  th {
+    padding: 10px 12px;
+    border-top: 2px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+    color: #34445a;
+    background: #e8eef4;
+    text-align: left;
+    font-size: 15px;
+    line-height: 1.24;
+    letter-spacing: .052em;
+    text-transform: uppercase;
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: 2px solid var(--ink); }
+  td:first-child { font-weight: 700; }
+  table.compact { font-size: 16px; }
+  table.compact th { font-size: 14px; }
+  table.compact td { padding-top: 7px; padding-bottom: 7px; }
+
+  .flow {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .flow-node {
+    min-width: 0;
+    flex: 1;
+    padding: 13px;
+    border: 1px solid #a9b6c6;
+    background: var(--surface);
+  }
+  .flow-node b {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--section-color);
+    font-size: 17px;
+  }
+  .flow-node span { font-size: 16px; line-height: 1.3; }
+  .flow-arrow {
+    align-self: center;
+    color: #66758a;
+    font-size: 25px;
+    font-weight: 700;
+  }
+
+  .rule-list { display: grid; gap: 12px; }
+  .rule {
+    display: grid;
+    grid-template-columns: 205px minmax(0, 1fr);
+    gap: 19px;
+    align-items: baseline;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .rule b { color: var(--section-color); font-size: 21px; }
+  .rule span { font-size: 19px; line-height: 1.35; }
+
+  .big-claim {
+    max-width: 1010px;
+    font-size: 45px;
+    line-height: 1.24;
+    font-weight: 730;
+    letter-spacing: -.018em;
+  }
+
+  .number-strip {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+  }
+  .number-box {
+    min-width: 120px;
+    padding: 18px 15px;
+    border: 2px solid #9bacc0;
+    background: var(--surface);
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 25px;
+    font-weight: 720;
+  }
+  .number-box small {
+    display: block;
+    margin-top: 5px;
+    color: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .trace {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+  }
+  .trace-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 38px;
+  }
+  .trace-status {
+    min-width: 0;
+    flex: 1;
+    color: #26384f;
+    font-size: 18px;
+    line-height: 1.32;
+    font-weight: 650;
+  }
+  .trace-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  .trace-reset {
+    min-width: 76px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .trace-reset:focus-visible { outline: 3px solid #4e8fc1; outline-offset: 2px; }
+  .trace-board {
+    position: relative;
+    min-height: 160px;
+    padding: 28px 18px 16px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .array-strip {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding-top: 28px;
+  }
+  .array-cell {
+    position: relative;
+    width: 92px;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #9bacbf;
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 720;
+    transition: transform .2s ease, background-color .2s ease, border-color .2s ease, opacity .2s ease;
+  }
+  .array-cell::after {
+    content: attr(data-index);
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -22px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+  }
+  .array-cell.is-current { border-color: var(--blue); box-shadow: inset 0 0 0 2px var(--blue); }
+  .array-cell.is-best { border-color: var(--green); background: var(--green-bg); }
+  .array-cell.is-min { border-color: var(--amber); background: var(--yellow-bg); }
+  .array-cell.is-sorted { border-color: var(--teal); background: #e9f7f5; }
+  .array-cell.is-checked { background: #eef2f7; }
+  .array-cell.is-discarded { opacity: .28; }
+  .array-cell.is-found { border-color: var(--green); background: var(--green-bg); }
+  .array-cell.is-found::before {
+    content: "OK";
+    position: absolute;
+    top: -27px;
+    color: var(--green);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 760;
+    letter-spacing: .08em;
+  }
+  .trace-pointer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 92px;
+    color: var(--blue);
+    text-align: center;
+    font-size: 14px;
+    font-weight: 740;
+    transition: transform .22s ease;
+  }
+  .trace-pointer::after { content: "↓"; display: block; font-size: 22px; line-height: 1; }
+  .trace-variables {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 27px;
+  }
+  .trace-variable {
+    min-width: 140px;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    font-family: var(--font-mono);
+    font-size: 15px;
+    text-align: center;
+  }
+  .trace-transcript { font-size: 14px; }
+  .trace-transcript th { padding: 6px 8px; font-size: 12px; }
+  .trace-transcript td { padding: 5px 8px; }
+  .trace-transcript tr.is-active td { background: #e9f0f6; }
+
+  .flowchart-wrap {
+    position: relative;
+    min-height: 360px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .flowchart-svg { width: 100%; height: 360px; display: block; }
+  .flowchart-svg .fc-edge {
+    fill: none;
+    stroke: #94a3b8;
+    stroke-width: 2;
+    transition: stroke .2s ease, stroke-width .2s ease, opacity .2s ease;
+  }
+  .flowchart-svg .fc-node rect,
+  .flowchart-svg .fc-node path {
+    fill: #ffffff;
+    stroke: #8294aa;
+    stroke-width: 2;
+    transition: fill .2s ease, stroke .2s ease, stroke-width .2s ease;
+  }
+  .flowchart-svg .fc-node text {
+    fill: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 650;
+    text-anchor: middle;
+    dominant-baseline: middle;
+  }
+  .flowchart-svg .fc-node.is-active rect,
+  .flowchart-svg .fc-node.is-active path {
+    fill: #e8f2fa;
+    stroke: var(--blue);
+    stroke-width: 4;
+  }
+  .flowchart-svg .fc-edge.is-active { stroke: var(--blue); stroke-width: 4; }
+
+  #hud {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    height: 54px;
+    display: grid;
+    grid-template-columns: 190px 1fr 168px;
+    align-items: center;
+    padding: 0 25px;
+    border-top: 1px solid #b8c4d2;
+    background: #edf1f5;
+    color: #4a596d;
+  }
+  #hud .course {
+    font-size: 13px;
+    font-weight: 730;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  #section-map {
+    display: flex;
+    justify-content: center;
+    gap: 13px;
+  }
+  #section-map span {
+    padding: 5px 0 4px;
+    border-bottom: 3px solid transparent;
+    font-size: 10.5px;
+    font-weight: 730;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+    opacity: .38;
+  }
+  #section-map span.on {
+    border-bottom-color: var(--active-section-color, var(--navy));
+    color: var(--ink);
+    opacity: 1;
+  }
+  .nav-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .nav-controls button {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .nav-controls button:disabled { opacity: .35; cursor: default; }
+  .nav-controls button:focus-visible { outline: 3px solid #4e8fc1; outline-offset: 2px; }
+  #count {
+    min-width: 62px;
+    text-align: right;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  #slide-number {
+    width: 34px;
+    padding: 2px 3px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  #slide-number:focus-visible {
+    outline: 3px solid #4e8fc1;
+    outline-offset: 2px;
+  }
+  #rotate-note {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    padding: 28px;
+    background: #111827;
+    color: white;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 22px;
+    line-height: 1.4;
+  }
+
+  @media (max-width: 900px) and (orientation: portrait) {
+    #rotate-note { display: flex; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .array-cell, .trace-pointer,
+    .flowchart-svg .fc-edge, .flowchart-svg .fc-node rect,
+    .flowchart-svg .fc-node path { transition-duration: 0s !important; }
+  }
+  @media print {
+    @page { size: 13.333in 7.5in; margin: 0; }
+    html, body {
+      width: auto;
+      height: auto;
+      overflow: visible;
+      background: white;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    #stage {
+      position: relative;
+      left: auto;
+      top: auto;
+      width: auto;
+      height: auto;
+      transform: none !important;
+      box-shadow: none;
+      overflow: visible;
+    }
+    .slide {
+      position: relative;
+      display: block !important;
+      width: 13.333in;
+      height: 7.5in;
+      break-after: page;
+      page-break-after: always;
+    }
+    .slide:last-of-type { break-after: auto; page-break-after: auto; }
+    .fragment { visibility: visible !important; opacity: 1 !important; }
+    .trace-reset { display: none !important; }
+    #hud, #rotate-note { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="rotate-note">Rotate your device to landscape for presentation view.</div>
+<div id="stage">
+
+<!-- 1 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Intro to CS · Lesson 11</div>
+      <h1>LLMs: first API call</h1>
+    </header>
+    <main class="content centered">
+      <p class="lead">Tokens, temperature, the messages format, structured output — and the discipline of trusting nothing until you have checked it</p>
+      <div class="question" style="max-width:1010px">Lesson 6's API kept a quiet promise: the same request shape every time, and values that are true by construction. Today's endpoint answers with the first data in this whole course that arrives with <strong>no guaranteed properties at all</strong> — not its shape, not its type, not its truth.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · The bridge from Lesson 6</div>
+      <h2>Same request, very different reply</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>What Lesson 6 gave you</h3>
+          <p>A request to a URL, headers, a JSON body, a JSON response you turned into a table. A weather API's temperature is the <em>measured</em> temperature — true by construction.</p>
+        </div>
+        <div class="panel warning">
+          <h3>What changes today</h3>
+          <p>The request looks almost identical. But the thing on the other end is a <strong>large language model</strong>, and its reply is freshly <em>generated</em> text: plausible — and nothing more.</p>
+        </div>
+      </div>
+      <div class="pseudo-block">your code (client)  ──POST messages──▶  api.anthropic.com/v1/messages
+your code (client)  ◀──200 + JSON body──  a large language model</div>
+      <div class="takeaway">The request is old news — you built it in Lesson 6. Everything new in this lesson is about the <em>reply</em>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · The lesson arc</div>
+      <h2>A question goes out; trust gets assigned on the way back</h2>
+    </header>
+    <main class="content">
+      <div class="flow" style="width:100%">
+        <div class="flow-node"><b>A question</b><span>"Which category is this headline?"</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>An API call</b><span>Unit 2 · same shape as Lesson 6</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Text comes back</b><span>Unit 1 · plausible — nothing more</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Give it a shape</b><span>Unit 3 · ask for JSON, validate</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Give it trust</b><span>Unit 4 · verify, privacy, cost</span></div>
+      </div>
+      <div class="cols-4">
+        <div class="panel compact"><h3>Unit 1 · The model</h3><p>tokens, next-token prediction, context window, temperature</p></div>
+        <div class="panel compact"><h3>Unit 2 · The call</h3><p>messages, roles, <code class="inline">requests</code> vs SDK, tokens and cost</p></div>
+        <div class="panel compact"><h3>Unit 3 · The shape</h3><p>JSON out, two validation gates, bounded retries</p></div>
+        <div class="panel compact"><h3>Unit 4 · The trust</h3><p>what you send, believe, and spend</p></div>
+      </div>
+      <div class="takeaway">Two sessions: ① Units 1–2 · ② Units 3–4. The call itself is one slide of new material; the trust is the lesson.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · The course through-line</div>
+      <h2>A structure is defined by its properties — and this reply has none</h2>
+    </header>
+    <main class="content">
+      <div class="rule-list" style="max-width:1080px">
+        <div class="rule"><b>Lesson 1</b><span>gave values their <strong>types</strong> — properties agreed in advance.</span></div>
+        <div class="rule"><b>Lesson 2</b><span>asked which properties a file format <strong>keeps or loses</strong> — and restored the lost ones.</span></div>
+        <div class="rule"><b>Lesson 6</b><span>got properties from a well-behaved API: a <strong>contract</strong> both sides honour.</span></div>
+        <div class="rule"><b>Lesson 11</b><span>an LLM gives you <strong>none for free</strong>. Every property you want, you assign yourself.</span></div>
+      </div>
+      <div class="takeaway">"This is JSON", "the category is one of six", "the number is right" — each of these is a property <em>you</em> assign, in Python, after the reply lands.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · This whole lesson runs offline</div>
+      <h2>No key, no network, no bill — recorded responses, replayed</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel good">
+          <h3>Record once, replay forever</h3>
+          <p>With no API key set, every call in the notebook replays a <strong>recorded response</strong> from disk — the exact JSON wire shape a live call returns. Set <code class="inline">ANTHROPIC_API_KEY</code> and the same code calls the live API. Lesson 6's one-switch design, again.</p>
+        </div>
+        <div class="panel warning">
+          <h3>Honest note</h3>
+          <p>The fixtures are <strong>authored teaching examples</strong>, written by hand in the real wire format — not captures of live calls. The token counts are plausible estimates, not measured usage. We say so because provenance is a property too.</p>
+        </div>
+      </div>
+      <div class="question">Replaying pinned responses is not just a classroom trick — it is how you <em>test</em> LLM code. Deterministic inputs; no bill; no network. The exercise is built entirely this way.</div>
+      <div class="takeaway">Same idea as Lesson 2's pinned data files and Lesson 6's offline FRED: pin the input, and the lesson runs anywhere.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · Materials</div>
+      <h2>Two sessions, one notebook, one exercise folder</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel compact"><h3>Session ①</h3><p>Units 1–2: what a model mechanically is, then the API call — messages, roles, the SDK, and what a job costs in tokens.</p></div>
+        <div class="panel compact"><h3>Session ②</h3><p>Units 3–4: structured output with validation and retries, then the three trust boundaries and the wrap-up.</p></div>
+      </div>
+      <div class="cols-2">
+        <div class="panel compact"><h3>Practice · <span class="mono">lesson11_exercise/</span></h3><p>Classify 20 economic-news headlines into six categories, validating every reply and retrying the malformed ones — graded by a pytest checker, entirely offline.</p></div>
+        <div class="panel compact"><h3>House rules</h3><p>Uses <code class="inline">pandas</code>, <code class="inline">requests</code>, and (optionally) the <code class="inline">anthropic</code> SDK — the same course environment. Run top to bottom; later cells depend on earlier ones.</p></div>
+      </div>
+      <div class="takeaway">Assignment A4 — the integrated mini-project — lands after this lesson. The retry loop you build in the exercise becomes its LLM layer.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide" data-section="model">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · What an LLM is</div>
+      <h2>One repeated move</h2>
+    </header>
+    <main class="content">
+      <div class="pseudo-block" style="text-align:center;font-size:20px">given the text so far → predict the next token → append it → predict again</div>
+      <p class="lead" style="font-size:22px">That is the whole engine — Lesson 4 would call it an <em>algorithm</em>. Answering questions, writing code, classifying headlines: all of it is that one move, run over and over.</p>
+      <div class="cols-4">
+        <div class="panel compact"><h3>Tokens</h3><p>the subword chunks the model actually reads — and the unit you pay in</p></div>
+        <div class="panel compact"><h3>Next-token prediction</h3><p>the single move, repeated until a stop</p></div>
+        <div class="panel compact"><h3>Context window</h3><p>the bounded amount of text it sees at once</p></div>
+        <div class="panel compact"><h3>Temperature</h3><p>how adventurously the next token is sampled</p></div>
+      </div>
+      <div class="takeaway">Four words make the rest of the lesson make sense. Unit 1 pins each one down with running code.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide" data-section="model">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Tokens</div>
+      <h2>The model doesn't see characters or words</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="keyword">def</span> estimate_tokens(text):
+    <span class="string">"""Rough English rule of thumb: ~4 characters per token.
+    The AUTHORITATIVE count comes from the model's tokenizer,
+    or the API's usage field — this is only for budgeting."""</span>
+    <span class="keyword">return</span> max(<span class="number">1</span>, round(len(text) / <span class="number">4</span>))
+
+sample = <span class="string">"Unemployment falls to 3.9% as hiring accelerates"</span>
+print(<span class="string">"characters:"</span>, len(sample),
+      <span class="string">"| estimated tokens:"</span>, estimate_tokens(sample))</pre>
+        <div>
+          <pre class="output-block">characters: 48 | estimated tokens: 12</pre>
+          <div class="panel compact" style="margin-top:14px"><p>It sees <strong>tokens</strong>: subword chunks like <code class="inline">&nbsp;inflation</code>, <code class="inline">ation</code>, <code class="inline">&nbsp;3</code>, <code class="inline">.9</code>. The exact split comes from the model's <em>tokenizer</em>, not from us — we can't run it offline, so we estimate and stay honest that it's an estimate.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">~4 characters per English token is a budgeting rule of thumb — good enough to forecast a cost, never good enough to bill by.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="slide" data-section="model">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Checkpoint</div>
+      <h2>Estimate vs authority</h2>
+    </header>
+    <main class="content">
+      <div class="question">Our function said the headline is ~12 tokens. Where do the <em>authoritative</em> counts come from — and why does it matter that we can name the difference?</div>
+      <div class="answer fragment">
+        The authoritative counts come from the model's <strong>tokenizer</strong>, and — for any call you actually make — from the response's <code class="inline">usage</code> block, which reports the exact input and output tokens you were billed on. The estimate is for <strong>budgeting before you spend</strong>; the <code class="inline">usage</code> field is the invoice. Confusing the two is how a forecast quietly becomes a claim — the same honesty rule as Lesson 2's "a snapshot is dated data, not live data."
+      </div>
+      <div class="takeaway">Estimate to plan; read <code class="inline">usage</code> to know. Keep the two labelled.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="slide" data-section="model">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · A toy model you can read</div>
+      <h2>A bigram model: count which word follows which</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block" style="font-size:15px"><span class="keyword">import</span> random
+<span class="keyword">from</span> collections <span class="keyword">import</span> defaultdict, Counter
+
+corpus = <span class="string">"""
+inflation cooled again as consumer prices rose modestly
+consumer prices rose again as inflation stayed high
+the central bank held interest rates steady
+the central bank raised interest rates again
+markets rose as the central bank held rates steady
+"""</span>.lower().split()
+
+<span class="comment"># Count which word tends to follow which (a "bigram" model).</span>
+following = defaultdict(Counter)
+<span class="keyword">for</span> first, second <span class="keyword">in</span> zip(corpus, corpus[<span class="number">1</span>:]):
+    following[first][second] += <span class="number">1</span></pre>
+        <div>
+          <pre class="output-block">following["the"]   → {'central': 3}
+following["bank"]  → {'held': 2,
+                      'raised': 1}
+following["rates"] → {'steady': 2,
+                      'again': 1}</pre>
+          <div class="panel compact" style="margin-top:14px"><p>A real model weighs <strong>thousands of tokens</strong> of context and was trained on trillions — but the <em>move</em> is the same, and this toy fits on one slide.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">"What tends to follow what," learned by counting. That table <em>is</em> the toy's entire knowledge of the world.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="slide" data-section="model">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Generation and temperature</div>
+      <h2>Pick the next word — greedily, or by sampling</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block" style="font-size:14.5px"><span class="keyword">def</span> next_word(word, temperature, rng):
+    choices = following[word]
+    <span class="keyword">if</span> <span class="keyword">not</span> choices:
+        <span class="keyword">return</span> <span class="keyword">None</span>
+    words = list(choices)
+    counts = [choices[w] <span class="keyword">for</span> w <span class="keyword">in</span> words]
+    <span class="keyword">if</span> temperature &lt;= <span class="number">0</span>:
+        <span class="keyword">return</span> words[counts.index(max(counts))]      <span class="comment"># greedy</span>
+    weights = [c ** (<span class="number">1.0</span> / temperature) <span class="keyword">for</span> c <span class="keyword">in</span> counts]  <span class="comment"># flatter odds</span>
+    <span class="keyword">return</span> rng.choices(words, weights=weights, k=<span class="number">1</span>)[<span class="number">0</span>]
+
+<span class="keyword">def</span> generate(start, temperature, seed, length=<span class="number">8</span>):
+    rng = random.Random(seed)
+    out = [start]
+    <span class="keyword">for</span> _ <span class="keyword">in</span> range(length):
+        nxt = next_word(out[-<span class="number">1</span>], temperature, rng)
+        <span class="keyword">if</span> nxt <span class="keyword">is</span> <span class="keyword">None</span>: <span class="keyword">break</span>
+        out.append(nxt)
+    <span class="keyword">return</span> <span class="string">" "</span>.join(out)</pre>
+        <div class="panel">
+          <h3>The two regimes</h3>
+          <p><strong>Temperature 0</strong> — greedy. Always take the single most likely next word: deterministic, the same every run.</p>
+          <p><strong>Temperature high</strong> — sample. Less likely continuations get a real chance: more variety, and more risk.</p>
+          <p class="muted"><code class="inline">c ** (1.0 / temperature)</code> flattens the odds as temperature rises — the counts matter less and less.</p>
+        </div>
+      </div>
+      <div class="takeaway">Generation is a loop around one function. Everything the model "says" is drawn, word by word, from what tended to follow what.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="slide" data-section="model">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Animated trace</div>
+      <h2>Watch temperature change one sentence</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="array">
+        <div class="trace-toolbar">
+          <div class="trace-status" aria-live="polite" aria-atomic="true"></div>
+          <div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div>
+        </div>
+        <div class="trace-board">
+          <div class="array-strip">
+            <div class="trace-pointer" style="width:118px">predict</div>
+            <div class="array-cell" data-index="0" style="width:118px;font-size:17px">the</div>
+            <div class="array-cell" data-index="1" style="width:118px;font-size:17px">·</div>
+            <div class="array-cell" data-index="2" style="width:118px;font-size:17px">·</div>
+            <div class="array-cell" data-index="3" style="width:118px;font-size:17px">·</div>
+            <div class="array-cell" data-index="4" style="width:118px;font-size:17px">·</div>
+            <div class="array-cell" data-index="5" style="width:118px;font-size:17px">·</div>
+            <div class="array-cell" data-index="6" style="width:118px;font-size:17px">·</div>
+          </div>
+          <div class="trace-variables">
+            <div class="trace-variable" data-var="temp" style="min-width:190px"></div>
+            <div class="trace-variable" data-var="cand" style="min-width:300px"></div>
+          </div>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"current":null,"values":["the","·","·","·","·","·","·"],"vars":{"temp":"temperature = 0.0","cand":"prompt: 'the'"},"status":"Start from the prompt 'the'. One move, repeated: look up what follows the last word, pick one, append."},
+          {"current":1,"processedThrough":1,"values":["the","central","·","·","·","·","·"],"vars":{"temp":"temperature = 0.0","cand":"central(3) — the only option"},"status":"In the corpus, 'the' is only ever followed by 'central'. One candidate; append it."},
+          {"current":2,"processedThrough":2,"values":["the","central","bank","·","·","·","·"],"vars":{"temp":"temperature = 0.0","cand":"bank(3) — the only option"},"status":"'central' is always followed by 'bank'. Append. So far, no choice has existed."},
+          {"current":3,"processedThrough":3,"values":["the","central","bank","held","·","·","·"],"vars":{"temp":"temperature = 0.0","cand":"held(2) · raised(1)"},"status":"The first real choice: 'bank' is followed by held(2) or raised(1). Temperature 0 is greedy — take the most common: 'held'."},
+          {"current":5,"processedThrough":5,"values":["the","central","bank","held","interest","rates","·"],"vars":{"temp":"temperature = 0.0","cand":"greedy, every step"},"status":"'interest' then 'rates' follow by the same greedy rule. Any seed gives the same result — the randomness is never consulted."},
+          {"current":6,"processedThrough":6,"values":["the","central","bank","held","interest","rates","steady"],"vars":{"temp":"temperature = 0.0","cand":"steady(2) · again(1)"},"status":"Greedy again: 'steady'. Run it twice — the identical sentence, twice. Deterministic output."},
+          {"current":3,"min":3,"values":["the","central","bank","raised","interest","rates","steady"],"vars":{"temp":"temperature = 0.9","cand":"held(2) · raised(1) — SAMPLED"},"status":"Rerun at temperature 0.9: the model now SAMPLES. 'raised' has real odds, and this run draws it — a different sentence from the same prompt."},
+          {"current":null,"min":3,"values":["the","central","bank","raised","interest","rates","steady"],"vars":{"temp":"temperature = 0.9","cand":"varies run to run"},"status":"Higher temperature: more variety, more risk. For pulling structured data out of text — this lesson's job — keep it low. Predictable beats creative."}
+        ]</script>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 13 -->
+<section class="slide" data-section="model">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Temperature, in output</div>
+      <h2>Two seeds at each temperature — spot the property</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">temperature 0.0 — greedy, deterministic</div>
+          <pre class="output-block" style="font-size:15px">the central bank held interest rates steady the central
+the central bank held interest rates steady the central
+<span class="comment">   ^ identical; the seed is ignored</span></pre>
+        </div>
+        <div>
+          <div class="code-title">temperature 0.9 — sampled, varies</div>
+          <pre class="output-block" style="font-size:15px">the central bank raised interest rates steady the central
+the central bank held interest rates again as consumer
+<span class="comment">   ^ same prompt, different sentences</span></pre>
+        </div>
+      </div>
+      <div class="question">Notice what the toy never does: check a single word against reality. It only knows "what tends to follow what." Hold that thought — it becomes the most important idea in the lesson.</div>
+      <div class="takeaway">Temperature 0 for extraction and classification; higher temperatures buy variety you don't want when a program must parse the answer.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 14 -->
+<section class="slide" data-section="model">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Context window</div>
+      <h2>The model reads a bounded amount of text at once</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="comment"># How much of the Lesson 2 retail file fits in one prompt?</span>
+retail_preview = pd.read_csv(<span class="string">"../course_data/online_retail_sample.csv"</span>)
+one_row_text = retail_preview.iloc[<span class="number">0</span>].to_json()
+tokens_per_row = estimate_tokens(one_row_text)   <span class="comment"># ≈ 51</span>
+
+<span class="keyword">for</span> window <span class="keyword">in</span> [<span class="number">200_000</span>, <span class="number">1_000_000</span>]:
+    rows = window // tokens_per_row
+    print(f<span class="string">"context {window:&gt;9,} tokens  ~  {rows:&gt;8,} rows at once"</span>)</pre>
+        <div>
+          <pre class="output-block">context   200,000 tokens  ~
+    3,921 rows at once
+context 1,000,000 tokens  ~
+   19,607 rows at once</pre>
+          <div class="panel compact" style="margin-top:14px"><p>Everything must fit inside the window: your instructions, the data you paste in, the conversation so far, <strong>and room for the reply</strong>. Past the edge, the earliest tokens fall out of view.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">A context window is a budget, not a suggestion — and "paste the whole file into the prompt" fails it fast.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 15 -->
+<section class="slide" data-section="model">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Four tools, four promises</div>
+      <h2>What property can you actually trust?</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Tool</th><th>You give it</th><th>It returns</th><th>Property you can trust</th></tr></thead>
+        <tbody>
+          <tr><td>Calculator</td><td><code class="inline">128 × 641</code></td><td><code class="inline">82048</code></td><td>exact, deterministic, correct</td></tr>
+          <tr><td>Database (Lesson 2)</td><td>a key</td><td>the stored row</td><td>faithful to what was stored</td></tr>
+          <tr><td>Search engine</td><td>a query</td><td>ranked existing pages</td><td>the pages really exist</td></tr>
+          <tr><td>LLM</td><td>a prompt</td><td>freshly generated text</td><td><strong>plausible — and nothing more</strong></td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">An LLM is not a search engine, a database, or a calculator. Each answers a question; each keeps a <em>different promise</em>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 16 -->
+<section class="slide" data-section="model">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Hallucination</div>
+      <h2>Not a bug to be patched — the table's bottom row, stated plainly</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel good">
+          <h3>When plausible and true coincide</h3>
+          <p>The model emits the most plausible next tokens, and those happen to be correct. It <em>looks like knowledge</em> — and for well-trodden facts, it usually is.</p>
+        </div>
+        <div class="panel warning">
+          <h3>When they diverge</h3>
+          <p>You get fluent, confident, <strong>wrong</strong> text — with the same tone, the same grammar, the same self-assurance as the correct answers around it.</p>
+        </div>
+      </div>
+      <div class="question">"Plausible next token" is simply not the same property as "true." The toy on the last slide never checked one word against reality — a real model doesn't either.</div>
+      <div class="takeaway">Everything in Unit 4 is about living with that. Unit 1's takeaway: useful output, shipping with no guaranteed properties — truth least of all.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 17 -->
+<section class="slide" data-section="model">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Checkpoint</div>
+      <h2>Name the two properties</h2>
+    </header>
+    <main class="content">
+      <div class="question">A hallucination is the direct consequence of two properties not being the same. Which two — and why does calling it a "rare glitch" get the mental model wrong?</div>
+      <div class="answer fragment">
+        <strong>"Plausible next token"</strong> and <strong>"true."</strong> The model optimizes the first; nothing in its one repeated move ever checks the second. So hallucination isn't a malfunction that occasionally interrupts correct behavior — it is the normal mode, <em>observed</em> in the cases where plausible and true happen to diverge. A glitch you patch; a property gap you engineer around — which is exactly what Units 3 and 4 do.
+      </div>
+      <div class="takeaway">Unit 1 gave you the vocabulary. Unit 2 makes the call — the same REST request you built in Lesson 6.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 18 -->
+<section class="slide" data-section="call">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · The API call</div>
+      <h2>An LLM endpoint is a REST API exactly like Lesson 6's</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Piece</th><th>Lesson 6 · FRED</th><th>Lesson 11 · Messages API</th></tr></thead>
+        <tbody>
+          <tr><td>URL</td><td><code class="inline">api.stlouisfed.org/fred/series/observations</code></td><td><code class="inline">api.anthropic.com/v1/messages</code></td></tr>
+          <tr><td>Verb</td><td><code class="inline">GET</code> — read published data</td><td><code class="inline">POST</code> — send a body to be processed</td></tr>
+          <tr><td>Auth</td><td><code class="inline">api_key</code> query parameter</td><td><code class="inline">x-api-key</code> header</td></tr>
+          <tr><td>Body</td><td>— (params in the URL)</td><td>JSON: model, max_tokens, <strong>messages</strong></td></tr>
+          <tr><td>Response</td><td>JSON: count + observations</td><td>JSON: content + stop_reason + usage</td></tr>
+        </tbody>
+      </table>
+      <div class="question">Everything new is in the <em>body</em> you send — and in what you may believe about the reply.</div>
+      <div class="takeaway">A URL, headers, a JSON body, a JSON response. If you can call FRED, you can call a frontier model.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 19 -->
+<section class="slide" data-section="call">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · The messages format</div>
+      <h2>A request carries a list of messages, each with a role</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">system_prompt = <span class="string">"You are a precise assistant. Answer in one short sentence."</span>
+messages = [
+    {<span class="string">"role"</span>: <span class="string">"user"</span>, <span class="string">"content"</span>: <span class="string">"Name the capital of France."</span>},
+]
+print(json.dumps({<span class="string">"system"</span>: system_prompt,
+                  <span class="string">"messages"</span>: messages}, indent=<span class="number">2</span>))</pre>
+        <div>
+          <pre class="output-block" style="font-size:14.5px">{
+  "system": "You are a precise assistant.
+             Answer in one short sentence.",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Name the capital of France."
+    }
+  ]
+}</pre>
+        </div>
+      </div>
+      <div class="cols-2">
+        <div class="panel compact"><h3><code class="inline">system</code></h3><p>Standing instructions, set once — "You are a precise classifier. Reply with JSON only."</p></div>
+        <div class="panel compact"><h3><code class="inline">user</code></h3><p>The actual request — "Classify this headline: …". The model answers with an <code class="inline">assistant</code> message.</p></div>
+      </div>
+      <div class="takeaway">The model reads the messages in order and continues the conversation — its reply is the next <code class="inline">assistant</code> turn.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 20 -->
+<section class="slide" data-section="call">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · System vs user</div>
+      <h2>The rules of the game vs the move</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>System — the rules</h3>
+          <p>Frames <strong>everything</strong> that comes after it: the persona, the output format, the constraints. Written once, reused for every call in a job.</p>
+        </div>
+        <div class="panel">
+          <h3>User — the move</h3>
+          <p>The specific item to handle now: this headline, this sentence, this question. Changes on every call; the rules don't.</p>
+        </div>
+      </div>
+      <div class="question">The same words behave differently in each slot. "Reply with JSON only" as a system rule governs the whole run; buried in a user message it competes with everything else in that one turn.</div>
+      <div class="takeaway">Get the framing right once, reuse it for every call — that split is what makes a 20-headline classification job one system prompt plus 20 tiny user messages.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 21 -->
+<section class="slide" data-section="call">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Via requests</div>
+      <h2>Lesson 6's pattern, pointed at a new endpoint</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block" style="font-size:14.5px"><span class="keyword">import</span> requests
+
+ANTHROPIC_URL = <span class="string">"https://api.anthropic.com/v1/messages"</span>
+MODEL = <span class="string">"claude-haiku-4-5-20251001"</span>   <span class="comment"># small, cheap — a fine default for classification</span>
+
+<span class="keyword">def</span> call_via_requests(messages, system=<span class="keyword">None</span>, max_tokens=<span class="number">200</span>):
+    headers = {
+        <span class="string">"x-api-key"</span>: os.environ.get(<span class="string">"ANTHROPIC_API_KEY"</span>, <span class="string">""</span>),
+        <span class="string">"anthropic-version"</span>: <span class="string">"2023-06-01"</span>,
+        <span class="string">"content-type"</span>: <span class="string">"application/json"</span>,
+    }
+    body = {<span class="string">"model"</span>: MODEL, <span class="string">"max_tokens"</span>: max_tokens, <span class="string">"messages"</span>: messages}
+    <span class="keyword">if</span> system <span class="keyword">is not</span> <span class="keyword">None</span>:
+        body[<span class="string">"system"</span>] = system
+    response = requests.post(ANTHROPIC_URL, headers=headers, json=body, timeout=<span class="number">30</span>)
+    response.raise_for_status()
+    <span class="keyword">return</span> response.json()</pre>
+        <div class="panel">
+          <h3>Count the new pieces</h3>
+          <ul>
+            <li>the endpoint URL</li>
+            <li>two headers: <code class="inline">x-api-key</code>, <code class="inline">anthropic-version</code></li>
+            <li>the body shape: model, max_tokens, messages</li>
+          </ul>
+          <p class="muted">Everything else — <code class="inline">timeout=</code>, <code class="inline">raise_for_status()</code>, <code class="inline">.json()</code> — is Lesson 6, verbatim.</p>
+        </div>
+      </div>
+      <div class="takeaway">Defined for reference; we don't call it live in class. The point is that you <em>could</em> — you already know every line.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 22 -->
+<section class="slide" data-section="call">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Key hygiene</div>
+      <h2>The key lives in the environment — same rule, higher stakes</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel warning">
+          <h3>Never</h3>
+          <ul>
+            <li>pasted into a notebook cell — it lands in git history forever</li>
+            <li>pasted into a <strong>prompt</strong> — it leaves your machine as data</li>
+            <li>printed in output — screenshots and logs travel</li>
+          </ul>
+        </div>
+        <div class="panel good">
+          <h3>Always</h3>
+          <pre class="code-block" style="font-size:15px">os.environ.get(<span class="string">"ANTHROPIC_API_KEY"</span>, <span class="string">""</span>)</pre>
+          <p style="margin-top:8px">Read at run time, absent from the code, invisible to git. Lesson 6's <code class="inline">FRED_API_KEY</code> rule, unchanged.</p>
+        </div>
+      </div>
+      <div class="question">Higher stakes than FRED: this key is attached to a <strong>bill</strong>. A leaked FRED key costs you rate limits; a leaked Anthropic key spends someone's money.</div>
+      <div class="takeaway">Secrets live outside the code. The environment variable is the only door the key walks through.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 23 -->
+<section class="slide" data-section="call">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · The SDK equivalent</div>
+      <h2>Two doors, one room</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="keyword">def</span> call_via_sdk(messages, system=<span class="keyword">None</span>, max_tokens=<span class="number">200</span>):
+    <span class="string">"""The same call through the anthropic SDK. Under the
+    hood it POSTs to the same URL with the same headers."""</span>
+    client = anthropic.Anthropic()   <span class="comment"># reads ANTHROPIC_API_KEY from the environment</span>
+    kwargs = {<span class="string">"model"</span>: MODEL, <span class="string">"max_tokens"</span>: max_tokens,
+              <span class="string">"messages"</span>: messages}
+    <span class="keyword">if</span> system <span class="keyword">is not</span> <span class="keyword">None</span>:
+        kwargs[<span class="string">"system"</span>] = system
+    <span class="keyword">return</span> client.messages.create(**kwargs)</pre>
+        <div class="panel">
+          <h3>Convenience over the raw POST</h3>
+          <p>No hand-built headers, no URL string. Like <code class="inline">pd.read_csv</code> over parsing a file by hand in Lesson 2 — and like Lesson 6's SDK verdict: the wrapper <strong>runs the request for you; it never removes it</strong>.</p>
+          <p class="muted">Both doors send the identical request. Pick whichever reads better to you.</p>
+        </div>
+      </div>
+      <div class="takeaway">Learn the raw request once, then let the SDK type the boilerplate — you can now debug what it does on your behalf.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 24 -->
+<section class="slide" data-section="call">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Running offline</div>
+      <h2>Record once, replay forever</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>The mechanism</h3>
+          <p>A recorded response is just the API's JSON, saved to disk <strong>in its exact wire shape</strong>. Replaying it is <code class="inline">json.loads</code> on a file — no key, no network, no bill, and the same result every run.</p>
+        </div>
+        <div class="panel warning">
+          <h3>The honesty label</h3>
+          <p>Our fixtures are <em>authored</em> teaching examples written by hand in the real wire format — not captures of live calls. Token counts are plausible estimates. The label matters: provenance is a property, and we track it like any other.</p>
+        </div>
+      </div>
+      <div class="question">Where have you seen this move before? Lesson 2's pinned data files, Lesson 6's offline FRED stand-in — pin the input, and code becomes testable and class becomes portable.</div>
+      <div class="takeaway">One entry point, <code class="inline">call_llm()</code>, decides: key set → live SDK call; no key → replay the named fixture and say so.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 25 -->
+<section class="slide" data-section="call">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · One entry point</div>
+      <h2><code>call_llm</code>: live if a key is set, replay if not</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block" style="font-size:14.5px"><span class="keyword">def</span> call_llm(messages, system=<span class="keyword">None</span>, fixture=<span class="keyword">None</span>, max_tokens=<span class="number">200</span>):
+    <span class="keyword">if</span> HAVE_KEY:
+        message = call_via_sdk(messages, system=system, max_tokens=max_tokens)
+        <span class="keyword">return</span> message.model_dump() <span class="keyword">if</span> hasattr(message, <span class="string">"model_dump"</span>) <span class="keyword">else</span> message
+    <span class="keyword">if</span> fixture <span class="keyword">is</span> <span class="keyword">None</span>:
+        <span class="keyword">raise</span> RuntimeError(<span class="string">"no API key set and no fixture named"</span>)
+    print(f<span class="string">"[replay] no API key -&gt; replaying recorded fixture {fixture!r}"</span>)
+    <span class="keyword">return</span> json.loads((FIXTURE_DIR / f<span class="string">"{fixture}.json"</span>).read_text())
+
+<span class="keyword">def</span> text_of(response):
+    <span class="string">"""The generated text lives at content[0].text in the wire shape."""</span>
+    <span class="keyword">return</span> response[<span class="string">"content"</span>][<span class="number">0</span>][<span class="string">"text"</span>]
+
+response = call_llm([{<span class="string">"role"</span>: <span class="string">"user"</span>, <span class="string">"content"</span>: <span class="string">"Name the capital of France."</span>}],
+                    system=<span class="string">"Answer in one short sentence."</span>,
+                    fixture=<span class="string">"capital_france"</span>)</pre>
+        <div>
+          <pre class="output-block">[replay] no API key -&gt; replaying
+  recorded fixture 'capital_france'
+model : claude-haiku-4-5-20251001
+reply : The capital of France is Paris.
+usage : {'input_tokens': 24,
+         'output_tokens': 9}</pre>
+          <div class="panel compact" style="margin-top:14px"><p>The rest of the notebook — and the exercise — only ever calls <code class="inline">call_llm()</code>, so everything behaves the same online or offline.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Lesson 6's one-switch design: isolate what varies (live vs replay) behind one name; write everything else once.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 26 -->
+<section class="slide" data-section="call">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · The wire shape</div>
+      <h2>Anatomy of a Messages API response</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="output-block" style="font-size:15px">{
+  "id": "msg_teaching_capital",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-4-5-20251001",
+  "content": [
+    {"type": "text",
+     "text": "The capital of France is Paris."}
+  ],
+  "stop_reason": "end_turn",
+  "usage": {"input_tokens": 24, "output_tokens": 9}
+}</pre>
+        <div>
+          <div class="panel compact"><h3><code class="inline">content[0].text</code></h3><p>The generated text — the one field with <strong>no guaranteed properties</strong>.</p></div>
+          <div class="panel compact" style="margin-top:10px"><h3><code class="inline">stop_reason</code></h3><p>Why generation ended: <code class="inline">end_turn</code> (the model finished) vs <code class="inline">max_tokens</code> (your cap cut it off).</p></div>
+          <div class="panel compact" style="margin-top:10px"><h3><code class="inline">usage</code></h3><p>The <strong>authoritative</strong> token counts — what you are billed on.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">The envelope keeps Lesson 6's promises — fixed keys, predictable structure. Only the <em>text inside it</em> is promise-free.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 27 -->
+<section class="slide" data-section="call">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Animated trace</div>
+      <h2>One call, end to end: tokenize, generate, respond</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="flow">
+        <div class="trace-toolbar"><div class="trace-status" aria-live="polite"></div><div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div></div>
+        <div class="flowchart-wrap" style="min-height:350px">
+          <svg class="flowchart-svg" viewBox="0 0 1040 350" style="height:350px" role="img" aria-label="LLM API call round trip: request, tokenize, generate loop, response">
+            <defs><marker id="arrow-llm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0l10 5-10 5z" fill="#94a3b8"/></marker></defs>
+            <path class="fc-edge" data-edge="req" d="M216 180H278" marker-end="url(#arrow-llm)"/>
+            <path class="fc-edge" data-edge="to-tok" d="M370 151V87 H518" marker-end="url(#arrow-llm)"/>
+            <path class="fc-edge" data-edge="to-gen" d="M615 114V241" marker-end="url(#arrow-llm)"/>
+            <path class="fc-edge" data-edge="gen-stop" d="M710 268 L737 240" marker-end="url(#arrow-llm)"/>
+            <path class="fc-edge" data-edge="loop" d="M810 160 V128 H660 V239" marker-end="url(#arrow-llm)"/>
+            <path class="fc-edge" data-edge="done" d="M885 215 H928" marker-end="url(#arrow-llm)"/>
+            <path class="fc-edge" data-edge="ret" d="M975 267 V322 H129 V212" marker-end="url(#arrow-llm)"/>
+            <g class="fc-node" data-node="client"><rect x="44" y="151" width="172" height="58" rx="29"/><text x="130" y="173">client:</text><text x="130" y="191">messages + system</text></g>
+            <g class="fc-node" data-node="api"><rect x="278" y="151" width="184" height="58"/><text x="370" y="173">POST /v1/messages</text><text x="370" y="191">key · version · body</text></g>
+            <g class="fc-node" data-node="tok"><rect x="518" y="60" width="194" height="54"/><text x="615" y="87">tokenize the prompt</text></g>
+            <g class="fc-node" data-node="gen"><rect x="518" y="241" width="194" height="54"/><text x="615" y="262">predict next token,</text><text x="615" y="280">append</text></g>
+            <g class="fc-node" data-node="stop"><path d="M810 160l76 55-76 55-76-55z"/><text x="810" y="209">stop?</text></g>
+            <g class="fc-node" data-node="resp"><path d="M928 190h100l-13 52h-100z"/><text x="972" y="209">content</text><text x="972" y="227">+ usage</text></g>
+            <text x="742" y="130" font-size="13" fill="#536178">no — go again</text>
+            <text x="898" y="200" font-size="13" fill="#536178">yes</text>
+            <text x="470" y="340" font-size="13" fill="#536178">the JSON response travels back</text>
+          </svg>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"activeNode":"client","status":"You call call_llm(messages, system=...). A messages list and a system prompt — nothing has left your machine yet."},
+          {"activeEdge":"req","activeNode":"api","status":"The SDK builds the same POST Lesson 6 taught: URL, headers (x-api-key, anthropic-version), and a JSON body with model, max_tokens, messages."},
+          {"activeEdge":"to-tok","activeNode":"tok","status":"Server side, the prompt is split into tokens — the units the model actually reads, and the units you pay for. These become usage.input_tokens."},
+          {"activeEdge":"to-gen","activeNode":"gen","status":"The model runs its one move: predict the next token from everything so far, sampled at the temperature."},
+          {"activeEdge":"gen-stop","activeNode":"stop","status":"After each token: done? The model can signal it finished — or hit your max_tokens cap."},
+          {"activeEdge":"loop","activeNode":"gen","status":"Not done — append the token and predict again. Generation is this loop and nothing more. Each pass adds one output token to the bill."},
+          {"activeEdge":"gen-stop","activeNode":"stop","status":"Eventually the model emits its natural stop: stop_reason = 'end_turn'."},
+          {"activeEdge":"done","activeNode":"resp","status":"The response is assembled: the generated text in content[0].text, stop_reason, and usage — the authoritative input/output token counts."},
+          {"activeEdge":"ret","activeNode":"client","status":"The JSON travels back. Same round trip as Lesson 6 — what changed is what you may believe about the text inside the envelope."}
+        ]</script>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 28 -->
+<section class="slide" data-section="call">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Tokens are the cost unit</div>
+      <h2>A dated pricing snapshot — three models, two rates each</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <table class="compact">
+          <thead><tr><th>Model</th><th>Input $/MTok</th><th>Output $/MTok</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">claude-haiku-4-5-20251001</td><td>1.00</td><td>5.00</td></tr>
+            <tr><td class="mono">claude-sonnet-5</td><td>2.00</td><td>10.00</td></tr>
+            <tr><td class="mono">claude-opus-4-8</td><td>5.00</td><td>25.00</td></tr>
+          </tbody>
+        </table>
+        <div class="panel warning">
+          <h3>Pricing honesty</h3>
+          <p>Fetched from the Anthropic pricing page on <strong>2026-07-11</strong>. Prices change; the Sonnet rate is introductory through 2026-08-31. Treat this as a dated snapshot and check the live page before quoting a cost.</p>
+        </div>
+      </div>
+      <div class="question">You pay per token, input and output at <em>different</em> rates — output tokens cost 5× input on every row of this table.</div>
+      <div class="takeaway">A price is data with a retrieval date — the same provenance discipline as every pinned file in this course.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 29 -->
+<section class="slide" data-section="call">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Price a real job</div>
+      <h2>Classify every line of the Lesson 2 retail extract</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block" style="font-size:14.5px">retail = pd.read_csv(<span class="string">"../course_data/online_retail_sample.csv"</span>)
+PROMPT_OVERHEAD = <span class="number">40</span>          <span class="comment"># standing instruction, per call (estimate)</span>
+OUTPUT_TOKENS_PER_CALL = <span class="number">15</span>   <span class="comment"># a short JSON label (estimate)</span>
+
+input_tokens = sum(PROMPT_OVERHEAD + estimate_tokens(str(d))
+                   <span class="keyword">for</span> d <span class="keyword">in</span> retail[<span class="string">"Description"</span>])
+output_tokens = OUTPUT_TOKENS_PER_CALL * len(retail)
+
+<span class="keyword">def</span> cost(input_tokens, output_tokens, model):
+    in_rate, out_rate = PRICES_USD_PER_MTOK[model]
+    <span class="keyword">return</span> (input_tokens * in_rate + output_tokens * out_rate) / <span class="number">1_000_000</span></pre>
+        <div>
+          <pre class="output-block">invoice lines: 60
+estimated input tokens : 2804
+estimated output tokens: 900
+
+claude-haiku-4-5-…  $0.007304
+claude-sonnet-5     $0.014608
+claude-opus-4-8     $0.036520</pre>
+        </div>
+      </div>
+      <div class="question">Same job, a <strong>~5× cost swing</strong> from model choice alone — "the cheapest model that can do the task" is a real decision, not a detail.</div>
+      <div class="takeaway">Two levers, one bill: which model, and how many tokens. Both are yours to set before a single cent is spent.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 30 -->
+<section class="slide" data-section="call">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Cost is linear</div>
+      <h2>Estimate on a sample, then multiply — Lesson 4's O(n), in dollars</h2>
+    </header>
+    <main class="content">
+      <div class="number-strip">
+        <div class="number-box" style="min-width:220px">$0.01<small>60 lines (the sample)</small></div>
+        <div class="number-box" style="min-width:220px">$7.30<small>60,000 lines</small></div>
+        <div class="number-box" style="min-width:220px">$730.40<small>6,000,000 lines</small></div>
+      </div>
+      <div class="cols-2">
+        <div class="panel compact"><h3>Why you may multiply</h3><p>Cost is <strong>linear in tokens</strong> — Lesson 4's O(n). Each line costs the same as the last, so 1,000× the lines is 1,000× the bill. Measure on small, reason about big.</p></div>
+        <div class="panel compact"><h3>Why you should</h3><p>This forecast cost <em>nothing</em> to make — it ran on the character-count estimate before any call. Unit 4 turns this into a habit: never spend before you've priced.</p></div>
+      </div>
+      <div class="takeaway">Unit 2 takeaway: the call is Lesson 6's REST request with a messages body; the SDK wraps it; you pay per input + output token; and recorded responses make the whole thing run offline.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 31 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Session 2 warm-up</div>
+      <h2>Five questions from last time — answer from memory first</h2>
+    </header>
+    <main class="content">
+      <div class="rule-list">
+        <div class="rule"><b>Q1</b><span>What is the single mechanical move an LLM makes, over and over?</span></div>
+        <div class="rule"><b>Q2</b><span>What does temperature 0 do to the output, and why does that suit classification?</span></div>
+        <div class="rule"><b>Q3</b><span>A hallucination is the direct consequence of two properties not being the same. Which two?</span></div>
+        <div class="rule"><b>Q4</b><span>In the messages format, what is the difference between a <span class="mono">system</span> and a <span class="mono">user</span> message?</span></div>
+        <div class="rule"><b>Q5</b><span>You pay per token. Name the two token counts you're billed on, and where the <em>authoritative</em> numbers come from.</span></div>
+      </div>
+      <div class="takeaway">Say your answers out loud before turning the page. Retrieval, not recognition, is what sticks.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 32 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Session 2 warm-up · answers</div>
+      <h2>Check yourself</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Q</th><th>Answer</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Predict the next token from the text so far, append it, and repeat.</td></tr>
+          <tr><td>2</td><td>It picks the single most likely next token every time, so the output is deterministic — predictable beats creative when you're extracting data.</td></tr>
+          <tr><td>3</td><td>"Plausible next token" and "true." The model optimizes the first; nothing guarantees the second.</td></tr>
+          <tr><td>4</td><td><code class="inline">system</code> sets standing instructions (the rules), set once; <code class="inline">user</code> carries the actual request (the move). The system prompt frames everything after it.</td></tr>
+          <tr><td>5</td><td>Input tokens and output tokens. The authoritative counts come from the response's <code class="inline">usage</code> block (or the model's tokenizer) — not a character estimate.</td></tr>
+        </tbody>
+      </table>
+    </main>
+  </div>
+</section>
+
+<!-- 33 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Structured output</div>
+      <h2>"Usually JSON" is not a property you can build on</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>Why JSON at all</h3>
+          <p>For a <strong>program</strong> to use a model's answer, the answer needs a shape a program can parse. So we ask for JSON — a category and a confidence, nothing else.</p>
+        </div>
+        <div class="panel warning">
+          <h3>The catch</h3>
+          <p>Asking for JSON gets you JSON <em>usually</em>. Real models mostly comply — and sometimes don't. "Usually" is exactly the kind of promise this course has taught you to refuse.</p>
+        </div>
+      </div>
+      <div class="question">The whole unit is one habit: validate every reply, and retry the ones that fail. Lesson 5's validate-early, aimed at a source that can hand you <em>anything</em>.</div>
+      <div class="takeaway">You cannot make the model reliable. You can make your <em>pipeline</em> reliable around it — check, then retry.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 34 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Asking for JSON</div>
+      <h2>The instruction goes in the system prompt</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block" style="font-size:15px">CLASSIFY_SYSTEM = (
+    <span class="string">"You are an economic-news classifier. Reply with ONLY a "</span>
+    <span class="string">"JSON object of the form "</span>
+    <span class="string">'{"category": &lt;one of: monetary_policy, inflation, '</span>
+    <span class="string">'employment, markets, trade, housing&gt;, '</span>
+    <span class="string">'"confidence": &lt;number 0-1&gt;}. No prose, no code fence.'</span>
+)
+headline = <span class="string">"Unemployment falls to 3.9% as hiring accelerates"</span>
+response = call_llm([{<span class="string">"role"</span>: <span class="string">"user"</span>, <span class="string">"content"</span>: headline}],
+                    system=CLASSIFY_SYSTEM, fixture=<span class="string">"classify_clean"</span>)
+print(text_of(response))</pre>
+        <div>
+          <pre class="output-block">{"category": "employment",
+ "confidence": 0.95}</pre>
+          <div class="panel compact" style="margin-top:14px"><p>The system prompt names the legal categories, pins the exact shape, and forbids the two most common decorations — prose and code fences. Six categories, one number. That's the contract <em>we</em> wrote.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">A clean reply on the first try — the happy path. The next slide is why you never stop there.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 35 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Watching it come back malformed</div>
+      <h2>Three replies to the same kind of request</h2>
+    </header>
+    <main class="content">
+      <pre class="output-block" style="font-size:15px">--- classify_fenced ---
+'```json\n{"category": "employment", "confidence": 0.9}\n```'
+
+--- classify_prose ---
+'Sure! Here you go:\n{"category": "employment", "confidence": 0.88}\nHope that helps!'
+
+--- classify_missing_key ---
+'{"category": "employment"}'</pre>
+      <div class="question">You asked nicely — <em>"No prose, no code fence"</em> was in the system prompt. Which of these three would <code class="inline">json.loads</code> survive?</div>
+      <div class="takeaway">A code-fence wrapper, prose around the JSON, a missing required key — the three everyday ways "JSON please" comes back broken.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 36 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Two gates</div>
+      <h2>Gate 1: does it parse? Gate 2: is it the <em>right</em> JSON?</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block" style="font-size:13.5px"><span class="keyword">def</span> parse_json(text):
+    <span class="keyword">try</span>:                                   <span class="comment"># Gate 1 — is it JSON at all?</span>
+        <span class="keyword">return</span> json.loads(text)
+    <span class="keyword">except</span> json.JSONDecodeError:
+        <span class="keyword">return</span> <span class="keyword">None</span>
+
+VALID_CATEGORIES = {<span class="string">"monetary_policy"</span>, <span class="string">"inflation"</span>, <span class="string">"employment"</span>,
+                    <span class="string">"markets"</span>, <span class="string">"trade"</span>, <span class="string">"housing"</span>}
+
+<span class="keyword">def</span> is_valid(payload):                     <span class="comment"># Gate 2 — the right JSON?</span>
+    <span class="keyword">if not</span> isinstance(payload, dict):
+        <span class="keyword">return</span> <span class="keyword">False</span>
+    <span class="keyword">if</span> set(payload) != {<span class="string">"category"</span>, <span class="string">"confidence"</span>}:
+        <span class="keyword">return</span> <span class="keyword">False</span>
+    <span class="keyword">if</span> payload[<span class="string">"category"</span>] <span class="keyword">not in</span> VALID_CATEGORIES:
+        <span class="keyword">return</span> <span class="keyword">False</span>
+    confidence = payload[<span class="string">"confidence"</span>]
+    <span class="keyword">if</span> isinstance(confidence, bool) <span class="keyword">or not</span> isinstance(confidence, (int, float)):
+        <span class="keyword">return</span> <span class="keyword">False</span>
+    <span class="keyword">return</span> <span class="number">0.0</span> &lt;= confidence &lt;= <span class="number">1.0</span></pre>
+        <div class="panel">
+          <h3>Lesson 1's checklist, as code</h3>
+          <ul>
+            <li>exactly the keys <code class="inline">{"category", "confidence"}</code></li>
+            <li>category drawn from the legal set — <em>set membership</em></li>
+            <li>confidence a real number in <code class="inline">0..1</code></li>
+          </ul>
+          <p class="muted">Gate 1 returns <code class="inline">None</code> instead of raising; Gate 2 returns <code class="inline">False</code> instead of crashing. A validator that crashes is no safer than no validator.</p>
+        </div>
+      </div>
+      <div class="takeaway">Two small, testable functions — Lesson 5's shape. Every reply passes through both gates or it does not count.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 37 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · The gates, run</div>
+      <h2>Four recorded replies, two verdicts each</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="output-block">classify_clean         parses=True   valid=True
+classify_fenced        parses=False  valid=False
+classify_prose         parses=False  valid=False
+classify_missing_key   parses=True   valid=False</pre>
+        <div class="panel">
+          <h3>Read the pattern</h3>
+          <p>The fenced and prose replies fail <strong>Gate 1</strong> — the <code class="inline">```</code> and the "Sure!" break <code class="inline">json.loads</code>. The missing-key reply <em>passes</em> Gate 1 and fails <strong>Gate 2</strong>.</p>
+          <p class="muted">Both gates are necessary; neither alone is enough.</p>
+        </div>
+      </div>
+      <div class="question">An LLM reply has <strong>no</strong> property until you check it — not even "is JSON." Same discipline as Lesson 5's validate-at-the-boundary; the boundary just leaks in more ways now.</div>
+      <div class="takeaway">One clean reply out of four. That ratio is authored for teaching — but every failure kind in it happens in production.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 38 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Checkpoint</div>
+      <h2>Why does <code>is_valid</code> reject <code>bool</code> by name?</h2>
+    </header>
+    <main class="content">
+      <div class="question">The confidence check reads <code class="inline">if isinstance(confidence, bool) or not isinstance(confidence, (int, float))</code>. Why single out <code class="inline">bool</code> — wouldn't the <code class="inline">(int, float)</code> check already reject it?</div>
+      <div class="answer fragment">
+        No — in Python, <code class="inline">bool</code> is a <strong>subclass of <code class="inline">int</code></strong>: <code class="inline">isinstance(True, int)</code> is <code class="inline">True</code>, and <code class="inline">0.0 &lt;= True &lt;= 1.0</code> is also <code class="inline">True</code>. Without the explicit exclusion, <code class="inline">{"category": "markets", "confidence": true}</code> would sail through both gates and put a boolean where your pipeline expects a probability. Property checks have to be written against the sneaky cases, not the obvious ones — Lesson 1's types, with their real edge behavior.
+      </div>
+      <div class="takeaway">A schema check is only as strong as its weirdest counterexample. The exercise's checker probes exactly this.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 39 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Animated trace</div>
+      <h2>Four replies walk through the two gates</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="array">
+        <div class="trace-toolbar">
+          <div class="trace-status" aria-live="polite" aria-atomic="true"></div>
+          <div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div>
+        </div>
+        <div class="trace-board">
+          <div class="array-strip">
+            <div class="trace-pointer" style="width:205px">validate</div>
+            <div class="array-cell" data-index="0" style="width:205px;font-size:16px">clean JSON</div>
+            <div class="array-cell" data-index="1" style="width:205px;font-size:16px">```json fenced```</div>
+            <div class="array-cell" data-index="2" style="width:205px;font-size:16px">"Sure!" + prose</div>
+            <div class="array-cell" data-index="3" style="width:205px;font-size:16px">missing key</div>
+          </div>
+          <div class="trace-variables">
+            <div class="trace-variable" data-var="gate1" style="min-width:250px"></div>
+            <div class="trace-variable" data-var="gate2" style="min-width:320px"></div>
+          </div>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"current":null,"vars":{"gate1":"Gate 1: json.loads","gate2":"Gate 2: keys · category · confidence"},"status":"Four recorded replies to the same request. Each claims to be an answer; none has properties yet."},
+          {"current":0,"vars":{"gate1":"json.loads → dict ✓","gate2":"keys ✓ · category ✓ · confidence 0.95 ✓"},"status":"The clean reply parses, has exactly the two keys, a legal category, and a confidence in 0..1. Both gates pass."},
+          {"current":0,"found":0,"vars":{"gate1":"PASS","gate2":"PASS"},"status":"This one earns trust — it may enter the pipeline."},
+          {"current":1,"found":0,"discarded":[1],"vars":{"gate1":"json.loads raises ✗","gate2":"never reached"},"status":"The fenced reply starts with ``` — not JSON. Gate 1 rejects it before Gate 2 is even asked."},
+          {"current":2,"found":0,"discarded":[1,2],"vars":{"gate1":"json.loads raises ✗","gate2":"never reached"},"status":"'Sure! Here you go:' wraps the JSON in prose. Gate 1 rejects it too — a substring being JSON doesn't make the reply JSON."},
+          {"current":3,"found":0,"discarded":[1,2],"vars":{"gate1":"json.loads → dict ✓","gate2":"keys = {category} only ✗"},"status":"The last reply PARSES — Gate 1 passes. But the key set is wrong: confidence is missing. Gate 2 rejects it."},
+          {"current":null,"found":0,"discarded":[1,2,3],"vars":{"gate1":"1 of 4 passed","gate2":"validation is the pipeline's door"},"status":"One reply of four earned trust. Validation isn't paranoia — it's the recorded behavior of the source."}
+        ]</script>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 40 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Retry on invalid</div>
+      <h2>The model is stochastic — so ask again, a bounded number of times</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block" style="font-size:14.5px">RETRY_SEQUENCE = [<span class="string">"classify_fenced"</span>, <span class="string">"classify_clean"</span>]  <span class="comment"># attempt 0 bad, attempt 1 good</span>
+MAX_ATTEMPTS = <span class="number">3</span>
+
+<span class="keyword">def</span> classify_with_retry(headline, sequence):
+    <span class="keyword">for</span> attempt <span class="keyword">in</span> range(MAX_ATTEMPTS):
+        fixture = sequence[min(attempt, len(sequence) - <span class="number">1</span>)]
+        text = text_of(call_llm([{<span class="string">"role"</span>: <span class="string">"user"</span>, <span class="string">"content"</span>: headline}],
+                                system=CLASSIFY_SYSTEM, fixture=fixture))
+        payload = parse_json(text)
+        <span class="keyword">if</span> payload <span class="keyword">is not</span> <span class="keyword">None</span> <span class="keyword">and</span> is_valid(payload):
+            <span class="keyword">return</span> {<span class="string">"payload"</span>: payload, <span class="string">"retries"</span>: attempt}
+        print(f<span class="string">"  attempt {attempt}: invalid ({fixture}) -&gt; retrying"</span>)
+    <span class="keyword">return</span> {<span class="string">"payload"</span>: <span class="keyword">None</span>, <span class="string">"retries"</span>: MAX_ATTEMPTS - <span class="number">1</span>}</pre>
+        <div>
+          <pre class="output-block">  attempt 0: invalid
+    (classify_fenced) -&gt; retrying
+result: {'payload':
+  {'category': 'employment',
+   'confidence': 0.95},
+  'retries': 1}</pre>
+          <div class="panel compact" style="margin-top:14px"><p>Temperature made the model a random draw — so the next draw is often clean. <strong>Bounded</strong> means it tries a few times, then gives up rather than looping forever.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Lesson 6 retried a flaky <em>network</em> (429 → back off). Here you retry a flaky <em>answer</em> — same shape, different failure.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 41 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Animated trace</div>
+      <h2>A bounded retry loop meets a headline that never validates</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="flow">
+        <div class="trace-toolbar"><div class="trace-status" aria-live="polite"></div><div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div></div>
+        <div class="flowchart-wrap" style="min-height:340px">
+          <svg class="flowchart-svg" viewBox="0 0 1000 340" style="height:340px" role="img" aria-label="Retry loop: parse gate, validate gate, retry budget, give up">
+            <defs><marker id="arrow-val" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0l10 5-10 5z" fill="#94a3b8"/></marker></defs>
+            <path class="fc-edge" data-edge="e1" d="M220 168H268" marker-end="url(#arrow-val)"/>
+            <path class="fc-edge" data-edge="e2" d="M430 168H503" marker-end="url(#arrow-val)"/>
+            <path class="fc-edge" data-edge="e3" d="M665 168H728" marker-end="url(#arrow-val)"/>
+            <path class="fc-edge" data-edge="e4" d="M350 226V285H373" marker-end="url(#arrow-val)"/>
+            <path class="fc-edge" data-edge="e5" d="M585 226V285H557" marker-end="url(#arrow-val)"/>
+            <path class="fc-edge" data-edge="e6" d="M465 240V222 H130 V197" marker-end="url(#arrow-val)"/>
+            <path class="fc-edge" data-edge="e7" d="M555 285H698" marker-end="url(#arrow-val)"/>
+            <g class="fc-node" data-node="call"><rect x="40" y="141" width="180" height="54" rx="27"/><text x="130" y="161">call_model(</text><text x="130" y="179">headline, attempt)</text></g>
+            <g class="fc-node" data-node="parse"><path d="M350 110l80 58-80 58-80-58z"/><text x="350" y="161">json.loads</text><text x="350" y="179">OK?</text></g>
+            <g class="fc-node" data-node="valid"><path d="M585 110l80 58-80 58-80-58z"/><text x="585" y="161">is_valid</text><text x="585" y="179">(payload)?</text></g>
+            <g class="fc-node" data-node="ok"><path d="M728 143h182l-15 50h-182z"/><text x="812" y="168">classified · ok: True</text></g>
+            <g class="fc-node" data-node="budget"><path d="M465 240l90 45-90 45-90-45z"/><text x="465" y="279">attempt+1</text><text x="465" y="297">&lt; MAX?</text></g>
+            <g class="fc-node" data-node="fail"><path d="M700 260h190l-15 50h-190z"/><text x="787" y="285">give up · ok: False</text></g>
+            <text x="452" y="158" font-size="13" fill="#536178">yes</text>
+            <text x="688" y="158" font-size="13" fill="#536178">yes</text>
+            <text x="330" y="260" font-size="13" fill="#536178">no</text>
+            <text x="600" y="260" font-size="13" fill="#536178">no</text>
+            <text x="255" y="240" font-size="13" fill="#536178">retry</text>
+            <text x="620" y="278" font-size="13" fill="#536178">budget spent</text>
+          </svg>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"activeNode":"call","status":"Headline h19: 'Layoffs announced at several manufacturing plants'. Attempt 0, MAX_ATTEMPTS = 3."},
+          {"activeEdge":"e1","activeNode":"parse","status":"Attempt 0's reply: 'This headline is about job losses…' — plain prose, not JSON at all. json.loads raises."},
+          {"activeEdge":"e4","activeNode":"budget","status":"A parse failure is just an invalid attempt — catch it, don't crash. Budget check: attempt+1 = 1 < 3."},
+          {"activeEdge":"e6","activeNode":"call","status":"Retry: attempt 1. The model is stochastic, so the next draw is often clean. Often — not always."},
+          {"activeEdge":"e1","activeNode":"parse","status":"Attempt 1's reply is fenced: ```json {\"label\": …} ```. The fence breaks json.loads again."},
+          {"activeEdge":"e4","activeNode":"budget","status":"Still invalid. attempt+1 = 2 < 3 — one attempt left in the budget."},
+          {"activeEdge":"e6","activeNode":"call","status":"Retry: attempt 2 — the last one the budget allows."},
+          {"activeEdge":"e1","activeNode":"parse","status":"Attempt 2: {\"category\": \"unemployment\", \"confidence\": 0.85} — this one PARSES. Gate 1 passes."},
+          {"activeEdge":"e2","activeNode":"valid","status":"Gate 2: 'unemployment' is not one of the six legal categories. Close, plausible — and invalid."},
+          {"activeEdge":"e5","activeNode":"budget","status":"attempt+1 = 3, which is not < 3. The retry budget is spent."},
+          {"activeEdge":"e7","activeNode":"fail","status":"Return {category: None, ok: False, retries: 2}. h19 stays failed — a headline is NEVER reported classified from a payload that failed validation."}
+        ]</script>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 42 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · The retry count is data</div>
+      <h2>Keep the number — it's telling you something</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel compact"><h3>Low retry rate</h3><p>Your prompt and schema are working; the model usually complies on the first draw.</p></div>
+        <div class="panel compact"><h3>High retry rate</h3><p>A signal your <strong>prompt needs work</strong> — or your model is too small for the task. Fix the cause, don't just pay for more retries.</p></div>
+        <div class="panel compact"><h3>Failures after retries</h3><p>Some items never validate within the budget. Report them as failed — never smuggle them through.</p></div>
+      </div>
+      <div class="question">The loop turned an unreliable source into a reliable one — not by trusting harder, but by checking and retrying. Measuring exactly that is the heart of this lesson's exercise.</div>
+      <div class="takeaway">A retry loop that doesn't count its retries throws away the best diagnostic it produces.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 43 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · The two workhorses</div>
+      <h2>Classification and extraction — same ending, different property</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block" style="font-size:14.5px">EXTRACT_SYSTEM = (
+    <span class="string">"Extract the fields from the sentence. Reply with ONLY JSON: "</span>
+    <span class="string">'{"company": &lt;string&gt;, "metric": &lt;string&gt;, "value_pct": &lt;number&gt;}.'</span>
+)
+sentence = <span class="string">"Acme Corp said quarterly revenue rose 12.5% from a year earlier."</span>
+payload = parse_json(text_of(call_llm(
+    [{<span class="string">"role"</span>: <span class="string">"user"</span>, <span class="string">"content"</span>: sentence}],
+    system=EXTRACT_SYSTEM, fixture=<span class="string">"extract_acme"</span>)))
+
+<span class="keyword">def</span> extraction_is_valid(p):
+    <span class="keyword">return</span> (isinstance(p, dict)
+            <span class="keyword">and</span> set(p) == {<span class="string">"company"</span>, <span class="string">"metric"</span>, <span class="string">"value_pct"</span>}
+            <span class="keyword">and</span> isinstance(p[<span class="string">"company"</span>], str)
+            <span class="keyword">and</span> isinstance(p[<span class="string">"metric"</span>], str)
+            <span class="keyword">and</span> isinstance(p[<span class="string">"value_pct"</span>], (int, float))
+            <span class="keyword">and not</span> isinstance(p[<span class="string">"value_pct"</span>], bool))</pre>
+        <div>
+          <pre class="output-block">extracted: {'company': 'Acme Corp',
+  'metric': 'revenue',
+  'value_pct': 12.5}
+valid extraction: True</pre>
+          <div class="panel compact" style="margin-top:14px"><p><strong>Classification</strong> → fixed labels; enforce <em>set membership</em>. <strong>Extraction</strong> → structured fields from messy text; enforce <em>schema shape and field types</em>.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Almost every practical LLM data task is one of these two shapes — and both end the same way: a JSON object you validate before you trust.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 44 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Checkpoint</div>
+      <h2>Passing Gate 1 is not passing</h2>
+    </header>
+    <main class="content">
+      <div class="question">A reply passes <code class="inline">json.loads</code> cleanly. Name three distinct ways it can still be unusable — and the habit from earlier lessons that catches all three.</div>
+      <div class="answer fragment">
+        It can have the <strong>wrong keys</strong> (missing <code class="inline">confidence</code>, or an extra field you never asked for); a <strong>category outside the legal set</strong> ("unemployment" instead of "employment" — plausible, and wrong); or an <strong>out-of-range or mis-typed value</strong> (confidence 1.4, or the boolean <code class="inline">true</code>). The habit is Lesson 5's <em>validate at the boundary</em>: a second gate that checks the parsed object against the property checklist — exactly what <code class="inline">is_valid</code> does, and exactly what you implement in the exercise.
+      </div>
+      <div class="takeaway">Unit 3 gave the reply a shape. Unit 4 decides what to send, believe, and spend.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 45 -->
+<section class="slide" data-section="trust">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Trust boundaries</div>
+      <h2>The model works. Three boundaries keep it from hurting you</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel"><h3>What you send</h3><p><strong>Privacy.</strong> Your prompt leaves your machine and is processed by a third party. Send the smallest slice of data that lets the model do the job.</p></div>
+        <div class="panel"><h3>What you believe</h3><p><strong>Verification.</strong> A model predicts plausible tokens. Any number you can compute exactly in Python, compute in Python.</p></div>
+        <div class="panel"><h3>What you spend</h3><p><strong>Cost.</strong> Tokens are money. Pick the smallest capable model, send fewer tokens, cap the reply, forecast before you run.</p></div>
+      </div>
+      <div class="takeaway">Unit 4 is the discipline layer. None of it is exotic — each boundary is one small habit applied every time.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 46 -->
+<section class="slide" data-section="trust">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · What you send</div>
+      <h2>Minimize: the task needs the note, not the customer</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">raw = {<span class="string">"customer_id"</span>: <span class="string">"00101"</span>,
+       <span class="string">"email"</span>: <span class="string">"alice@example.com"</span>,
+       <span class="string">"note"</span>: <span class="string">"asking about a refund on order T007"</span>}
+
+<span class="comment"># The task only needs the free-text note — so send only that.</span>
+to_send = {<span class="string">"note"</span>: raw[<span class="string">"note"</span>]}
+print(<span class="string">"on your machine :"</span>, raw)
+print(<span class="string">"sent to the API :"</span>, to_send)</pre>
+        <div>
+          <pre class="output-block">on your machine : {'customer_id':
+  '00101', 'email':
+  'alice@example.com', 'note':
+  'asking about a refund on order T007'}
+sent to the API : {'note': 'asking
+  about a refund on order T007'}</pre>
+        </div>
+      </div>
+      <div class="question">Treat a prompt like an email to a vendor: no secrets, no credentials, no personal data you aren't cleared to share.</div>
+      <div class="takeaway">The model can't leak what it never received — the privacy version of Lesson 2's "load only the columns the question needs."</div>
+    </main>
+  </div>
+</section>
+
+<!-- 47 -->
+<section class="slide" data-section="trust">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · What you believe</div>
+      <h2>Never let the model do arithmetic you can do exactly</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">numbers = [<span class="number">1200</span>, <span class="number">950</span>, <span class="number">1400</span>, <span class="number">1800</span>, <span class="number">1250</span>]
+question = f<span class="string">"What is the sum of {numbers}? Reply with just the number."</span>
+
+model_answer = text_of(call_llm(
+    [{<span class="string">"role"</span>: <span class="string">"user"</span>, <span class="string">"content"</span>: question}], fixture=<span class="string">"bad_sum"</span>))
+python_answer = sum(numbers)
+
+print(<span class="string">"model says :"</span>, model_answer)
+print(<span class="string">"python says:"</span>, python_answer)
+print(<span class="string">"agree?     :"</span>, str(python_answer) <span class="keyword">in</span> model_answer)</pre>
+        <div>
+          <pre class="output-block">model says : <span class="error">6400</span>
+python says: <span class="ok">6600</span>
+agree?     : False</pre>
+          <div class="panel compact" style="margin-top:14px"><p>Fluent, confident, and off by 200. "The sum of these numbers" is a plausible-<em>looking</em> number — that's all the model ever promised.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">If a number matters, compute it. Sums, counts, sorts, lookups — Python does them exactly, for free.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 48 -->
+<section class="slide" data-section="trust">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · The division of labor</div>
+      <h2>Python computes; the model phrases</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel good">
+          <h3>Python's side</h3>
+          <p>The exact algorithms: sums, sorts, matches, joins, aggregations. Verified, deterministic, auditable — everything Lessons 2–9 built.</p>
+        </div>
+        <div class="panel">
+          <h3>The model's side</h3>
+          <p><strong>Language.</strong> Turning your verified <code class="inline">6600</code> into "Sales totaled $6,600 across the five months." Classifying, extracting, summarizing — text work.</p>
+        </div>
+      </div>
+      <div class="question">Lesson 4's closing rule, verbatim: <em>let Python run the exact algorithms and let the model interpret the verified results — never the reverse.</em></div>
+      <div class="takeaway">The model is a language layer over your computation, not a replacement for it.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 49 -->
+<section class="slide" data-section="trust">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · What you spend</div>
+      <h2>Three habits, one sane bill</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel compact"><h3>Smallest capable model</h3><p>Unit 2's table: a ~5× swing on the same job. Start with Haiku; escalate only when the task proves it needs more.</p></div>
+        <div class="panel compact"><h3>Fewer tokens</h3><p>Short prompts, minimal data — the privacy habit and the cost habit are the same habit.</p></div>
+        <div class="panel compact"><h3>Cap <code class="inline">max_tokens</code></h3><p>A runaway reply can't run up the cost if the cap cuts it off. You saw the knob in every call signature.</p></div>
+      </div>
+      <div class="cols-2 ratio-3-2 align-center">
+        <pre class="output-block">cheapest model, per scale (Haiku 4.5, dated snapshot):
+          60 lines  ~  $      0.01
+      60,000 lines  ~  $      7.30
+   6,000,000 lines  ~  $    730.40</pre>
+        <div class="panel compact"><p><strong>Estimate on a sample, then multiply</strong> — a forecast you can make before spending a cent, because cost is linear in tokens.</p></div>
+      </div>
+      <div class="takeaway">Same "measure on small, reason about big" move as Lesson 4 — except here it maps straight to dollars.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 50 -->
+<section class="slide" data-section="trust">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Why the whole lesson ran offline</div>
+      <h2>Pinned responses are how you <em>test</em> LLM code</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>The problem with testing against a live model</h3>
+          <p>Nondeterministic output, a network dependency, and a bill on every run. A test that sometimes fails and always costs money is a test nobody runs.</p>
+        </div>
+        <div class="panel good">
+          <h3>The fixture answer</h3>
+          <p>Replay pinned responses: deterministic inputs, so you can check your <strong>validation and retry logic</strong> — the code that is actually yours — without paying, waiting, or depending on the network.</p>
+        </div>
+      </div>
+      <div class="question">Notice what's being tested: not the model, <em>your handling of it</em>. The malformed fixtures exist precisely so your gates get exercised.</div>
+      <div class="takeaway">The exercise is built entirely this way — Lesson 5's checker discipline, pointed at LLM plumbing.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 51 -->
+<section class="slide" data-section="trust">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Checkpoint</div>
+      <h2>One prompt, three boundary crossings</h2>
+    </header>
+    <main class="content">
+      <div class="question">A teammate pastes an entire customer table into a prompt and asks the model for the average order value. Name every trust boundary that crosses — and the fix.</div>
+      <div class="answer fragment">
+        <strong>Send:</strong> the whole table leaves the machine — emails, IDs, everything the question didn't need. <strong>Believe:</strong> "the average" will come back as a plausible number, unverified — arithmetic belongs in Python. <strong>Spend:</strong> a full table is thousands of input tokens for a job that needed zero. The fix: compute <code class="inline">df["order_value"].mean()</code> in pandas, send nothing — or, if a written summary is wanted, send only the verified number and let the model phrase it.
+      </div>
+      <div class="takeaway">All three boundaries, one everyday mistake. The discipline is knowing which tool owns which step.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 52 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Practice · your turn</div>
+      <h2>Classify 20 headlines — and trust none of the replies</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Function</th><th>Returns</th><th>The contract</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">validate_response(payload)</td><td>bool</td><td>exactly the keys <code class="inline">{"category", "confidence"}</code>; category in the legal six; confidence a real number in <code class="inline">0..1</code> (bool excluded); <strong>never raises</strong> on bad input</td></tr>
+          <tr><td class="mono">classify_headline(headline)</td><td>dict</td><td>up to <code class="inline">MAX_ATTEMPTS</code> calls; parse + validate each reply; stop at the first valid one; report category, confidence, and <strong>retries</strong> — or that it failed</td></tr>
+          <tr><td class="mono">summarize_run()</td><td>dict</td><td>classify every headline; tally per-category counts, total retries, classified, and failed</td></tr>
+        </tbody>
+      </table>
+      <div class="cols-2">
+        <div class="panel compact"><h3>Start</h3><p><code class="inline">cd lesson11_exercise/</code>, then <code class="inline">python3 -m pytest test_lesson11.py -v</code>. Every test errors with <code class="inline">NotImplementedError</code> — the intended starting line.</p></div>
+        <div class="panel compact"><h3>Provided</h3><p><code class="inline">load_headlines()</code> and the whole <code class="inline">replay_client</code> — the exercise is about validation and control flow, not I/O. The full spec is the <code class="inline">classify.py</code> docstring.</p></div>
+      </div>
+      <div class="takeaway">You write no networking code and make no real API calls — 27 authored fixtures in wire shape, replayed deterministically.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 53 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Practice · what "done" looks like</div>
+      <h2>Green means your gates caught every planted fault</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div>
+          <div class="code-title">the pinned reference run (MAX_ATTEMPTS = 3)</div>
+          <pre class="output-block" style="font-size:14.5px">category counts: {'monetary_policy': 3, 'inflation': 3,
+                  'employment': 3, 'markets': 4,
+                  'trade': 3, 'housing': 3}
+total retries  : 7
+classified     : 19 | failed: 1</pre>
+          <p class="small muted" style="margin-top:10px">The one failure is h19 — its three recorded replies are prose, fenced JSON, and an illegal category. It must <em>stay</em> failed.</p>
+        </div>
+        <div class="panel">
+          <h3>The malformed kinds your gates must catch</h3>
+          <ul class="small">
+            <li>code-fence-wrapped JSON</li>
+            <li>valid JSON wrapped in prose</li>
+            <li>missing required key</li>
+            <li>confidence outside <code class="inline">0..1</code></li>
+            <li>category outside the legal set</li>
+            <li>not JSON at all</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">A correct solution reproduces the pinned run exactly: 19 classified, 1 failed, 7 retries. If your numbers differ, a gate is leaking.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 54 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Assignment A4</div>
+      <h2>The integrated mini-project lands here</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>What carries in</h3>
+          <p>The classify-validate-retry loop you build in the exercise becomes <strong>A4's LLM layer</strong> — the model reads and phrases; your pipeline from the earlier assignments does the data work.</p>
+        </div>
+        <div class="panel good">
+          <h3>The standing rule</h3>
+          <p><strong>Every number the model writes gets checked by your Python before anyone believes it.</strong> A4 grades that discipline, not just the output.</p>
+        </div>
+      </div>
+      <div class="question">Later checkers in this course plant errors deliberately — and expect you to catch them. The habit of disbelief you built today is the tool that does it.</div>
+      <div class="takeaway">A4 sits at the end of Phase 2: API skills (L6), SQL analytics (L9), and today's validated LLM layer, in one project.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 55 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Wrap-up · connections</div>
+      <h2>Where the earlier lessons went</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Earlier idea</th><th>Its Lesson 11 form</th></tr></thead>
+        <tbody>
+          <tr><td>L1 · a structure is defined by its properties</td><td>an LLM reply arrives with none — you assign every one</td></tr>
+          <tr><td>L2 · validate at load; pin your inputs</td><td>validate at the boundary; recorded fixtures pin the replies</td></tr>
+          <tr><td>L4 · O(n); let Python run the algorithms</td><td>token cost is linear; never let the model do the arithmetic</td></tr>
+          <tr><td>L5 · validate early, small functions, checkers</td><td><code class="inline">parse_json</code> + <code class="inline">is_valid</code> + a bounded retry loop, pytest-graded</td></tr>
+          <tr><td>L6 · the REST call, key hygiene, retries</td><td>the identical request shape; retry a flaky <em>answer</em> instead of a flaky network</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">Nothing today was new discipline — it was every old discipline, aimed at a source that generates instead of stores.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 56 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Wrap-up · inventory</div>
+      <h2>What you can do now</h2>
+    </header>
+    <main class="content">
+      <div class="rule-list" style="max-width:1080px">
+        <div class="rule"><b>Explain the model</b><span>tokens, next-token prediction, context windows, temperature — with a toy you can read.</span></div>
+        <div class="rule"><b>Make the call</b><span>two ways — raw <code class="inline">requests</code> and the SDK — online, or replayed offline.</span></div>
+        <div class="rule"><b>Price a job</b><span>estimate tokens on a sample, multiply, and choose a model on cost.</span></div>
+        <div class="rule"><b>Enforce a shape</b><span>ask for JSON, run every reply through two gates, retry the failures in a bounded loop.</span></div>
+        <div class="rule"><b>Hold the boundaries</b><span>send little, believe nothing you can check in Python, cap the spend.</span></div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 57 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">The lesson, one sentence</div>
+    </header>
+    <main class="content centered">
+      <p class="big-claim">An LLM endpoint is just another API — so treat its reply as data with <em>no properties yet</em>: give it a shape by asking for JSON, give it truth by <span style="border-bottom:6px solid var(--amber)">validating and verifying in Python</span>, and give it a budget in tokens.</p>
+      <p class="lead">The same move as every earlier lesson: make the properties explicit — this time, because nobody else will.</p>
+    </main>
+  </div>
+</section>
+
+<!-- 58 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Reference desk</div>
+      <h2>Where to go deeper</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel compact"><h3>Documentation</h3><ul>
+          <li><a href="https://docs.claude.com/en/docs/get-started">Anthropic API quickstart</a> — your first real call, key setup included</li>
+          <li><a href="https://docs.claude.com/en/api/messages">Messages API reference</a> — every field of the request and response</li>
+          <li><a href="https://docs.claude.com/en/docs/about-claude/pricing">Anthropic pricing</a> — the live token prices (Unit 2's snapshot will drift)</li>
+          <li><a href="https://huggingface.co/spaces/Xenova/the-tokenizer-playground">The Tokenizer Playground</a> — watch text split into tokens</li>
+          <li><a href="https://json-schema.org/understanding-json-schema/">Understanding JSON Schema</a> — the grammar behind Unit 3's property checks</li>
+        </ul></div>
+        <div class="panel compact"><h3>Local practice</h3><ul>
+          <li>Lesson 11 notebook — runs top to bottom, fully offline</li>
+          <li><code class="inline">lesson11_exercise/</code> — the classify-validate-retry loop</li>
+          <li>Assignment A4 — the integrated mini-project, next</li>
+        </ul></div>
+      </div>
+      <div class="takeaway">The docs define the wire shape; the fixtures make it testable; your gates make it trustworthy.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 59 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">What's next</div>
+      <h2>Where the course goes from here</h2>
+    </header>
+    <main class="content centered">
+      <p class="big-claim" style="font-size:38px">Next: Lesson 12 — <em>probability and Monte Carlo</em>. Temperature made the model a random process; now you get the mathematics of random processes — random variables, expectation, distributions, and simulations you can rerun ten thousand times.</p>
+      <p class="lead">Phase 3 begins: statistical methods. The habit stays the same — never report a number you haven't earned.</p>
+    </main>
+  </div>
+</section>
+
+<div id="hud">
+  <div class="course">Intro to CS · Lesson 11</div>
+  <div id="section-map" aria-hidden="true">
+    <span data-section-name="intro">Setup</span><span data-section-name="model">Model</span><span data-section-name="call">Call</span><span data-section-name="shape">Shape</span><span data-section-name="trust">Trust</span><span data-section-name="finish">Finish</span>
+  </div>
+  <div class="nav-controls">
+    <button id="prev" type="button" aria-label="Previous step">‹</button>
+    <button id="next" type="button" aria-label="Next step">›</button>
+    <label id="count" for="slide-number">
+      <input id="slide-number" type="text" value="1" inputmode="numeric" pattern="[0-9]*" aria-label="Jump to slide"> / <span id="slide-total"></span>
+    </label>
+  </div>
+</div>
+
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const stage = document.getElementById("stage");
+  const slides = [...document.querySelectorAll(".slide")];
+  const prevButton = document.getElementById("prev");
+  const nextButton = document.getElementById("next");
+  const slideNumber = document.getElementById("slide-number");
+  const slideTotal = document.getElementById("slide-total");
+  const sectionItems = [...document.querySelectorAll("#section-map [data-section-name]")];
+  let currentSlide = 0;
+  let printSnapshot = null;
+
+  function fitStage() {
+    const viewport = window.visualViewport;
+    const width = viewport ? viewport.width : window.innerWidth;
+    const height = viewport ? viewport.height : window.innerHeight;
+    const scale = Math.min(width / 1280, height / 720);
+    stage.style.transform = `translate(-50%, -50%) scale(${scale})`;
+  }
+
+  class TraceController {
+    constructor(root) {
+      this.root = root;
+      this.type = root.dataset.traceType;
+      const source = root.querySelector(".trace-data");
+      try {
+        this.states = JSON.parse(source ? source.textContent : "[]");
+      } catch (error) {
+        this.states = [];
+        console.error("Invalid trace data", error, root);
+      }
+      this.step = 0;
+      this.status = root.querySelector(".trace-status");
+      this.counter = root.querySelector("[data-trace-counter]");
+      root.querySelector(".trace-reset")?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this.setStep(0);
+      });
+      this.render();
+    }
+
+    canNext() { return this.step < this.states.length - 1; }
+    canPrevious() { return this.step > 0; }
+    next() { if (this.canNext()) this.setStep(this.step + 1); }
+    previous() { if (this.canPrevious()) this.setStep(this.step - 1); }
+    setStep(step) {
+      if (!this.states.length) return;
+      this.step = Math.max(0, Math.min(step, this.states.length - 1));
+      this.render();
+      updateControls();
+    }
+
+    renderVariables(state) {
+      const values = state.vars || {};
+      this.root.querySelectorAll("[data-var]").forEach((element) => {
+        element.textContent = values[element.dataset.var] || "";
+      });
+    }
+
+    renderTranscript() {
+      const slide = this.root.closest(".slide");
+      const rows = [...slide.querySelectorAll(".trace-transcript tr[data-step]")];
+      if (!rows.length) return;
+      let active = rows[0];
+      for (const row of rows) {
+        if (Number(row.dataset.step) <= this.step) active = row;
+      }
+      rows.forEach((row) => row.classList.toggle("is-active", row === active));
+    }
+
+    renderArray(state) {
+      const cells = [...this.root.querySelectorAll(".array-cell")];
+      cells.forEach((cell, index) => {
+        if (Array.isArray(state.values) && index < state.values.length) {
+          cell.textContent = state.values[index];
+        }
+        const outsideRange = Array.isArray(state.range) && (index < state.range[0] || index > state.range[1]);
+        const foundIndex = typeof state.found === "number" ? state.found : (state.found === true ? state.current : null);
+        cell.classList.toggle("is-current", state.current === index);
+        cell.classList.toggle("is-best", state.best === index);
+        cell.classList.toggle("is-min", state.min === index);
+        cell.classList.toggle("is-checked", Number.isInteger(state.processedThrough) && index <= state.processedThrough);
+        cell.classList.toggle("is-sorted", Number.isInteger(state.sortedUntil) && index < state.sortedUntil);
+        cell.classList.toggle("is-discarded", outsideRange || (Array.isArray(state.discarded) && state.discarded.includes(index)));
+        cell.classList.toggle("is-found", foundIndex === index);
+      });
+
+      const pointer = this.root.querySelector(".trace-pointer");
+      if (pointer) {
+        if (state.current == null || !cells[state.current]) {
+          pointer.style.visibility = "hidden";
+        } else {
+          pointer.style.visibility = "visible";
+          const first = cells[0];
+          pointer.style.transform = `translateX(${cells[state.current].offsetLeft - first.offsetLeft}px)`;
+          pointer.style.left = `${first.offsetLeft}px`;
+        }
+      }
+      this.renderVariables(state);
+      this.renderTranscript();
+    }
+
+    renderFlow(state) {
+      this.root.querySelectorAll("[data-node]").forEach((node) => {
+        node.classList.toggle("is-active", node.dataset.node === state.activeNode);
+      });
+      this.root.querySelectorAll("[data-edge]").forEach((edge) => {
+        edge.classList.toggle("is-active", edge.dataset.edge === state.activeEdge);
+      });
+      this.renderVariables(state);
+    }
+
+    renderStack(state) {
+      this.root.querySelectorAll(".token[data-index]").forEach((token) => {
+        token.classList.toggle("is-current", Number(token.dataset.index) === state.token);
+      });
+      const values = state.stack || [];
+      this.root.querySelectorAll(".stack-slot[data-slot]").forEach((slot) => {
+        const index = Number(slot.dataset.slot);
+        slot.textContent = index < values.length ? values[index] : "";
+      });
+      this.renderVariables(state);
+    }
+
+    render() {
+      if (!this.states.length) return;
+      const state = this.states[this.step];
+      if (this.status) this.status.textContent = state.status || "";
+      if (this.counter) this.counter.textContent = `${this.step + 1} / ${this.states.length}`;
+      if (this.type === "array") this.renderArray(state);
+      if (this.type === "flow") this.renderFlow(state);
+      if (this.type === "stack") this.renderStack(state);
+    }
+  }
+
+  const traces = new Map();
+  document.querySelectorAll(".trace[data-trace-type]").forEach((root) => {
+    traces.set(root, new TraceController(root));
+  });
+
+  function traceOnActiveSlide() {
+    const root = slides[currentSlide]?.querySelector(".trace[data-trace-type]");
+    return root ? traces.get(root) : null;
+  }
+
+  function fragmentsOnActiveSlide() {
+    return [...slides[currentSlide].querySelectorAll(".fragment")];
+  }
+
+  function nextHiddenFragment() {
+    return fragmentsOnActiveSlide().find((fragment) => !fragment.classList.contains("visible"));
+  }
+
+  function lastVisibleFragment() {
+    return fragmentsOnActiveSlide().filter((fragment) => fragment.classList.contains("visible")).at(-1);
+  }
+
+  function updateControls() {
+    const trace = traceOnActiveSlide();
+    const hasBackwardStep = (trace && trace.canPrevious()) || Boolean(lastVisibleFragment());
+    const hasForwardStep = (trace && trace.canNext()) || Boolean(nextHiddenFragment());
+    prevButton.disabled = currentSlide === 0 && !hasBackwardStep;
+    nextButton.disabled = currentSlide === slides.length - 1 && !hasForwardStep;
+  }
+
+  function showSlide(index, options = {}) {
+    currentSlide = Math.max(0, Math.min(index, slides.length - 1));
+    slides.forEach((slide, slideIndex) => {
+      const active = slideIndex === currentSlide;
+      slide.classList.toggle("active", active);
+      slide.setAttribute("aria-hidden", active ? "false" : "true");
+      slide.inert = !active;
+    });
+    const activeSlide = slides[currentSlide];
+    const section = activeSlide.dataset.section;
+    const color = getComputedStyle(activeSlide).getPropertyValue("--section-color").trim();
+    stage.style.setProperty("--active-section-color", color);
+    sectionItems.forEach((item) => item.classList.toggle("on", item.dataset.sectionName === section));
+    slideNumber.value = currentSlide + 1;
+    slideTotal.textContent = slides.length;
+    activeSlide.querySelectorAll(".trace[data-trace-type]").forEach((root) => traces.get(root)?.render());
+    if (!options.skipHash) history.replaceState(null, "", `#slide-${currentSlide + 1}`);
+    updateControls();
+  }
+
+  function forward() {
+    const trace = traceOnActiveSlide();
+    if (trace?.canNext()) {
+      trace.next();
+      return;
+    }
+    const fragment = nextHiddenFragment();
+    if (fragment) {
+      fragment.classList.add("visible");
+      updateControls();
+      return;
+    }
+    if (currentSlide < slides.length - 1) showSlide(currentSlide + 1);
+  }
+
+  function backward() {
+    const trace = traceOnActiveSlide();
+    if (trace?.canPrevious()) {
+      trace.previous();
+      return;
+    }
+    const fragment = lastVisibleFragment();
+    if (fragment) {
+      fragment.classList.remove("visible");
+      updateControls();
+      return;
+    }
+    if (currentSlide > 0) showSlide(currentSlide - 1);
+  }
+
+  function jumpToRequestedSlide() {
+    const requested = Number.parseInt(slideNumber.value, 10);
+    if (Number.isNaN(requested)) {
+      slideNumber.value = currentSlide + 1;
+      return;
+    }
+    showSlide(requested - 1);
+  }
+
+  prevButton.addEventListener("click", backward);
+  nextButton.addEventListener("click", forward);
+  slideNumber.addEventListener("change", jumpToRequestedSlide);
+  slideNumber.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      jumpToRequestedSlide();
+      slideNumber.blur();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    const target = event.target;
+    const editing = target instanceof HTMLElement && target.closest("input, textarea, select, [contenteditable='true']");
+    const activatingControl = target instanceof HTMLElement && target.closest("a, button") && event.key === " ";
+    if (editing || activatingControl) return;
+    if (event.repeat) return;
+    if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(event.key)) {
+      event.preventDefault();
+      forward();
+    } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(event.key)) {
+      event.preventDefault();
+      backward();
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      showSlide(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      showSlide(slides.length - 1);
+    } else if (event.key.toLowerCase() === "f") {
+      event.preventDefault();
+      if (document.fullscreenElement) document.exitFullscreen();
+      else stage.requestFullscreen?.();
+    }
+  });
+
+  window.addEventListener("resize", fitStage);
+  window.visualViewport?.addEventListener("resize", fitStage);
+  window.addEventListener("hashchange", () => {
+    const match = location.hash.match(/^#slide-(\d+)$/);
+    if (match) showSlide(Number(match[1]) - 1, { skipHash: true });
+  });
+
+  window.addEventListener("beforeprint", () => {
+    printSnapshot = [...traces.values()].map((trace) => trace.step);
+    [...traces.values()].forEach((trace) => trace.setStep(trace.states.length - 1));
+  });
+  window.addEventListener("afterprint", () => {
+    if (!printSnapshot) return;
+    [...traces.values()].forEach((trace, index) => trace.setStep(printSnapshot[index] || 0));
+    printSnapshot = null;
+    showSlide(currentSlide, { skipHash: true });
+  });
+
+  const initialMatch = location.hash.match(/^#slide-(\d+)$/);
+  const initialSlide = initialMatch ? Number(initialMatch[1]) - 1 : 0;
+  fitStage();
+  showSlide(initialSlide, { skipHash: true });
+})();
+</script>
+</body>
+</html>

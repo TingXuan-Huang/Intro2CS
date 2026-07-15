@@ -1,0 +1,3147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 4 · Algorithms and Big-O</title>
+<style>
+  :root {
+    --paper: #f8fafc;
+    --surface: #ffffff;
+    --surface-2: #edf2f7;
+    --ink: #172033;
+    --muted: #536178;
+    --line: #c9d4e2;
+    --navy: #1e3a5f;
+    --blue: #1e5a89;
+    --teal: #0f766e;
+    --purple: #6d4c7d;
+    --amber: #986018;
+    --cyan: #176b80;
+    --green: #176b43;
+    --maroon: #8a3f5f;
+    --slate: #475569;
+    --red: #b42318;
+    --red-bg: #fff1f0;
+    --green-bg: #edf8f2;
+    --yellow-bg: #fff7df;
+    --c-o1: #2764a4;
+    --c-olog: #0f766e;
+    --c-on: #6d4c7d;
+    --c-onlogn: #986018;
+    --c-on2: #b42318;
+    --font-sans: "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif;
+    --font-mono: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; }
+  body {
+    overflow: hidden;
+    background: #111827;
+    color: var(--ink);
+    font-family: var(--font-sans);
+  }
+  a { color: var(--blue); }
+  code, pre, .mono { font-family: var(--font-mono); }
+
+  #stage {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 1280px;
+    height: 720px;
+    transform-origin: center center;
+    overflow: hidden;
+    background: var(--paper);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .48);
+  }
+
+  .slide {
+    --section-color: var(--navy);
+    position: absolute;
+    inset: 0;
+    display: none;
+    background: var(--paper);
+  }
+  .slide.active { display: block; }
+  .slide[data-section="intro"] { --section-color: var(--navy); }
+  .slide[data-section="scans"] { --section-color: var(--teal); }
+  .slide[data-section="sorting"] { --section-color: var(--blue); }
+  .slide[data-section="search"] { --section-color: var(--purple); }
+  .slide[data-section="writing"] { --section-color: var(--cyan); }
+  .slide[data-section="growth"] { --section-color: var(--amber); }
+  .slide[data-section="dicts"] { --section-color: var(--green); }
+  .slide[data-section="structures"] { --section-color: var(--maroon); }
+  .slide[data-section="finish"] { --section-color: var(--slate); }
+  .slide::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 7px;
+    background: var(--section-color);
+  }
+
+  .slide-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 46px 72px 78px;
+  }
+  .slide-header { margin-bottom: 20px; }
+  .section-label {
+    margin-bottom: 8px;
+    color: var(--section-color);
+    font-size: 15px;
+    font-weight: 760;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  h1 {
+    max-width: 1080px;
+    font-size: 58px;
+    line-height: 1.08;
+    letter-spacing: -.025em;
+    font-weight: 740;
+  }
+  h2 {
+    max-width: 1120px;
+    font-size: 39px;
+    line-height: 1.13;
+    letter-spacing: -.018em;
+    font-weight: 730;
+  }
+  h3 {
+    font-size: 23px;
+    line-height: 1.23;
+    font-weight: 730;
+  }
+  p, li { font-size: 20px; line-height: 1.4; }
+  .lead {
+    max-width: 930px;
+    color: var(--muted);
+    font-size: 27px;
+    line-height: 1.42;
+  }
+  .small { font-size: 17px; line-height: 1.4; }
+  .tiny { font-size: 14px; line-height: 1.35; }
+  .muted { color: var(--muted); }
+  .strong { color: var(--ink); font-weight: 730; }
+  code.inline {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #e8eef5;
+    color: #1d3654;
+    font-size: .9em;
+  }
+
+  .content {
+    min-height: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .centered {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  .cols-2, .cols-3, .cols-4 {
+    min-height: 0;
+    display: grid;
+    gap: 20px;
+    align-items: stretch;
+  }
+  .cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ratio-3-2 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+  .ratio-2-3 { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+  .ratio-5-4 { grid-template-columns: minmax(0, 5fr) minmax(0, 4fr); }
+  .align-center { align-items: center; }
+
+  .panel {
+    min-width: 0;
+    padding: 18px 21px;
+    border: 1px solid var(--line);
+    border-top: 4px solid var(--section-color);
+    background: var(--surface);
+  }
+  .panel h3 { margin-bottom: 9px; }
+  .panel p + p, .panel ul, .panel ol { margin-top: 8px; }
+  .panel ul, .panel ol { padding-left: 23px; }
+  .panel li + li { margin-top: 5px; }
+  .panel.compact { padding: 13px 16px; }
+  .panel.compact p, .panel.compact li { font-size: 17px; }
+  .panel.warning { border-top-color: var(--red); background: var(--red-bg); }
+  .panel.good { border-top-color: var(--green); background: var(--green-bg); }
+
+  .takeaway {
+    margin-top: auto;
+    padding: 12px 16px;
+    border-left: 5px solid var(--section-color);
+    background: #e9f0f6;
+    color: #24364d;
+    font-size: 19px;
+    line-height: 1.4;
+  }
+  .question {
+    padding: 17px 21px;
+    border: 2px solid var(--blue);
+    background: #edf5fb;
+    color: #173b5d;
+    font-size: 23px;
+    line-height: 1.36;
+    font-weight: 680;
+  }
+  .answer {
+    padding: 15px 19px;
+    border-left: 5px solid var(--green);
+    background: var(--green-bg);
+    font-size: 19px;
+    line-height: 1.4;
+  }
+  .fragment { visibility: hidden; opacity: 0; }
+  .fragment.visible { visibility: visible; opacity: 1; }
+
+  .code-title {
+    margin-bottom: 7px;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 740;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .code-block, .output-block, .pseudo-block {
+    min-width: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    border: 1px solid var(--line);
+    background: #0f172a;
+    color: #e7edf5;
+    padding: 15px 18px;
+    font-family: var(--font-mono);
+    font-size: 17px;
+    line-height: 1.45;
+  }
+  .output-block, .pseudo-block { background: var(--surface); color: #203047; }
+  .pseudo-block { border-left: 4px solid var(--section-color); }
+  .comment { color: #9fb0c5; }
+  .string { color: #8dd3c7; }
+  .number { color: #f4c27a; }
+  .keyword { color: #c6a7e2; }
+  .error { color: #ef6b62; font-weight: 730; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    font-size: 18px;
+    line-height: 1.3;
+  }
+  th {
+    padding: 10px 12px;
+    border-top: 2px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+    color: #34445a;
+    background: #e8eef4;
+    text-align: left;
+    font-size: 15px;
+    line-height: 1.24;
+    letter-spacing: .052em;
+    text-transform: uppercase;
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: 2px solid var(--ink); }
+  td:first-child { font-weight: 700; }
+  table.compact { font-size: 16px; }
+  table.compact th { font-size: 14px; }
+  table.compact td { padding-top: 7px; padding-bottom: 7px; }
+
+  .flow {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .flow-node {
+    min-width: 0;
+    flex: 1;
+    padding: 13px;
+    border: 1px solid #a9b6c6;
+    background: var(--surface);
+  }
+  .flow-node b {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--section-color);
+    font-size: 17px;
+  }
+  .flow-node span { font-size: 16px; line-height: 1.3; }
+  .flow-arrow {
+    align-self: center;
+    color: #66758a;
+    font-size: 25px;
+    font-weight: 700;
+  }
+
+  .rule-list { display: grid; gap: 12px; }
+  .rule {
+    display: grid;
+    grid-template-columns: 205px minmax(0, 1fr);
+    gap: 19px;
+    align-items: baseline;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .rule b { color: var(--section-color); font-size: 21px; }
+  .rule span { font-size: 19px; line-height: 1.35; }
+
+  .big-claim {
+    max-width: 1010px;
+    font-size: 45px;
+    line-height: 1.24;
+    font-weight: 730;
+    letter-spacing: -.018em;
+  }
+
+  .number-strip {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+  }
+  .number-box {
+    min-width: 120px;
+    padding: 18px 15px;
+    border: 2px solid #9bacc0;
+    background: var(--surface);
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 25px;
+    font-weight: 720;
+  }
+  .number-box small {
+    display: block;
+    margin-top: 5px;
+    color: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .trace {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+  }
+  .trace-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 38px;
+  }
+  .trace-status {
+    min-width: 0;
+    flex: 1;
+    color: #26384f;
+    font-size: 18px;
+    line-height: 1.32;
+    font-weight: 650;
+  }
+  .trace-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  .trace-reset {
+    min-width: 76px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .trace-reset:focus-visible { outline: 3px solid #4e8fc1; outline-offset: 2px; }
+  .trace-board {
+    position: relative;
+    min-height: 160px;
+    padding: 28px 18px 16px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .array-strip {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding-top: 28px;
+  }
+  .array-cell {
+    position: relative;
+    width: 92px;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #9bacbf;
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 720;
+    transition: transform .2s ease, background-color .2s ease, border-color .2s ease, opacity .2s ease;
+  }
+  .array-cell::after {
+    content: attr(data-index);
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -22px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+  }
+  .array-cell.is-current { border-color: var(--blue); box-shadow: inset 0 0 0 2px var(--blue); }
+  .array-cell.is-best { border-color: var(--green); background: var(--green-bg); }
+  .array-cell.is-min { border-color: var(--amber); background: var(--yellow-bg); }
+  .array-cell.is-sorted { border-color: var(--teal); background: #e9f7f5; }
+  .array-cell.is-checked { background: #eef2f7; }
+  .array-cell.is-discarded { opacity: .28; }
+  .array-cell.is-found { border-color: var(--green); background: var(--green-bg); }
+  .array-cell.is-found::before {
+    content: "MATCH";
+    position: absolute;
+    top: -27px;
+    color: var(--green);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 760;
+    letter-spacing: .08em;
+  }
+  .trace-pointer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 92px;
+    color: var(--blue);
+    text-align: center;
+    font-size: 14px;
+    font-weight: 740;
+    transition: transform .22s ease;
+  }
+  .trace-pointer::after { content: "↓"; display: block; font-size: 22px; line-height: 1; }
+  .trace-variables {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 27px;
+  }
+  .trace-variable {
+    min-width: 140px;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    font-family: var(--font-mono);
+    font-size: 15px;
+    text-align: center;
+  }
+  .trace-transcript { font-size: 14px; }
+  .trace-transcript th { padding: 6px 8px; font-size: 12px; }
+  .trace-transcript td { padding: 5px 8px; }
+  .trace-transcript tr.is-active td { background: #e9f0f6; }
+
+  .flowchart-wrap {
+    position: relative;
+    min-height: 360px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .flowchart-svg { width: 100%; height: 360px; display: block; }
+  .flowchart-svg .fc-edge {
+    fill: none;
+    stroke: #94a3b8;
+    stroke-width: 2;
+    transition: stroke .2s ease, stroke-width .2s ease, opacity .2s ease;
+  }
+  .flowchart-svg .fc-node rect,
+  .flowchart-svg .fc-node path {
+    fill: #ffffff;
+    stroke: #8294aa;
+    stroke-width: 2;
+    transition: fill .2s ease, stroke .2s ease, stroke-width .2s ease;
+  }
+  .flowchart-svg .fc-node text {
+    fill: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 650;
+    text-anchor: middle;
+    dominant-baseline: middle;
+  }
+  .flowchart-svg .fc-node.is-active rect,
+  .flowchart-svg .fc-node.is-active path {
+    fill: #e8f2fa;
+    stroke: var(--blue);
+    stroke-width: 4;
+  }
+  .flowchart-svg .fc-edge.is-active { stroke: var(--blue); stroke-width: 4; }
+
+  .growth-legend {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .growth-key { display: flex; align-items: center; gap: 7px; font-size: 15px; }
+  .growth-line { width: 26px; height: 4px; background: var(--key-color); }
+
+  .stack-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr);
+    gap: 20px;
+    align-items: stretch;
+  }
+  .token-strip {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 13px;
+  }
+  .token {
+    min-width: 48px;
+    padding: 9px 8px;
+    border: 1px solid #9bacbf;
+    background: var(--surface);
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 18px;
+    transition: background-color .2s ease, border-color .2s ease, transform .2s ease;
+  }
+  .token.is-current { border-color: var(--blue); background: #e8f2fa; transform: translateY(-5px); }
+  .stack-columns { display: flex; justify-content: center; gap: 28px; }
+  .stack-column { width: 150px; }
+  .stack-column h3 { margin-bottom: 7px; font-size: 16px; text-align: center; }
+  .stack-frame {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 5px;
+    min-height: 198px;
+    padding: 7px;
+    border: 3px solid #8193aa;
+    border-top: none;
+    background: #f7f9fc;
+  }
+  .stack-slot {
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #b9c4d1;
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: 17px;
+  }
+  .stack-slot:empty { visibility: hidden; }
+
+  .tree-stage {
+    position: relative;
+    height: 290px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .tree-stage svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .tree-edge { stroke: #9aabba; stroke-width: 2; }
+  .tree-node {
+    position: absolute;
+    width: 58px;
+    height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #8193aa;
+    border-radius: 50%;
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: 18px;
+    font-weight: 720;
+    transition: background-color .2s ease, border-color .2s ease, opacity .2s ease;
+  }
+  .tree-node.is-active { border-color: var(--blue); background: #e8f2fa; }
+  .tree-node.is-visited { border-color: var(--green); background: var(--green-bg); }
+  .tree-node.is-muted { opacity: .3; }
+  .queue-strip {
+    display: flex;
+    gap: 7px;
+    justify-content: center;
+    margin-top: 10px;
+  }
+  .queue-slot {
+    width: 62px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #8193aa;
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: 17px;
+  }
+  .queue-slot:empty { background: #f1f4f8; }
+
+  .heap-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+    align-items: center;
+  }
+  .heap-array { display: flex; gap: 8px; justify-content: center; }
+  .heap-cell {
+    width: 58px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #8193aa;
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: 18px;
+  }
+
+  #hud {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    height: 54px;
+    display: grid;
+    grid-template-columns: 190px 1fr 168px;
+    align-items: center;
+    padding: 0 25px;
+    border-top: 1px solid #b8c4d2;
+    background: #edf1f5;
+    color: #4a596d;
+  }
+  #hud .course {
+    font-size: 13px;
+    font-weight: 730;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  #section-map {
+    display: flex;
+    justify-content: center;
+    gap: 11px;
+  }
+  #section-map span {
+    padding: 5px 0 4px;
+    border-bottom: 3px solid transparent;
+    font-size: 9.5px;
+    font-weight: 730;
+    letter-spacing: .035em;
+    text-transform: uppercase;
+    opacity: .38;
+  }
+  #section-map span.on {
+    border-bottom-color: var(--active-section-color, var(--navy));
+    color: var(--ink);
+    opacity: 1;
+  }
+  .nav-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .nav-controls button {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .nav-controls button:disabled { opacity: .35; cursor: default; }
+  .nav-controls button:focus-visible { outline: 3px solid #4e8fc1; outline-offset: 2px; }
+  #count {
+    min-width: 62px;
+    text-align: right;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  #slide-number {
+    width: 34px;
+    padding: 2px 3px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  #slide-number:focus-visible {
+    outline: 3px solid #4e8fc1;
+    outline-offset: 2px;
+  }
+  #rotate-note {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    padding: 28px;
+    background: #111827;
+    color: white;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 22px;
+    line-height: 1.4;
+  }
+
+  @media (max-width: 900px) and (orientation: portrait) {
+    #rotate-note { display: flex; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .array-cell, .trace-pointer, .token, .tree-node,
+    .flowchart-svg .fc-edge, .flowchart-svg .fc-node rect,
+    .flowchart-svg .fc-node path { transition-duration: 0s !important; }
+  }
+  @media print {
+    @page { size: 13.333in 7.5in; margin: 0; }
+    html, body {
+      width: auto;
+      height: auto;
+      overflow: visible;
+      background: white;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    #stage {
+      position: relative;
+      left: auto;
+      top: auto;
+      width: auto;
+      height: auto;
+      transform: none !important;
+      box-shadow: none;
+      overflow: visible;
+    }
+    .slide {
+      position: relative;
+      display: block !important;
+      width: 13.333in;
+      height: 7.5in;
+      break-after: page;
+      page-break-after: always;
+    }
+    .slide:last-of-type { break-after: auto; page-break-after: auto; }
+    .fragment { visibility: visible !important; opacity: 1 !important; }
+    .trace-reset { display: none !important; }
+    #hud, #rotate-note { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="rotate-note">Rotate your device to landscape for presentation view.</div>
+<div id="stage">
+
+<!-- 1 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Intro to CS · Lesson 4</div>
+      <h1>How much work does an answer require?</h1>
+    </header>
+    <main class="content centered">
+      <p class="lead">Algorithms, traces, correctness, Big-O, and data structures</p>
+      <div class="question" style="max-width:980px">First make the procedure correct and visible. Then ask how its work grows—and whether a different structure makes the procedure cheaper.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · Motivating question</div>
+      <h2>What must you do to answer five questions about the same data?</h2>
+    </header>
+    <main class="content">
+      <div class="number-strip">
+        <div class="number-box">1200<small>Jan</small></div>
+        <div class="number-box">950<small>Feb</small></div>
+        <div class="number-box">1400<small>Mar</small></div>
+        <div class="number-box">1800<small>Apr</small></div>
+        <div class="number-box">1250<small>May</small></div>
+      </div>
+      <div class="cols-2">
+        <div class="panel"><h3>Summaries</h3><p>What are the maximum, minimum, and average sales?</p></div>
+        <div class="panel"><h3>Organization</h3><p>Where is 1400? What is the descending ranking?</p></div>
+      </div>
+      <div class="takeaway">Answer by eye first. Pay attention to the comparisons and state your brain carries while moving across the values.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · Make the hidden work visible</div>
+      <h2>Your brain already ran several algorithms</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Question</th><th>Repeated action</th><th>State carried forward</th></tr></thead>
+        <tbody>
+          <tr><td>maximum</td><td>compare the next value</td><td>best value seen so far</td></tr>
+          <tr><td>minimum</td><td>compare the next value</td><td>smallest value seen so far</td></tr>
+          <tr><td>average</td><td>add the next value</td><td>running total and count</td></tr>
+          <tr><td>find 1400</td><td>compare each candidate with the target</td><td>current position</td></tr>
+          <tr><td>rank values</td><td>establish relative order</td><td>an ordered result</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">An algorithm spells out the procedure that intuition performs silently.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · Algorithm anatomy</div>
+      <h2>A useful algorithm has a contract and a finite procedure</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel"><h3>Input</h3><p>What data is provided, in what representation, under which preconditions?</p></div>
+        <div class="panel"><h3>Procedure</h3><p>Finite, unambiguous steps that a literal computer can repeat.</p></div>
+        <div class="panel"><h3>Output</h3><p>What result should be returned, and what must be true about it?</p></div>
+      </div>
+      <div class="pseudo-block">Input: a nonempty list of comparable sales values
+Procedure: examine the values while carrying the best seen so far
+Output: one value equal to the maximum input value</div>
+      <div class="takeaway">Correctness comes first: the output must satisfy the contract for every permitted input.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="slide" data-section="scans">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Maximum</div>
+      <h2>Maximum is a scan carrying the best value seen so far</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">def find_max(values):
+    if not values:
+        raise ValueError("empty input")
+
+    best = values[0]
+    for value in values[1:]:
+        if value &gt; best:
+            best = value
+
+    return best</pre>
+        <div class="rule-list">
+          <div class="rule"><b>Initialize</b><span>The first value is best among the first one.</span></div>
+          <div class="rule"><b>Compare</b><span>Ask whether the next value is better.</span></div>
+          <div class="rule"><b>Update</b><span>Replace best only when the comparison succeeds.</span></div>
+          <div class="rule"><b>Return</b><span>After the scan, best summarizes the whole list.</span></div>
+        </div>
+      </div>
+      <div class="takeaway">The carried-state invariant is: <code class="inline">best</code> equals the maximum of the values processed so far.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide" data-section="scans">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Animated trace</div>
+      <h2>Watch the best-so-far state change one comparison at a time</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div class="trace" data-trace-type="array">
+          <div class="trace-toolbar">
+            <div class="trace-status" aria-live="polite" aria-atomic="true"></div>
+            <div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div>
+          </div>
+          <div class="trace-board">
+            <div class="array-strip">
+              <div class="trace-pointer">current</div>
+              <div class="array-cell" data-index="0">12</div>
+              <div class="array-cell" data-index="1">7</div>
+              <div class="array-cell" data-index="2">19</div>
+              <div class="array-cell" data-index="3">4</div>
+              <div class="array-cell" data-index="4">16</div>
+            </div>
+            <div class="trace-variables">
+              <div class="trace-variable" data-var="best"></div>
+              <div class="trace-variable" data-var="comparisons"></div>
+            </div>
+          </div>
+          <script type="application/json" class="trace-data">[
+            {"current":0,"best":0,"processedThrough":0,"vars":{"best":"best = 12","comparisons":"comparisons = 0"},"status":"Initialize best with the first value, 12."},
+            {"current":1,"best":0,"processedThrough":1,"vars":{"best":"best = 12","comparisons":"comparisons = 1"},"status":"7 is not greater than 12, so best stays 12."},
+            {"current":2,"best":2,"processedThrough":2,"vars":{"best":"best = 19","comparisons":"comparisons = 2"},"status":"19 is greater than 12, so best becomes 19."},
+            {"current":3,"best":2,"processedThrough":3,"vars":{"best":"best = 19","comparisons":"comparisons = 3"},"status":"4 is not greater than 19, so best stays 19."},
+            {"current":4,"best":2,"processedThrough":4,"vars":{"best":"best = 19","comparisons":"comparisons = 4"},"status":"16 is not greater than 19, so best stays 19."},
+            {"current":null,"best":2,"processedThrough":4,"vars":{"best":"return 19","comparisons":"4 comparisons"},"status":"All values are processed. Return 19."}
+          ]</script>
+        </div>
+        <table class="trace-transcript compact">
+          <thead><tr><th>Step</th><th>Current</th><th>Best after</th></tr></thead>
+          <tbody>
+            <tr data-step="0"><td>initialize</td><td>12</td><td>12</td></tr>
+            <tr data-step="1"><td>compare</td><td>7</td><td>12</td></tr>
+            <tr data-step="2"><td>compare</td><td>19</td><td>19</td></tr>
+            <tr data-step="3"><td>compare</td><td>4</td><td>19</td></tr>
+            <tr data-step="4"><td>compare</td><td>16</td><td>19</td></tr>
+            <tr data-step="5"><td>return</td><td>—</td><td>19</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide" data-section="scans">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Minimum</div>
+      <h2>Minimum reuses the same pattern with one changed comparison</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block">def find_min(values):
+    if not values:
+        raise ValueError("empty input")
+
+    smallest = values[0]
+    for value in values[1:]:
+        if value &lt; smallest:
+            smallest = value
+
+    return smallest</pre>
+        <div class="panel">
+          <h3>The structure is unchanged</h3>
+          <p>Initialize from a valid value, scan the rest, compare, update, return.</p>
+          <p>Only the update rule changes from <code class="inline">&gt;</code> to <code class="inline">&lt;</code>.</p>
+          <p class="muted">This is algorithm-pattern reuse, not copied intuition.</p>
+        </div>
+      </div>
+      <div class="takeaway">Small changes in the contract often become small changes in one decision rule.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide" data-section="scans">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Average</div>
+      <h2>Average carries two pieces of state, then divides once</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">def average(values):
+    total = 0
+    count = 0
+
+    for value in values:
+        total += value
+        count += 1
+
+    if count == 0:
+        raise ValueError("empty input")
+
+    return total / count</pre>
+        <table class="compact">
+          <thead><tr><th>Value</th><th>Total</th><th>Count</th></tr></thead>
+          <tbody>
+            <tr><td>1200</td><td>1200</td><td>1</td></tr>
+            <tr><td>950</td><td>2150</td><td>2</td></tr>
+            <tr><td>1400</td><td>3550</td><td>3</td></tr>
+            <tr><td>1800</td><td>5350</td><td>4</td></tr>
+            <tr><td>1250</td><td>6600</td><td>5</td></tr>
+            <tr><td><strong>result</strong></td><td colspan="2"><strong>6600 / 5 = 1320</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="takeaway">One loop can maintain several variables; “one pass” does not mean “one piece of state.”</div>
+    </main>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="slide" data-section="scans">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Edge cases</div>
+      <h2>Edge cases belong in the algorithm contract</h2>
+    </header>
+    <main class="content">
+      <div class="question">What should maximum, minimum, and average do on an empty list? What about one value or tied values?</div>
+      <div class="answer fragment">
+        <strong>Empty:</strong> maximum, minimum, and average are undefined unless the contract specifies a default; raising <code class="inline">ValueError</code> is explicit. <strong>One value:</strong> all three summaries equal that value. <strong>Ties:</strong> the value is unambiguous, but returning an index requires a rule such as “first occurrence.”
+      </div>
+      <div class="cols-3">
+        <div class="panel compact"><h3>Empty input</h3><p>Do not let <code class="inline">values[0]</code> or division by zero decide the behavior accidentally.</p></div>
+        <div class="panel compact"><h3>One item</h3><p>The loop may run zero additional comparisons and still return a correct result.</p></div>
+        <div class="panel compact"><h3>Ties</h3><p>Define whether the output is a value, any position, the first position, or every position.</p></div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="slide" data-section="scans">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Python built-ins</div>
+      <h2>Built-ins hide the implementation, not the required work</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block">sales = [1200, 950, 1400, 1800, 1250]
+
+highest = max(sales)
+lowest = min(sales)
+total = sum(sales)
+mean = total / len(sales)</pre>
+        <div class="panel">
+          <h3>Use the built-in in production</h3>
+          <p>It is concise, tested, and often implemented efficiently.</p>
+          <h3 style="margin-top:14px">Keep the mental trace</h3>
+          <p><code class="inline">max</code>, <code class="inline">min</code>, and <code class="inline">sum</code> still need information from every input value.</p>
+        </div>
+      </div>
+      <div class="takeaway">Convenience removes code you must write; it does not make the underlying information requirement disappear.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="slide" data-section="scans">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · One-pass summary</div>
+      <h2>Several summaries can share one scan</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">def summarize(values):
+    if not values:
+        raise ValueError("empty input")
+
+    smallest = largest = values[0]
+    total = 0
+
+    for value in values:
+        total += value
+        if value &lt; smallest:
+            smallest = value
+        if value &gt; largest:
+            largest = value
+
+    return {
+        "min": smallest,
+        "max": largest,
+        "average": total / len(values),
+    }</pre>
+        <div class="panel">
+          <h3>One traversal, multiple updates</h3>
+          <p>Every value is read once. The loop body updates three independent summaries.</p>
+          <p class="muted">This may reduce passes over slow streams or large data, though the built-ins are often clearer for ordinary code.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="slide" data-section="sorting">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Python sorting</div>
+      <h2><code>sorted()</code> returns a new list and preserves the input</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block">revenues = [25000, 18000, 31000, 22000]
+
+ascending = sorted(revenues)
+descending = sorted(
+    revenues,
+    reverse=True,
+)
+
+print(revenues)
+print(ascending)
+print(descending)</pre>
+        <pre class="output-block">[25000, 18000, 31000, 22000]
+[18000, 22000, 25000, 31000]
+[31000, 25000, 22000, 18000]</pre>
+      </div>
+      <div class="takeaway"><code class="inline">sorted</code> accepts any iterable, builds a new list, and leaves the original object unchanged.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 13 -->
+<section class="slide" data-section="sorting">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Mutation contract</div>
+      <h2><code>list.sort()</code> changes the list and returns <code>None</code></h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel good">
+          <h3>Mutate deliberately</h3>
+          <pre class="code-block">revenues.sort()
+print(revenues)</pre>
+          <pre class="output-block">[18000, 22000, 25000, 31000]</pre>
+        </div>
+        <div class="panel warning">
+          <h3>Common mistake</h3>
+          <pre class="code-block">result = revenues.sort()
+print(result)</pre>
+          <pre class="output-block">None</pre>
+        </div>
+      </div>
+      <div class="takeaway">Choose <code class="inline">sorted</code> when the original order matters; choose <code class="inline">list.sort</code> when in-place mutation is intentional.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 14 -->
+<section class="slide" data-section="sorting">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Sort records</div>
+      <h2>The <code>key</code> function defines what “comes first” means</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">companies = [
+    {"name": "A", "revenue": 25000},
+    {"name": "B", "revenue": 18000},
+    {"name": "C", "revenue": 31000},
+]
+
+ranked = sorted(
+    companies,
+    key=lambda company: company["revenue"],
+    reverse=True,
+)</pre>
+        <div class="panel">
+          <h3>Read the lambda aloud</h3>
+          <p>“Given one company record, return the revenue used for comparison.”</p>
+          <p>The key function is evaluated once per input record by Python's sorting machinery.</p>
+        </div>
+      </div>
+      <div class="takeaway">The algorithm orders records by comparison keys while returning the original records.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 15 -->
+<section class="slide" data-section="sorting">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Ties and stability</div>
+      <h2>Stable sorting preserves the prior order of equal keys</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block">orders = [
+    {"id": "T1", "region": "West", "amount": 50},
+    {"id": "T2", "region": "East", "amount": 50},
+    {"id": "T3", "region": "West", "amount": 30},
+]
+
+ranked = sorted(
+    orders,
+    key=lambda row: (-row["amount"], row["region"]),
+)</pre>
+        <div class="panel">
+          <h3>Two useful rules</h3>
+          <p>A tuple key compares the first field, then uses later fields to break ties.</p>
+          <p>If the keys are equal, Python's stable sort preserves the records' original relative order.</p>
+        </div>
+      </div>
+      <div class="takeaway">Stability lets earlier ordering decisions remain meaningful after a later sort.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 16 -->
+<section class="slide" data-section="sorting">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Ranking</div>
+      <h2>A leaderboard is a sort followed by a slice</h2>
+    </header>
+    <main class="content centered">
+      <div class="flow" style="width:92%">
+        <div class="flow-node"><b>Records</b><span>customers, products, companies</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Key</b><span>revenue, score, margin</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Sort</b><span>largest first</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Slice</b><span>take the first k</span></div>
+      </div>
+      <pre class="code-block" style="width:82%">top_three = sorted(
+    companies,
+    key=lambda company: company["revenue"],
+    reverse=True,
+)[:3]</pre>
+      <p class="lead">Later, a heap will avoid fully ordering the data when only a small top-k is required.</p>
+    </main>
+  </div>
+</section>
+
+<!-- 17 -->
+<section class="slide" data-section="sorting">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Look inside sorting</div>
+      <h2>How could a computer order values without calling <code>sorted()</code>?</h2>
+    </header>
+    <main class="content">
+      <div class="number-strip">
+        <div class="number-box">5</div>
+        <div class="number-box">3</div>
+        <div class="number-box">8</div>
+        <div class="number-box">1</div>
+      </div>
+      <div class="question">Describe a procedure that always produces ascending order. It can be slow; it must be precise.</div>
+      <div class="answer fragment">One simple plan: find the smallest remaining value, place it in the next output position, then repeat on the unsorted remainder.</div>
+      <div class="takeaway">A simple correct algorithm is the best starting point for tracing and comparison.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 18 -->
+<section class="slide" data-section="sorting">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Selection sort</div>
+      <h2>Selection sort repeatedly chooses the smallest remaining value</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="pseudo-block">for each output position:
+    treat that position as the current minimum
+    scan every later position
+    remember the smallest position found
+    swap it into the output position</pre>
+        <div class="panel warning">
+          <h3>Teaching algorithm</h3>
+          <p>Selection sort makes repeated searching and swapping visible.</p>
+          <p>It is not Python's internal sorting algorithm and is rarely the production choice.</p>
+        </div>
+      </div>
+      <div class="number-strip">
+        <div class="number-box">1<small>sorted</small></div>
+        <div class="number-box">3<small>next minimum</small></div>
+        <div class="number-box">8<small>unsorted</small></div>
+        <div class="number-box">5<small>unsorted</small></div>
+      </div>
+      <div class="takeaway">The sorted prefix grows by one position after each pass.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 19 -->
+<section class="slide" data-section="sorting">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Animated selection sort</div>
+      <h2>The scan shrinks, but the comparisons accumulate</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div class="trace" data-trace-type="array">
+          <div class="trace-toolbar">
+            <div class="trace-status" aria-live="polite" aria-atomic="true"></div>
+            <div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div>
+          </div>
+          <div class="trace-board">
+            <div class="array-strip">
+              <div class="trace-pointer">scan</div>
+              <div class="array-cell" data-index="0">5</div>
+              <div class="array-cell" data-index="1">3</div>
+              <div class="array-cell" data-index="2">8</div>
+              <div class="array-cell" data-index="3">1</div>
+            </div>
+            <div class="trace-variables">
+              <div class="trace-variable" data-var="minimum"></div>
+              <div class="trace-variable" data-var="comparisons"></div>
+            </div>
+          </div>
+          <script type="application/json" class="trace-data">[
+            {"values":[5,3,8,1],"current":0,"min":0,"sortedUntil":0,"vars":{"minimum":"minimum = 5","comparisons":"comparisons = 0"},"status":"Pass 1 starts. Position 0 is the temporary minimum."},
+            {"values":[5,3,8,1],"current":1,"min":1,"sortedUntil":0,"vars":{"minimum":"minimum = 3","comparisons":"comparisons = 1"},"status":"3 is smaller than 5, so remember position 1."},
+            {"values":[5,3,8,1],"current":2,"min":1,"sortedUntil":0,"vars":{"minimum":"minimum = 3","comparisons":"comparisons = 2"},"status":"8 is not smaller than 3."},
+            {"values":[5,3,8,1],"current":3,"min":3,"sortedUntil":0,"vars":{"minimum":"minimum = 1","comparisons":"comparisons = 3"},"status":"1 is smaller than 3, so remember position 3."},
+            {"values":[1,3,8,5],"current":null,"min":null,"sortedUntil":1,"vars":{"minimum":"swap 5 and 1","comparisons":"comparisons = 3"},"status":"Swap the minimum into position 0. The sorted prefix now has one value."},
+            {"values":[1,3,8,5],"current":2,"min":1,"sortedUntil":1,"vars":{"minimum":"minimum = 3","comparisons":"comparisons = 4"},"status":"Pass 2: compare 8 with the temporary minimum 3."},
+            {"values":[1,3,8,5],"current":3,"min":1,"sortedUntil":1,"vars":{"minimum":"minimum = 3","comparisons":"comparisons = 5"},"status":"5 is not smaller than 3."},
+            {"values":[1,3,8,5],"current":null,"min":null,"sortedUntil":2,"vars":{"minimum":"3 already placed","comparisons":"comparisons = 5"},"status":"Position 1 is already correct. The sorted prefix grows."},
+            {"values":[1,3,8,5],"current":3,"min":3,"sortedUntil":2,"vars":{"minimum":"minimum = 5","comparisons":"comparisons = 6"},"status":"Pass 3: 5 is smaller than 8."},
+            {"values":[1,3,5,8],"current":null,"min":null,"sortedUntil":4,"vars":{"minimum":"sorted","comparisons":"6 comparisons"},"status":"Swap 5 and 8. The array is sorted."}
+          ]</script>
+        </div>
+        <table class="trace-transcript compact">
+          <thead><tr><th>Completed pass</th><th>Array</th><th>Total comparisons</th></tr></thead>
+          <tbody>
+            <tr data-step="0"><td>start</td><td>5, 3, 8, 1</td><td>0</td></tr>
+            <tr data-step="4"><td>pass 1</td><td>1, 3, 8, 5</td><td>3</td></tr>
+            <tr data-step="7"><td>pass 2</td><td>1, 3, 8, 5</td><td>5</td></tr>
+            <tr data-step="9"><td>pass 3</td><td>1, 3, 5, 8</td><td>6</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 20 -->
+<section class="slide" data-section="sorting">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Insertion sort</div>
+      <h2>Insertion sort grows a sorted prefix by inserting the next value</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 align-center">
+        <div>
+          <div class="number-strip" style="gap:8px">
+            <div class="number-box" style="min-width:82px">1<small>sorted</small></div>
+            <div class="number-box" style="min-width:82px">3<small>sorted</small></div>
+            <div class="number-box" style="min-width:82px">5<small>sorted</small></div>
+            <div class="number-box" style="min-width:82px">2<small>insert</small></div>
+          </div>
+          <p class="small muted" style="margin-top:16px;text-align:center">Shift 5 and 3 right, then place 2 after 1.</p>
+        </div>
+        <div class="panel">
+          <h3>Why it is useful</h3>
+          <p>Small or nearly sorted inputs require little shifting.</p>
+          <p>Reverse-ordered inputs require many shifts.</p>
+          <p class="muted">Like sorting cards in your hand, it maintains a correct sorted prefix after every insertion.</p>
+        </div>
+      </div>
+      <div class="takeaway">Different sorting procedures can produce the same order while performing very different amounts of work on the same input.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 21 -->
+<section class="slide" data-section="sorting">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Merge sort idea</div>
+      <h2>Divide the problem, then merge two ordered halves</h2>
+    </header>
+    <main class="content">
+      <div class="flow" style="align-items:center">
+        <div class="flow-node"><b>Start</b><span class="mono">8, 3, 6, 2, 7, 1, 5, 4</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Split</b><span class="mono">8, 3, 6, 2<br>7, 1, 5, 4</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Sort smaller pieces</b><span class="mono">2, 3, 6, 8<br>1, 4, 5, 7</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Merge</b><span class="mono">1, 2, 3, 4, 5, 6, 7, 8</span></div>
+      </div>
+      <div class="cols-2">
+        <div class="panel">
+          <h3>During a merge</h3>
+          <p>Compare only the first unmerged value from each half. Move the smaller value into the result.</p>
+        </div>
+        <div class="panel">
+          <h3>Why this changes the work</h3>
+          <p>Every level touches all values, but splitting creates only a small number of levels.</p>
+        </div>
+      </div>
+      <div class="takeaway">Selection sort repeatedly scans what remains. Merge sort creates useful order and reuses it.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 22 -->
+<section class="slide" data-section="sorting">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Count first, name later</div>
+      <h2>What happens when the input doubles?</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Procedure shape</th><th>8 values</th><th>16 values</th><th>32 values</th><th>Doubling pattern</th></tr></thead>
+        <tbody>
+          <tr><td>One direct access</td><td>1</td><td>1</td><td>1</td><td>unchanged</td></tr>
+          <tr><td>Repeated halving</td><td>3</td><td>4</td><td>5</td><td>about +1 step</td></tr>
+          <tr><td>One full scan</td><td>8</td><td>16</td><td>32</td><td>×2</td></tr>
+          <tr><td>Divide, then merge</td><td>24</td><td>64</td><td>160</td><td>a little more than ×2</td></tr>
+          <tr><td>Repeated minimum search</td><td>28</td><td>120</td><td>496</td><td>about ×4</td></tr>
+        </tbody>
+      </table>
+      <div class="question">Do not memorize the numbers. Explain why each row grows in that shape.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 23 -->
+<section class="slide" data-section="sorting">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Production sorting</div>
+      <h2>Use Python’s sort; study simple sorts to learn the ideas</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel"><h3>Adaptive</h3><p>Python’s Timsort exploits ordered runs already present in the data.</p></div>
+        <div class="panel"><h3>Stable</h3><p>Equal-key records keep their relative order.</p></div>
+        <div class="panel"><h3>Efficient</h3><p>Worst-case work grows like an efficient comparison sort; ordered inputs can be cheaper.</p></div>
+      </div>
+      <pre class="code-block">ranked = sorted(records, key=lambda row: row[<span class="string">"score"</span>], reverse=<span class="keyword">True</span>)</pre>
+      <div class="takeaway">In normal programs, prefer <code class="inline">sorted()</code> or <code class="inline">list.sort()</code>. Implement a simple sort when the learning goal is to understand the procedure.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 24 -->
+<section class="slide" data-section="search">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Search</div>
+      <h2>Where is customer 309?</h2>
+    </header>
+    <main class="content centered">
+      <div class="number-strip">
+        <div class="number-box">105<small>index 0</small></div>
+        <div class="number-box">207<small>index 1</small></div>
+        <div class="number-box">114<small>index 2</small></div>
+        <div class="number-box">309<small>index 3</small></div>
+        <div class="number-box">411<small>index 4</small></div>
+      </div>
+      <div class="question" style="max-width:920px">What can you safely skip? What if the target is absent?</div>
+      <p class="lead">With no useful order, the general solution is to check candidates one by one.</p>
+    </main>
+  </div>
+</section>
+
+<!-- 25 -->
+<section class="slide" data-section="search">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Linear search</div>
+      <h2>Check candidates in sequence and stop on a match</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="keyword">def</span> linear_search(values, target):
+    <span class="keyword">for</span> index, value <span class="keyword">in</span> enumerate(values):
+        <span class="keyword">if</span> value == target:
+            <span class="keyword">return</span> index
+    <span class="keyword">return</span> <span class="keyword">None</span></pre>
+        <div class="panel">
+          <h3>Contract</h3>
+          <p><b>Input:</b> values and a target</p>
+          <p><b>Output:</b> first matching index, otherwise <code class="inline">None</code></p>
+          <p><b>Precondition:</b> none about ordering</p>
+        </div>
+      </div>
+      <div class="takeaway">An early return improves inputs with an early match, but it cannot help an absent target.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 26 -->
+<section class="slide" data-section="search">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Linear search trace</div>
+      <h2>Advance one comparison at a time</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div class="trace" data-trace-type="array">
+          <div class="trace-toolbar"><div class="trace-status" aria-live="polite"></div><div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div></div>
+          <div class="trace-board">
+            <div class="array-strip">
+              <div class="trace-pointer">check</div>
+              <div class="array-cell" data-index="0">105</div><div class="array-cell" data-index="1">207</div><div class="array-cell" data-index="2">114</div><div class="array-cell" data-index="3">309</div><div class="array-cell" data-index="4">411</div>
+            </div>
+            <div class="trace-variables"><div class="trace-variable" data-var="target"></div><div class="trace-variable" data-var="checks"></div></div>
+          </div>
+          <script type="application/json" class="trace-data">[
+            {"current":0,"processedThrough":-1,"vars":{"target":"target = 309","checks":"checks = 0"},"status":"Start at index 0."},
+            {"current":0,"processedThrough":0,"vars":{"target":"105 != 309","checks":"checks = 1"},"status":"105 is not the target. Continue."},
+            {"current":1,"processedThrough":1,"vars":{"target":"207 != 309","checks":"checks = 2"},"status":"207 is not the target. Continue."},
+            {"current":2,"processedThrough":2,"vars":{"target":"114 != 309","checks":"checks = 3"},"status":"114 is not the target. Continue."},
+            {"current":3,"processedThrough":3,"found":3,"vars":{"target":"309 == 309","checks":"checks = 4"},"status":"Match. Return index 3 immediately."}
+          ]</script>
+        </div>
+        <table class="trace-transcript compact">
+          <thead><tr><th>Index</th><th>Comparison</th><th>Result</th></tr></thead>
+          <tbody><tr data-step="1"><td>0</td><td>105 == 309</td><td>false</td></tr><tr data-step="2"><td>1</td><td>207 == 309</td><td>false</td></tr><tr data-step="3"><td>2</td><td>114 == 309</td><td>false</td></tr><tr data-step="4"><td>3</td><td>309 == 309</td><td>return 3</td></tr></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 27 -->
+<section class="slide" data-section="search">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Search cases</div>
+      <h2>The same algorithm can perform different work on different inputs</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel good"><h3>First item</h3><p class="big-claim" style="font-size:38px">1 check</p><p>Best case</p></div>
+        <div class="panel"><h3>Last item</h3><p class="big-claim" style="font-size:38px">n checks</p><p>Worst case</p></div>
+        <div class="panel warning"><h3>Absent</h3><p class="big-claim" style="font-size:38px">n checks</p><p>Worst case</p></div>
+      </div>
+      <div class="question">When we later classify an algorithm, we must say which case we mean.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 28 -->
+<section class="slide" data-section="search">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Binary search</div>
+      <h2>Ordered data lets one comparison discard half the candidates</h2>
+    </header>
+    <main class="content">
+      <div class="number-strip" style="gap:7px">
+        <div class="number-box" style="min-width:92px">105</div><div class="number-box" style="min-width:92px">114</div><div class="number-box" style="min-width:92px">207</div><div class="number-box" style="min-width:92px">309</div><div class="number-box" style="min-width:92px">411</div><div class="number-box" style="min-width:92px">520</div><div class="number-box" style="min-width:92px">640</div><div class="number-box" style="min-width:92px">710</div><div class="number-box" style="min-width:92px">820</div>
+      </div>
+      <div class="cols-3">
+        <div class="panel"><h3>Required</h3><p>Random-access sequence sorted by the same key and comparison rule.</p></div>
+        <div class="panel"><h3>Maintained</h3><p>A candidate interval that could still contain the target.</p></div>
+        <div class="panel"><h3>Repeated</h3><p>Compare the middle, then keep only the possible half.</p></div>
+      </div>
+      <div class="takeaway">If the data changes, the ordering precondition must still be true.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 29 -->
+<section class="slide" data-section="search">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Binary search trace</div>
+      <h2>Every comparison preserves a smaller candidate interval</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="array">
+        <div class="trace-toolbar"><div class="trace-status" aria-live="polite"></div><div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div></div>
+        <div class="trace-board">
+          <div class="array-strip">
+            <div class="trace-pointer">middle</div>
+            <div class="array-cell" data-index="0">105</div><div class="array-cell" data-index="1">114</div><div class="array-cell" data-index="2">207</div><div class="array-cell" data-index="3">309</div><div class="array-cell" data-index="4">411</div><div class="array-cell" data-index="5">520</div><div class="array-cell" data-index="6">640</div><div class="array-cell" data-index="7">710</div><div class="array-cell" data-index="8">820</div>
+          </div>
+          <div class="trace-variables"><div class="trace-variable" data-var="range"></div><div class="trace-variable" data-var="checks"></div></div>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"current":null,"range":[0,8],"vars":{"range":"range = [0, 8]","checks":"checks = 0"},"status":"Target = 710. All indices are still possible."},
+          {"current":4,"range":[0,8],"vars":{"range":"411 < 710","checks":"checks = 1"},"status":"The middle is too small. Discard indices 0 through 4."},
+          {"current":6,"range":[5,8],"vars":{"range":"640 < 710","checks":"checks = 2"},"status":"The new middle is too small. Discard indices 5 and 6."},
+          {"current":7,"range":[7,8],"found":7,"vars":{"range":"710 == 710","checks":"checks = 3"},"status":"Match. Return index 7."}
+        ]</script>
+      </div>
+      <div class="takeaway">Invariant: if the target exists, it remains inside the candidate interval.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 30 -->
+<section class="slide" data-section="search">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Python implementation</div>
+      <h2><code class="inline">bisect_left</code> finds a boundary—not membership by itself</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="keyword">from</span> bisect <span class="keyword">import</span> bisect_left
+
+ids = [105, 114, 207, 309, 411]
+target = 309
+
+pos = bisect_left(ids, target)
+found = pos &lt; len(ids) <span class="keyword">and</span> ids[pos] == target</pre>
+        <div class="panel">
+          <h3>Interpret the result</h3>
+          <p><code class="inline">pos</code> is where the target could be inserted while preserving order.</p>
+          <p>Check both the boundary and equality to confirm membership.</p>
+        </div>
+      </div>
+      <div class="takeaway"><code class="inline">insort</code> finds a position quickly, but inserting into a Python list still shifts later elements.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 31 -->
+<section class="slide" data-section="search">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Preconditions</div>
+      <h2>Binary search on unsorted data has no correctness guarantee</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 align-center">
+        <div>
+          <div class="number-strip" style="gap:8px"><div class="number-box" style="min-width:90px">8</div><div class="number-box" style="min-width:90px">2</div><div class="number-box" style="min-width:90px">6</div><div class="number-box" style="min-width:90px">1</div><div class="number-box" style="min-width:90px">7</div></div>
+          <p class="small muted" style="margin-top:18px;text-align:center">Search for 8. Middle value = 6.</p>
+        </div>
+        <div class="panel warning">
+          <h3>The invalid inference</h3>
+          <p>“8 is larger than 6, so discard the left half.”</p>
+          <p>But 8 is in that discarded half.</p>
+          <p class="muted">An unsorted search may occasionally succeed by luck; it is not a correct general algorithm.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 32 -->
+<section class="slide" data-section="search">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Strategy comparison</div>
+      <h2>Faster queries usually require preparation or memory</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Representation</th><th>Preparation</th><th>One lookup</th><th>Useful when</th></tr></thead>
+        <tbody>
+          <tr><td>Unsorted list</td><td>none</td><td>scan candidates</td><td>few searches; preserve input order</td></tr>
+          <tr><td>Sorted list</td><td>sort and maintain order</td><td>repeatedly halve</td><td>many searches; range queries</td></tr>
+          <tr><td>Dictionary / set</td><td>build a hash table; use memory</td><td>direct key lookup, typically</td><td>many exact-key searches</td></tr>
+        </tbody>
+      </table>
+      <div class="question">The best algorithm depends on the entire workload—not only one query.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 33 -->
+<section class="slide" data-section="search">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Preparation trade-off</div>
+      <h2>Ask how often the operation will be repeated</h2>
+    </header>
+    <main class="content centered">
+      <div class="flow" style="width:100%">
+        <div class="flow-node"><b>One exact search</b><span>Scan the current list.</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Many ordered searches</b><span>Sort once, then use binary search.</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Many exact-key searches</b><span>Build a dictionary or set.</span></div>
+      </div>
+      <p class="lead">Preparation pays only when later work reuses it—or when the prepared representation is needed for another reason.</p>
+    </main>
+  </div>
+</section>
+
+<!-- 34 -->
+<section class="slide" data-section="writing">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Writing algorithms</div>
+      <h2>A reliable workflow turns a vague question into testable steps</h2>
+    </header>
+    <main class="content">
+      <div class="flow">
+        <div class="flow-node"><b>1 · Contract</b><span>input, output, edge cases</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>2 · Plain steps</b><span>solve one small example</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>3 · Draw</b><span>decisions and repetition</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>4 · Trace</b><span>state after each step</span></div>
+      </div>
+      <div class="flow">
+        <div class="flow-node"><b>5 · Code</b><span>translate the verified logic</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>6 · Test</b><span>normal and boundary cases</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>7 · Analyze</b><span>time and memory growth</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>8 · Improve</b><span>change procedure or structure</span></div>
+      </div>
+      <div class="takeaway">Do not optimize a procedure whose contract or correctness is still unclear.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 35 -->
+<section class="slide" data-section="writing">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Flowchart vocabulary</div>
+      <h2>Five symbols express most beginner algorithms</h2>
+    </header>
+    <main class="content">
+      <div class="cols-4" style="grid-template-columns:repeat(5,minmax(0,1fr))">
+        <div class="panel compact" style="text-align:center"><svg viewBox="0 0 150 90" width="130" height="82" aria-hidden="true"><rect x="15" y="23" width="120" height="44" rx="22" fill="#fff" stroke="#1e5a89" stroke-width="3"/></svg><h3>Start / End</h3></div>
+        <div class="panel compact" style="text-align:center"><svg viewBox="0 0 150 90" width="130" height="82" aria-hidden="true"><path d="M30 20h105l-15 50H15z" fill="#fff" stroke="#1e5a89" stroke-width="3"/></svg><h3>Input / Output</h3></div>
+        <div class="panel compact" style="text-align:center"><svg viewBox="0 0 150 90" width="130" height="82" aria-hidden="true"><rect x="15" y="20" width="120" height="50" fill="#fff" stroke="#1e5a89" stroke-width="3"/></svg><h3>Process</h3></div>
+        <div class="panel compact" style="text-align:center"><svg viewBox="0 0 150 90" width="130" height="82" aria-hidden="true"><path d="M75 10l60 35-60 35-60-35z" fill="#fff" stroke="#1e5a89" stroke-width="3"/></svg><h3>Decision</h3></div>
+        <div class="panel compact" style="text-align:center"><svg viewBox="0 0 150 90" width="130" height="82" aria-hidden="true"><path d="M20 45h95" stroke="#1e5a89" stroke-width="4"/><path d="M105 34l20 11-20 11z" fill="#1e5a89"/></svg><h3>Arrow</h3></div>
+      </div>
+      <div class="takeaway">A flowchart should expose control flow: sequence, decisions, and repetition. It is not decoration.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 36 -->
+<section class="slide" data-section="writing">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Animated flowchart</div>
+      <h2>Trace control flow and data state together</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div class="trace" data-trace-type="flow">
+          <div class="trace-toolbar"><div class="trace-status" aria-live="polite"></div><div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div></div>
+          <div class="flowchart-wrap">
+            <svg class="flowchart-svg" viewBox="0 0 680 360" role="img" aria-label="Maximum scan flowchart">
+              <defs><marker id="arrow-max" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0l10 5-10 5z" fill="#94a3b8"/></marker></defs>
+              <path class="fc-edge" data-edge="start-init" d="M130 75v45" marker-end="url(#arrow-max)"/>
+              <path class="fc-edge" data-edge="init-more" d="M130 168v38" marker-end="url(#arrow-max)"/>
+              <path class="fc-edge" data-edge="more-compare" d="M218 245h72" marker-end="url(#arrow-max)"/>
+              <path class="fc-edge" data-edge="compare-update" d="M390 210v-45" marker-end="url(#arrow-max)"/>
+              <path class="fc-edge" data-edge="update-more" d="M470 140h85v105H220" marker-end="url(#arrow-max)"/>
+              <path class="fc-edge" data-edge="compare-more" d="M490 245h65v0H220" marker-end="url(#arrow-max)"/>
+              <path class="fc-edge" data-edge="more-output" d="M130 284v31h300" marker-end="url(#arrow-max)"/>
+              <g class="fc-node" data-node="start"><rect x="70" y="28" width="120" height="47" rx="24"/><text x="130" y="52">Start</text></g>
+              <g class="fc-node" data-node="init"><rect x="35" y="120" width="190" height="48"/><text x="130" y="144">best = first value</text></g>
+              <g class="fc-node" data-node="more"><path d="M130 206l90 39-90 39-90-39z"/><text x="130" y="245">more values?</text></g>
+              <g class="fc-node" data-node="compare"><path d="M390 206l100 39-100 39-100-39z"/><text x="390" y="245">value &gt; best?</text></g>
+              <g class="fc-node" data-node="update"><rect x="310" y="116" width="160" height="49"/><text x="390" y="141">best = value</text></g>
+              <g class="fc-node" data-node="output"><path d="M445 292h155l-15 47H430z"/><text x="515" y="316">output best</text></g>
+            </svg>
+          </div>
+          <script type="application/json" class="trace-data">[
+            {"activeNode":"start","status":"Begin with a nonempty list: [12, 7, 19]."},
+            {"activeEdge":"start-init","activeNode":"init","status":"Initialize best = 12."},
+            {"activeEdge":"init-more","activeNode":"more","status":"A next value exists: 7."},
+            {"activeEdge":"more-compare","activeNode":"compare","status":"7 > 12 is false. Keep best = 12."},
+            {"activeEdge":"compare-more","activeNode":"more","status":"A next value exists: 19."},
+            {"activeEdge":"more-compare","activeNode":"compare","status":"19 > 12 is true."},
+            {"activeEdge":"compare-update","activeNode":"update","status":"Update best = 19."},
+            {"activeEdge":"update-more","activeNode":"more","status":"No values remain."},
+            {"activeEdge":"more-output","activeNode":"output","status":"Output 19."}
+          ]</script>
+        </div>
+        <div class="panel">
+          <h3>The invariant</h3>
+          <p>Before every “more values?” decision, <code class="inline">best</code> is the maximum among all values processed so far.</p>
+          <p class="muted">Each branch preserves that statement, so it is true when the loop ends.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 37 -->
+<section class="slide" data-section="writing">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Translate representations</div>
+      <h2>Flowchart, pseudocode, and Python should describe the same logic</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div><div class="code-title">Flowchart idea</div><div class="pseudo-block">Initialize best
+For each remaining value:
+  Is value larger?
+  Yes → update best
+Output best</div></div>
+        <div><div class="code-title">Pseudocode</div><div class="pseudo-block">best ← first value
+FOR value in remaining:
+    IF value &gt; best:
+        best ← value
+RETURN best</div></div>
+        <div><div class="code-title">Python</div><pre class="code-block">best = values[0]
+<span class="keyword">for</span> value <span class="keyword">in</span> values[1:]:
+    <span class="keyword">if</span> value &gt; best:
+        best = value
+<span class="keyword">return</span> best</pre></div>
+      </div>
+      <div class="takeaway">If the representations disagree, stop and repair the logic before testing random examples.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 38 -->
+<section class="slide" data-section="writing">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Binary-search flow</div>
+      <h2>Each branch must shrink the candidate interval</h2>
+    </header>
+    <main class="content">
+      <div class="flowchart-wrap" style="min-height:390px">
+        <svg class="flowchart-svg" viewBox="0 0 1100 390" style="height:390px" role="img" aria-label="Binary search flowchart">
+          <defs><marker id="arrow-binary" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0l10 5-10 5z" fill="#94a3b8"/></marker></defs>
+          <g stroke="#94a3b8" stroke-width="2" fill="none" marker-end="url(#arrow-binary)"><path d="M145 78v50"/><path d="M145 180v50"/><path d="M245 270h105"/><path d="M550 270h95"/><path d="M450 230v-65h-120"/><path d="M745 230v-65h-415"/><path d="M145 310v40h805"/></g>
+          <g class="fc-node"><rect x="85" y="28" width="120" height="50" rx="25"/><text x="145" y="53">Start</text></g>
+          <g class="fc-node"><rect x="35" y="128" width="220" height="52"/><text x="145" y="154">low = 0; high = n − 1</text></g>
+          <g class="fc-node"><path d="M145 230l100 40-100 40-100-40z"/><text x="145" y="270">low ≤ high?</text></g>
+          <g class="fc-node"><path d="M450 230l100 40-100 40-100-40z"/><text x="450" y="270">target vs middle</text></g>
+          <g class="fc-node"><rect x="350" y="113" width="200" height="52"/><text x="450" y="139">high = middle − 1</text></g>
+          <g class="fc-node"><rect x="645" y="113" width="200" height="52"/><text x="745" y="139">low = middle + 1</text></g>
+          <g class="fc-node"><path d="M950 230l100 40-100 40-100-40z"/><text x="950" y="270">equal?</text></g>
+          <g class="fc-node"><path d="M940 338h130l-15 45H925z"/><text x="997" y="361">found / absent</text></g>
+          <text x="272" y="255" font-size="14" fill="#536178">yes</text><text x="150" y="334" font-size="14" fill="#536178">no</text><text x="568" y="255" font-size="14" fill="#536178">compare</text>
+        </svg>
+      </div>
+      <div class="takeaway">Closed interval <code class="inline">[low, high]</code> uses <code class="inline">while low &lt;= high</code>. Mixing interval conventions creates off-by-one bugs.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 39 -->
+<section class="slide" data-section="writing">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Checkpoint</div>
+      <h2>Complete the missing decision before writing code</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 align-center">
+        <div class="flow" style="flex-direction:column;align-items:center">
+          <div class="flow-node" style="width:330px"><b>Input</b><span>one list of values</span></div><div class="flow-arrow">↓</div>
+          <div class="flow-node" style="width:330px"><b>Initialize</b><span>smallest = first value</span></div><div class="flow-arrow">↓</div>
+          <div class="flow-node" style="width:330px;border:3px dashed var(--purple)"><b>Missing decision</b><span>What comparison belongs here?</span></div>
+        </div>
+        <div>
+          <div class="question">Write the decision and the update branch for a minimum scan.</div>
+          <div class="answer fragment" style="margin-top:18px"><b>Decision:</b> Is <code class="inline">value &lt; smallest</code>?<br><b>Yes branch:</b> Set <code class="inline">smallest = value</code>.<br><b>No branch:</b> Keep the current smallest.</div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 40 -->
+<section class="slide" data-section="growth">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Why Big-O?</div>
+      <h2>Small examples can hide procedures that fail at scale</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Input size</th><th>One full scan</th><th>Compare every pair</th><th>Pairwise / scan</th></tr></thead>
+        <tbody>
+          <tr><td>10</td><td>10</td><td>100</td><td>10×</td></tr>
+          <tr><td>1,000</td><td>1,000</td><td>1,000,000</td><td>1,000×</td></tr>
+          <tr><td>1,000,000</td><td>1,000,000</td><td>1,000,000,000,000</td><td>1,000,000×</td></tr>
+        </tbody>
+      </table>
+      <p class="big-claim" style="font-size:34px">Big-O gives a machine-independent language for how resource use grows as the input grows.</p>
+      <div class="takeaway">It predicts scalability; it does not directly predict seconds.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 41 -->
+<section class="slide" data-section="growth">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Define the measurement</div>
+      <h2>First define <em>n</em> and the basic operation being counted</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel"><h3>Input size, n</h3><p>Number of sales, rows, nodes, tokens, or another meaningful dimension.</p></div>
+        <div class="panel"><h3>Basic operation</h3><p>A comparison, lookup, update, or other repeated unit of work.</p></div>
+        <div class="panel"><h3>Cost function, T(n)</h3><p>How many basic operations the algorithm performs for inputs of size n.</p></div>
+      </div>
+      <div class="question">For binary search, n is the number of candidates and a useful operation is one comparison with the middle value.</div>
+      <div class="takeaway">If two independent inputs grow, keep both variables: for example, n orders and m customers.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 42 -->
+<section class="slide" data-section="growth">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Cases</div>
+      <h2>Best, average, and worst case are different cost functions</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel good"><h3>Best case</h3><p>Linear search finds the target first.</p><p class="mono strong">T_best(n) = 1</p></div>
+        <div class="panel"><h3>Average case</h3><p>Requires assumptions about target position and presence.</p><p class="mono strong">T_avg(n) ≈ n / 2</p></div>
+        <div class="panel warning"><h3>Worst case</h3><p>The target is last or absent.</p><p class="mono strong">T_worst(n) = n</p></div>
+      </div>
+      <div class="takeaway">Big-O itself does not mean “worst case.” State the case, then state a bound.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 43 -->
+<section class="slide" data-section="growth">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Growth shapes</div>
+      <h2>Five patterns cover many everyday algorithms</h2>
+    </header>
+    <main class="content">
+      <svg viewBox="0 0 1000 390" width="100%" height="390" role="img" aria-label="Growth-rate curves">
+        <g stroke="#b8c4d2" stroke-width="1"><path d="M90 330H930"/><path d="M90 260H930"/><path d="M90 190H930"/><path d="M90 120H930"/><path d="M90 50H930"/><path d="M90 30V330"/></g>
+        <g fill="#536178" font-size="15"><text x="925" y="355">input size n</text><text x="25" y="48" transform="rotate(-90 25 48)">work</text></g>
+        <path d="M90 302H900" fill="none" stroke="var(--c-o1)" stroke-width="5"/><text x="835" y="292" fill="var(--c-o1)" font-size="18" font-weight="700">Θ(1)</text>
+        <path d="M90 315C250 280 500 252 900 232" fill="none" stroke="var(--c-olog)" stroke-width="5"/><text x="790" y="222" fill="var(--c-olog)" font-size="18" font-weight="700">Θ(log n)</text>
+        <path d="M90 325L900 155" fill="none" stroke="var(--c-on)" stroke-width="5"/><text x="830" y="145" fill="var(--c-on)" font-size="18" font-weight="700">Θ(n)</text>
+        <path d="M90 330C320 315 590 250 900 85" fill="none" stroke="var(--c-onlogn)" stroke-width="5"/><text x="745" y="77" fill="var(--c-onlogn)" font-size="18" font-weight="700">Θ(n log n)</text>
+        <path d="M90 330C470 320 720 250 900 32" fill="none" stroke="var(--c-on2)" stroke-width="5"/><text x="790" y="28" fill="var(--c-on2)" font-size="18" font-weight="700">Θ(n²)</text>
+      </svg>
+      <div class="growth-legend">
+        <div class="growth-key" style="--key-color:var(--c-o1)"><span class="growth-line"></span>direct</div><div class="growth-key" style="--key-color:var(--c-olog)"><span class="growth-line"></span>halving</div><div class="growth-key" style="--key-color:var(--c-on)"><span class="growth-line"></span>scan</div><div class="growth-key" style="--key-color:var(--c-onlogn)"><span class="growth-line"></span>efficient sort</div><div class="growth-key" style="--key-color:var(--c-on2)"><span class="growth-line"></span>all pairs</div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 44 -->
+<section class="slide" data-section="growth">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Constant work</div>
+      <h2>Θ(1): the operation count does not grow with n</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div><div class="code-title">Known list position</div><pre class="code-block">first = values[0]
+last = values[-1]</pre><p class="small muted">A fixed number of index operations.</p></div>
+        <div><div class="code-title">Known dictionary key</div><pre class="code-block">name = customers_by_id[309][<span class="string">"name"</span>]</pre><p class="small muted">Expected Θ(1), not an absolute guarantee.</p></div>
+      </div>
+      <div class="question">Constant does not mean “instant” or “the same milliseconds on every machine.” It means independent of n in the model.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 45 -->
+<section class="slide" data-section="growth">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Logarithmic work</div>
+      <h2>Θ(log n): how many times can the candidates be halved?</h2>
+    </header>
+    <main class="content">
+      <div class="number-strip" style="align-items:center"><div class="number-box">32</div><div class="flow-arrow">→</div><div class="number-box">16</div><div class="flow-arrow">→</div><div class="number-box">8</div><div class="flow-arrow">→</div><div class="number-box">4</div><div class="flow-arrow">→</div><div class="number-box">2</div><div class="flow-arrow">→</div><div class="number-box">1</div></div>
+      <div class="cols-2">
+        <div class="panel"><h3>After k checks</h3><p class="mono big-claim" style="font-size:30px">candidates ≤ n / 2ᵏ</p></div>
+        <div class="panel"><h3>Stop near one</h3><p class="mono big-claim" style="font-size:30px">n / 2ᵏ ≤ 1<br>k ≥ log₂ n</p></div>
+      </div>
+      <div class="takeaway">Iterative binary search has best-case Θ(1) and worst-case Θ(log n).</div>
+    </main>
+  </div>
+</section>
+
+<!-- 46 -->
+<section class="slide" data-section="growth">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Linear work</div>
+      <h2>Θ(n): every item may matter</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel"><h3>Maximum</h3><p>An unseen item could be larger, so a correct general algorithm must examine every item.</p></div>
+        <div class="panel"><h3>Sum</h3><p>Every value contributes to the result.</p></div>
+        <div class="panel"><h3>Filter</h3><p>Each item must be tested against the condition.</p></div>
+      </div>
+      <div class="question">A maximum over n nonempty values needs n − 1 comparisons. That gives both an upper and a lower bound proportional to n.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 47 -->
+<section class="slide" data-section="growth">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Linearithmic work</div>
+      <h2>Θ(n log n): n work across log n levels</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 align-center">
+        <div class="panel">
+          <h3>Merge-sort proof idea</h3>
+          <div class="rule-list">
+            <div class="rule"><b>Levels</b><span>Repeated halving creates about log₂n levels.</span></div>
+            <div class="rule"><b>Work / level</b><span>Merging touches all n values.</span></div>
+            <div class="rule"><b>Total</b><span class="mono">n × log₂n</span></div>
+          </div>
+        </div>
+        <svg viewBox="0 0 480 340" width="100%" height="340" role="img" aria-label="Merge sort levels">
+          <g fill="#fff" stroke="#986018" stroke-width="2"><rect x="30" y="20" width="420" height="52"/><rect x="30" y="100" width="202" height="52"/><rect x="248" y="100" width="202" height="52"/><rect x="30" y="180" width="93" height="52"/><rect x="139" y="180" width="93" height="52"/><rect x="248" y="180" width="93" height="52"/><rect x="357" y="180" width="93" height="52"/></g>
+          <g fill="#172033" font-size="16" text-anchor="middle"><text x="240" y="52">n values</text><text x="131" y="132">n / 2</text><text x="349" y="132">n / 2</text><text x="76" y="212">n / 4</text><text x="185" y="212">n / 4</text><text x="294" y="212">n / 4</text><text x="403" y="212">n / 4</text><text x="240" y="285">… about log₂n levels …</text><text x="240" y="320" font-weight="700">each horizontal level totals n</text></g>
+        </svg>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 48 -->
+<section class="slide" data-section="growth">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Quadratic work</div>
+      <h2>Θ(n²): count all ordered pairs or a full nested grid</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="keyword">for</span> left <span class="keyword">in</span> values:       <span class="comment"># n times</span>
+    <span class="keyword">for</span> right <span class="keyword">in</span> values:  <span class="comment"># n times</span>
+        compare(left, right)
+
+<span class="comment"># n × n = n² comparisons</span></pre>
+        <div class="panel">
+          <h3>Unique unordered pairs</h3>
+          <p class="mono big-claim" style="font-size:29px">n(n − 1) / 2</p>
+          <p>Dropping the constant half and lower-order term leaves a tight Θ(n²) growth rate.</p>
+        </div>
+      </div>
+      <div class="takeaway">With n orders and m customers, the nested work is Θ(nm), not automatically Θ(n²).</div>
+    </main>
+  </div>
+</section>
+
+<!-- 49 -->
+<section class="slide" data-section="growth">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Doubling test</div>
+      <h2>Doubling the input leaves a recognizable fingerprint</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Growth</th><th>When n doubles</th><th>Typical example</th></tr></thead>
+        <tbody>
+          <tr><td style="color:var(--c-o1)">Θ(1)</td><td>unchanged</td><td>list indexing</td></tr>
+          <tr><td style="color:var(--c-olog)">Θ(log n)</td><td>about one extra step</td><td>binary search</td></tr>
+          <tr><td style="color:var(--c-on)">Θ(n)</td><td>about ×2</td><td>maximum scan</td></tr>
+          <tr><td style="color:var(--c-onlogn)">Θ(n log n)</td><td>a little more than ×2</td><td>merge sort</td></tr>
+          <tr><td style="color:var(--c-on2)">Θ(n²)</td><td>about ×4</td><td>all pairs</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">This is a diagnostic intuition, not a replacement for reasoning about the algorithm.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 50 -->
+<section class="slide" data-section="growth">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Read a flowchart</div>
+      <h2>Count repeated paths—not the number of boxes in the drawing</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel"><h3>Straight path</h3><p>Five fixed boxes still describe constant work.</p><p class="mono strong">Θ(1)</p></div>
+        <div class="panel"><h3>One loop</h3><p>A constant-cost body repeated once per input item.</p><p class="mono strong">Θ(n)</p></div>
+        <div class="panel"><h3>Loop inside loop</h3><p>n outer repetitions and m inner repetitions.</p><p class="mono strong">Θ(nm)</p></div>
+      </div>
+      <div class="question">Loop shape is a clue, not a proof: the loop body may contain a sort, scan, or another nonconstant operation.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 51 -->
+<section class="slide" data-section="growth">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Combine costs</div>
+      <h2>Sequential work adds; nested work multiplies</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel"><h3>Sequential scans</h3><p class="mono">an + bn = (a+b)n</p><p>Still Θ(n), for constant-cost bodies.</p></div>
+        <div class="panel"><h3>Nested inputs</h3><p class="mono">n × m</p><p>Θ(nm); only Θ(n²) when both scale together.</p></div>
+        <div class="panel warning"><h3>Hidden scan</h3><p class="mono">for x in A:<br>&nbsp; x in list_B</p><p>Membership scans list_B.</p></div>
+      </div>
+      <div class="takeaway">Changing <code class="inline">list_B</code> to a set can replace repeated scans with expected constant-time membership checks.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 52 -->
+<section class="slide" data-section="growth">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Dominant growth</div>
+      <h2>Ignore constant factors and lower-order terms for asymptotic shape</h2>
+    </header>
+    <main class="content centered">
+      <div class="cols-3" style="width:100%">
+        <div class="panel"><p class="mono big-claim" style="font-size:30px">3n + 20</p><h3>Θ(n)</h3><p>Multiplying a scan by three does not change how it scales.</p></div>
+        <div class="panel"><p class="mono big-claim" style="font-size:30px">n² + n</p><h3>Θ(n²)</h3><p>The squared term eventually dominates the linear term.</p></div>
+        <div class="panel"><p class="mono big-claim" style="font-size:30px">7 log n + 50</p><h3>Θ(log n)</h3><p>The logarithmic shape remains.</p></div>
+      </div>
+      <p class="lead">Constants still matter for real runtimes; Big-O deliberately answers a different question.</p>
+    </main>
+  </div>
+</section>
+
+<!-- 53 -->
+<section class="slide" data-section="growth">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Rigorous notation</div>
+      <h2>O, Ω, and Θ describe different kinds of asymptotic bounds</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel"><h3>O(g(n))</h3><p>Eventual upper bound: grows no faster than a constant multiple of g.</p></div>
+        <div class="panel"><h3>Ω(g(n))</h3><p>Eventual lower bound: grows no slower than a constant multiple of g.</p></div>
+        <div class="panel"><h3>Θ(g(n))</h3><p>Both bounds hold: a tight asymptotic classification.</p></div>
+      </div>
+      <div class="answer"><span class="mono">T(n) = 3n + 7</span>. For n ≥ 1: <span class="mono">3n ≤ T(n) ≤ 10n</span>. Therefore <span class="mono">T(n) ∈ Θ(n)</span>.</div>
+      <div class="takeaway"><code class="inline">T(n) ∈ O(n²)</code> is also true but loose. Big-O alone need not state the exact growth class.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 54 -->
+<section class="slide" data-section="growth">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · A lower bound</div>
+      <h2>Comparison sorting needs enough decisions to distinguish n! orders</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 align-center">
+        <div class="panel">
+          <h3>Decision-tree proof idea</h3>
+          <ol>
+            <li>n distinct values can arrive in n! possible orders.</li>
+            <li>One comparison has at most two outcomes.</li>
+            <li>A binary decision tree with n! leaves needs height at least log₂(n!).</li>
+            <li>log₂(n!) grows as Ω(n log n).</li>
+          </ol>
+        </div>
+        <svg viewBox="0 0 500 340" width="100%" height="340" role="img" aria-label="Comparison decision tree">
+          <g stroke="#94a3b8" stroke-width="2"><path d="M250 55L135 130M250 55l115 75M135 130L75 220M135 130l60 90M365 130l-60 90M365 130l60 90"/></g>
+          <g fill="#fff" stroke="#986018" stroke-width="2"><circle cx="250" cy="55" r="40"/><circle cx="135" cy="130" r="40"/><circle cx="365" cy="130" r="40"/><rect x="25" y="220" width="100" height="48"/><rect x="145" y="220" width="100" height="48"/><rect x="255" y="220" width="100" height="48"/><rect x="375" y="220" width="100" height="48"/></g>
+          <g fill="#172033" font-size="15" text-anchor="middle"><text x="250" y="60">a &lt; b?</text><text x="135" y="135">b &lt; c?</text><text x="365" y="135">a &lt; c?</text><text x="75" y="250">one order</text><text x="195" y="250">one order</text><text x="305" y="250">one order</text><text x="425" y="250">…</text><text x="250" y="315">tree height = worst-case comparisons</text></g>
+        </svg>
+      </div>
+      <div class="takeaway">This bound applies to comparison sorts—not to counting or radix methods with additional assumptions.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 55 -->
+<section class="slide" data-section="growth">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Correctness</div>
+      <h2>A loop invariant explains why repeated steps produce the right answer</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel"><h3>1 · Initialization</h3><p>The invariant is true before the first iteration.</p><p class="small muted">For max: first value is maximum of the one-item prefix.</p></div>
+        <div class="panel"><h3>2 · Maintenance</h3><p>One iteration preserves the invariant.</p><p class="small muted">Compare next value; update only if larger.</p></div>
+        <div class="panel"><h3>3 · Termination</h3><p>When the loop ends, the invariant implies the goal.</p><p class="small muted">The processed prefix is now the entire list.</p></div>
+      </div>
+      <div class="question">Efficiency matters after correctness: a fast wrong answer is still wrong.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 56 -->
+<section class="slide" data-section="growth">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Big-O is not a stopwatch</div>
+      <h2>Same growth class can still mean different elapsed time</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel"><h3>Pure Python loop</h3><p>A clear one-item-at-a-time scan executed by the Python interpreter.</p><p class="mono strong">Θ(n)</p></div>
+        <div class="panel"><h3>Optimized library reduction</h3><p>May perform the same asymptotic scan in optimized native code, depending on dtype and operation.</p><p class="mono strong">often Θ(n)</p></div>
+      </div>
+      <div class="takeaway">Implementation, hardware, cache behavior, and constants affect runtime. As inputs become large, better asymptotic growth usually dominates constant-factor improvements.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 57 -->
+<section class="slide" data-section="growth">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Measure carefully</div>
+      <h2>Benchmark several input sizes and inspect the curve</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="keyword">from</span> timeit <span class="keyword">import</span> repeat
+
+sizes = [1_000, 2_000, 4_000, 8_000]
+
+<span class="keyword">for</span> n <span class="keyword">in</span> sizes:
+    data = make_data(n)  <span class="comment"># prepare outside the timer</span>
+    samples = repeat(
+        <span class="string">"algorithm(data)"</span>,
+        repeat=7,
+        number=20,
+        globals=globals(),
+    )
+    print(n, min(samples))</pre>
+        <div class="panel">
+          <h3>Control the experiment</h3>
+          <ul><li>Generate comparable inputs.</li><li>Repeat to reduce noise.</li><li>Separate preparation from lookup.</li><li>Check that outputs are correct.</li><li>Compare ratios as n grows.</li></ul>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 58 -->
+<section class="slide" data-section="growth">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Sorting summary</div>
+      <h2>Sorting algorithms trade best cases, guarantees, memory, and stability</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Algorithm</th><th>Best</th><th>Average</th><th>Worst</th><th>Extra space</th><th>Stable?</th></tr></thead>
+        <tbody>
+          <tr><td>Selection</td><td>Θ(n²)</td><td>Θ(n²)</td><td>Θ(n²)</td><td>Θ(1)</td><td>usually no</td></tr>
+          <tr><td>Insertion</td><td>Θ(n)</td><td>Θ(n²)</td><td>Θ(n²)</td><td>Θ(1)</td><td>yes</td></tr>
+          <tr><td>Merge</td><td>Θ(n log n)</td><td>Θ(n log n)</td><td>Θ(n log n)</td><td>Θ(n)</td><td>yes</td></tr>
+          <tr><td>Quicksort</td><td>Θ(n log n)</td><td>expected Θ(n log n)</td><td>Θ(n²)</td><td>recursion-dependent</td><td>usually no</td></tr>
+          <tr><td>Python Timsort</td><td>Θ(n), adaptive</td><td>—</td><td>Θ(n log n)</td><td>up to Θ(n)</td><td>yes</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">Python does not use quicksort for <code class="inline">sorted()</code>. Its stable Timsort is designed to exploit existing runs.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 59 -->
+<section class="slide" data-section="growth">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Time and space</div>
+      <h2>Algorithms can buy speed with memory—or save memory with more work</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>Two Sum: compare pairs</h3>
+          <p>Little extra memory, but potentially inspect every pair.</p>
+          <p class="mono strong">time Θ(n²) · space Θ(1)</p>
+        </div>
+        <div class="panel good">
+          <h3>Two Sum: remember complements</h3>
+          <p>Use a dictionary to remember values already seen.</p>
+          <p class="mono strong">expected time Θ(n) · space Θ(n)</p>
+        </div>
+      </div>
+      <div class="question">Always ask two questions: how does time grow, and how does additional memory grow?</div>
+    </main>
+  </div>
+</section>
+
+<!-- 60 -->
+<section class="slide" data-section="dicts">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">6 · Dictionaries</div>
+      <h2>A dictionary changes repeated search into key lookup</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">List of records</div>
+          <pre class="code-block">customers = [
+    {<span class="string">"id"</span>: 105, <span class="string">"name"</span>: <span class="string">"Ava"</span>},
+    {<span class="string">"id"</span>: 309, <span class="string">"name"</span>: <span class="string">"Lin"</span>},
+]
+
+<span class="comment"># scan until id == 309</span></pre>
+        </div>
+        <div>
+          <div class="code-title">Index by key</div>
+          <pre class="code-block">customers_by_id = {
+    row[<span class="string">"id"</span>]: row
+    <span class="keyword">for</span> row <span class="keyword">in</span> customers
+}
+
+customer = customers_by_id[309]</pre>
+        </div>
+      </div>
+      <div class="takeaway">Build: expected Θ(n) time and Θ(n) space. Lookup: expected Θ(1), with worst-case O(n).</div>
+    </main>
+  </div>
+</section>
+
+<!-- 61 -->
+<section class="slide" data-section="dicts">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">6 · Groupby by hand</div>
+      <h2>Grouping is a scan with one state value per key</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">expenses = [
+    (<span class="string">"food"</span>, 12),
+    (<span class="string">"travel"</span>, 30),
+    (<span class="string">"food"</span>, 8),
+    (<span class="string">"books"</span>, 20),
+]
+
+totals = {}
+<span class="keyword">for</span> category, amount <span class="keyword">in</span> expenses:
+    totals[category] = (
+        totals.get(category, 0) + amount
+    )</pre>
+        <div>
+          <table class="compact">
+            <thead><tr><th>After row</th><th>Dictionary state</th></tr></thead>
+            <tbody><tr><td>food, 12</td><td>{food: 12}</td></tr><tr><td>travel, 30</td><td>{food: 12, travel: 30}</td></tr><tr><td>food, 8</td><td>{food: 20, travel: 30}</td></tr><tr><td>books, 20</td><td>{food: 20, travel: 30, books: 20}</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="takeaway">Assuming hashable keys and expected constant-time dictionary operations: expected Θ(n) time and Θ(k) state for k groups.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 62 -->
+<section class="slide" data-section="dicts">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">6 · Grouped averages</div>
+      <h2>Average requires two pieces of state per group</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block">stats = {}
+<span class="keyword">for</span> category, amount <span class="keyword">in</span> expenses:
+    group = stats.setdefault(
+        category, {<span class="string">"sum"</span>: 0, <span class="string">"count"</span>: 0}
+    )
+    group[<span class="string">"sum"</span>] += amount
+    group[<span class="string">"count"</span>] += 1
+
+averages = {
+    key: group[<span class="string">"sum"</span>] / group[<span class="string">"count"</span>]
+    <span class="keyword">for</span> key, group <span class="keyword">in</span> stats.items()
+}</pre>
+        <div class="panel">
+          <h3>State design</h3>
+          <p>Choose the smallest state that lets you update incrementally and produce the final answer.</p>
+          <div class="rule-list" style="margin-top:18px">
+            <div class="rule"><b>Sum</b><span>running total</span></div>
+            <div class="rule"><b>Count</b><span>number of values</span></div>
+            <div class="rule"><b>Finish</b><span>sum ÷ count</span></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 63 -->
+<section class="slide" data-section="dicts">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">6 · Counting pattern</div>
+      <h2>The same dictionary scan appears at three abstraction levels</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div><div class="code-title">By hand</div><pre class="code-block">counts = {}
+<span class="keyword">for</span> x <span class="keyword">in</span> values:
+    counts[x] = (
+        counts.get(x, 0) + 1
+    )</pre></div>
+        <div><div class="code-title">Standard library</div><pre class="code-block"><span class="keyword">from</span> collections <span class="keyword">import</span> Counter
+
+counts = Counter(values)</pre></div>
+        <div><div class="code-title">pandas</div><pre class="code-block">counts = (
+    df[<span class="string">"category"</span>]
+      .value_counts(
+          dropna=<span class="keyword">False</span>
+      )
+)</pre></div>
+      </div>
+      <div class="takeaway">Libraries generalize the pattern and define missing-value, ordering, dtype, and output behavior. The underlying state idea remains useful.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 64 -->
+<section class="slide" data-section="dicts">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">6 · Naive merge</div>
+      <h2>Searching all customers for every order repeats work</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">result = []
+<span class="keyword">for</span> order <span class="keyword">in</span> orders:          <span class="comment"># n</span>
+    <span class="keyword">for</span> customer <span class="keyword">in</span> customers:  <span class="comment"># m</span>
+        <span class="keyword">if</span> order[<span class="string">"customer_id"</span>] == customer[<span class="string">"id"</span>]:
+            result.append({**order, **customer})
+            <span class="keyword">break</span></pre>
+        <div class="panel warning">
+          <h3>Work shape</h3>
+          <p class="big-claim" style="font-size:35px">up to n × m comparisons</p>
+          <p>Breaking early helps some rows but does not change the worst case.</p>
+        </div>
+      </div>
+      <div class="takeaway">The nested loop forgets every search result and starts over for the next order.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 65 -->
+<section class="slide" data-section="dicts">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">6 · Build, then probe</div>
+      <h2>Index one table once, then reuse the lookup</h2>
+    </header>
+    <main class="content">
+      <div class="flow">
+        <div class="flow-node"><b>Build</b><span>Create <span class="mono">customer_id → record</span> from m customers.</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Probe</b><span>For each of n orders, look up its customer key.</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Emit</b><span>Construct r result rows.</span></div>
+      </div>
+      <pre class="code-block">customer_by_id = {row[<span class="string">"id"</span>]: row <span class="keyword">for</span> row <span class="keyword">in</span> customers}
+
+result = []
+<span class="keyword">for</span> order <span class="keyword">in</span> orders:
+    customer = customer_by_id.get(order[<span class="string">"customer_id"</span>])
+    <span class="keyword">if</span> customer <span class="keyword">is not None</span>:
+        result.append({**order, **customer})</pre>
+      <div class="takeaway">For unique lookup keys: expected Θ(m + n + r) time. General joins must also account for duplicates, unmatched rows, and output size r.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 66 -->
+<section class="slide" data-section="dicts">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">6 · Reopen pandas</div>
+      <h2>Use pandas for tabular semantics; keep the algorithmic model</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div><div class="code-title">Group and aggregate</div><pre class="code-block">summary = (
+    expenses
+      .groupby(<span class="string">"category"</span>, dropna=<span class="keyword">False</span>)
+      .agg(
+          total=(<span class="string">"amount"</span>, <span class="string">"sum"</span>),
+          average=(<span class="string">"amount"</span>, <span class="string">"mean"</span>),
+          count=(<span class="string">"amount"</span>, <span class="string">"size"</span>),
+      )
+)</pre></div>
+        <div><div class="code-title">Merge with safeguards</div><pre class="code-block">joined = orders.merge(
+    customers,
+    on=<span class="string">"customer_id"</span>,
+    how=<span class="string">"left"</span>,
+    validate=<span class="string">"many_to_one"</span>,
+    indicator=<span class="keyword">True</span>,
+)</pre></div>
+      </div>
+      <div class="takeaway">Do not assume pandas always chooses one particular join algorithm. Reason about data size, key cardinality, output size, and semantics.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 67 -->
+<section class="slide" data-section="dicts">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">6 · Join correctness</div>
+      <h2>Cardinality determines both meaning and possible output size</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Relationship</th><th>Meaning</th><th>Risk / safeguard</th></tr></thead>
+        <tbody>
+          <tr><td>one-to-one</td><td>each key occurs once on both sides</td><td><code class="inline">validate="one_to_one"</code></td></tr>
+          <tr><td>many-to-one</td><td>many orders belong to one customer</td><td><code class="inline">validate="many_to_one"</code></td></tr>
+          <tr><td>one-to-many</td><td>one parent matches many children</td><td>row count may expand</td></tr>
+          <tr><td>many-to-many</td><td>duplicates on both sides form all combinations per key</td><td>output r can reach Θ(nm)</td></tr>
+        </tbody>
+      </table>
+      <div class="question"><code class="inline">indicator=True</code> exposes unmatched keys. Reconcile row counts and totals after a merge.</div>
+      <p class="small muted">pandas also matches missing keys to missing keys, which differs from conventional SQL null matching.</p>
+    </main>
+  </div>
+</section>
+
+<!-- 68 -->
+<section class="slide" data-section="dicts">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">6 · Analysis pipeline</div>
+      <h2>A realistic workflow composes several algorithmic patterns</h2>
+    </header>
+    <main class="content centered">
+      <div class="flow" style="width:100%">
+        <div class="flow-node"><b>Load</b><span>transactions and customer table</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Clean</b><span>validate types and missing values</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Merge</b><span>attach customer attributes</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Group</b><span>revenue per customer</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Rank</b><span>sort and take top k</span></div>
+      </div>
+      <div class="cols-3" style="width:100%">
+        <div class="panel"><h3>Correctness</h3><p>keys, cardinality, missing values</p></div>
+        <div class="panel"><h3>Efficiency</h3><p>scan, lookup, aggregation, sort</p></div>
+        <div class="panel"><h3>Validation</h3><p>row counts, totals, expected output</p></div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 69 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">7 · Hash map example</div>
+      <h2>Two Sum remembers the complement needed later</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="keyword">def</span> two_sum(values, target):
+    seen = {}
+
+    <span class="keyword">for</span> index, value <span class="keyword">in</span> enumerate(values):
+        needed = target - value
+        <span class="keyword">if</span> needed <span class="keyword">in</span> seen:
+            <span class="keyword">return</span> seen[needed], index
+        seen[value] = index
+
+    <span class="keyword">return</span> <span class="keyword">None</span></pre>
+        <div class="panel">
+          <h3>Trace: target 9</h3>
+          <table class="compact"><thead><tr><th>value</th><th>needed</th><th>seen</th></tr></thead><tbody><tr><td>2</td><td>7</td><td>{2: 0}</td></tr><tr><td>7</td><td>2</td><td>match at 0</td></tr></tbody></table>
+          <p class="small muted" style="margin-top:10px">Expected Θ(n) time and Θ(n) extra space.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 70 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">7 · Balanced search tree</div>
+      <h2>Keep keys ordered while supporting updates and range queries</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 align-center">
+        <div class="tree-stage">
+          <svg aria-hidden="true"><line class="tree-edge" x1="50%" y1="20%" x2="28%" y2="48%"/><line class="tree-edge" x1="50%" y1="20%" x2="72%" y2="48%"/><line class="tree-edge" x1="28%" y1="48%" x2="16%" y2="78%"/><line class="tree-edge" x1="28%" y1="48%" x2="40%" y2="78%"/><line class="tree-edge" x1="72%" y1="48%" x2="60%" y2="78%"/><line class="tree-edge" x1="72%" y1="48%" x2="84%" y2="78%"/></svg>
+          <div class="tree-node" style="left:calc(50% - 29px);top:25px">40</div><div class="tree-node" style="left:calc(28% - 29px);top:105px">20</div><div class="tree-node" style="left:calc(72% - 29px);top:105px">65</div><div class="tree-node" style="left:calc(16% - 29px);top:195px">10</div><div class="tree-node" style="left:calc(40% - 29px);top:195px">30</div><div class="tree-node" style="left:calc(60% - 29px);top:195px">50</div><div class="tree-node" style="left:calc(84% - 29px);top:195px">80</div>
+        </div>
+        <div class="panel">
+          <h3>Search for 50</h3>
+          <p class="mono">40 → 65 → 50</p>
+          <p>Left subtree keys are smaller; right subtree keys are larger.</p>
+          <p>A balanced tree keeps height Θ(log n). An unbalanced tree can degrade to Θ(n).</p>
+          <p class="muted">Useful idea behind ordered maps, range queries, and many database indexes.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 71 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">7 · Heap</div>
+      <h2>Keep the next-best item available without fully sorting everything</h2>
+    </header>
+    <main class="content">
+      <div class="heap-layout">
+        <div class="tree-stage" style="height:300px">
+          <svg aria-hidden="true"><line class="tree-edge" x1="50%" y1="20%" x2="30%" y2="50%"/><line class="tree-edge" x1="50%" y1="20%" x2="70%" y2="50%"/><line class="tree-edge" x1="30%" y1="50%" x2="18%" y2="80%"/><line class="tree-edge" x1="30%" y1="50%" x2="42%" y2="80%"/><line class="tree-edge" x1="70%" y1="50%" x2="62%" y2="80%"/></svg>
+          <div class="tree-node" style="left:calc(50% - 29px);top:26px;background:var(--green-bg);border-color:var(--green)">3</div><div class="tree-node" style="left:calc(30% - 29px);top:116px">5</div><div class="tree-node" style="left:calc(70% - 29px);top:116px">8</div><div class="tree-node" style="left:calc(18% - 29px);top:206px">12</div><div class="tree-node" style="left:calc(42% - 29px);top:206px">7</div><div class="tree-node" style="left:calc(62% - 29px);top:206px">10</div>
+        </div>
+        <div class="panel">
+          <h3>Min-heap guarantee</h3>
+          <p>Every parent is no larger than its children. Only the minimum is globally ordered.</p>
+          <div class="rule-list" style="margin-top:15px"><div class="rule"><b>Peek</b><span>Θ(1)</span></div><div class="rule"><b>Push / pop</b><span>Θ(log n)</span></div><div class="rule"><b>Top k</b><span>maintain only k candidates</span></div></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 72 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">7 · Stack and queue</div>
+      <h2>Choose working memory that matches the order of processing</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>Stack · LIFO</h3>
+          <p>Last in, first out.</p>
+          <p class="mono">append(x) · pop()</p>
+          <p>Expression evaluation, undo, function calls, depth-first search.</p>
+        </div>
+        <div class="panel">
+          <h3>Queue · FIFO</h3>
+          <p>First in, first out.</p>
+          <p class="mono">deque.append(x) · popleft()</p>
+          <p>Breadth-first search, task scheduling, moving windows.</p>
+        </div>
+      </div>
+      <div class="takeaway">Use <code class="inline">collections.deque</code> for constant-time operations at both ends. A list’s <code class="inline">pop(0)</code> shifts later elements and takes Θ(n).</div>
+    </main>
+  </div>
+</section>
+
+<!-- 73 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">7 · Expression algorithm</div>
+      <h2>A stack preserves precedence while converting infix to postfix</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div>
+          <div class="question mono">5 + 2 × 3 − 8</div>
+          <div class="flow" style="margin-top:18px"><div class="flow-node"><b>Infix</b><span class="mono">5 + 2 * 3 - 8</span></div><div class="flow-arrow">→</div><div class="flow-node"><b>Postfix</b><span class="mono">5 2 3 * + 8 -</span></div></div>
+          <p class="small muted" style="margin-top:14px">Postfix makes the evaluation order explicit without parentheses.</p>
+        </div>
+        <div class="panel">
+          <h3>Shunting-yard rule</h3>
+          <ol><li>Output numbers immediately.</li><li>Push operators onto a stack.</li><li>Before pushing a left-associative operator, pop operators with higher or equal precedence.</li><li>Parentheses control when operators are popped.</li></ol>
+        </div>
+      </div>
+      <div class="takeaway">A complete parser must also handle tokenization, decimals, unary minus, and right-associative exponentiation. Never use <code class="inline">eval</code> on untrusted input.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 74 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">7 · Postfix evaluation trace</div>
+      <h2>Operators pop right operand first, then left operand</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="stack">
+        <div class="trace-toolbar"><div class="trace-status" aria-live="polite"></div><div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div></div>
+        <div class="stack-layout">
+          <div>
+            <div class="token-strip"><div class="token" data-index="0">5</div><div class="token" data-index="1">2</div><div class="token" data-index="2">3</div><div class="token" data-index="3">*</div><div class="token" data-index="4">+</div><div class="token" data-index="5">8</div><div class="token" data-index="6">−</div></div>
+            <div class="trace-variables"><div class="trace-variable" data-var="action"></div><div class="trace-variable" data-var="equation"></div></div>
+          </div>
+          <div class="stack-column"><h3>Operand stack</h3><div class="stack-frame"><div class="stack-slot" data-slot="0"></div><div class="stack-slot" data-slot="1"></div><div class="stack-slot" data-slot="2"></div><div class="stack-slot" data-slot="3"></div><div class="stack-slot" data-slot="4"></div></div></div>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"token":null,"stack":[],"vars":{"action":"ready","equation":""},"status":"Scan tokens from left to right."},
+          {"token":0,"stack":[5],"vars":{"action":"push 5","equation":""},"status":"A number is pushed onto the operand stack."},
+          {"token":1,"stack":[5,2],"vars":{"action":"push 2","equation":""},"status":"Push 2."},
+          {"token":2,"stack":[5,2,3],"vars":{"action":"push 3","equation":""},"status":"Push 3."},
+          {"token":3,"stack":[5,6],"vars":{"action":"apply *","equation":"2 * 3 = 6"},"status":"Pop right = 3, then left = 2. Push 6."},
+          {"token":4,"stack":[11],"vars":{"action":"apply +","equation":"5 + 6 = 11"},"status":"Pop right = 6, then left = 5. Push 11."},
+          {"token":5,"stack":[11,8],"vars":{"action":"push 8","equation":""},"status":"Push 8."},
+          {"token":6,"stack":[3],"vars":{"action":"apply -","equation":"11 - 8 = 3"},"status":"Pop right = 8, then left = 11. The final result is 3."}
+        ]</script>
+      </div>
+      <div class="takeaway">For t tokens: Θ(t) time and O(t) worst-case auxiliary space. A valid expression ends with exactly one stack value.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 75 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">7 · Queue example</div>
+      <h2>Breadth-first search visits a graph one layer at a time</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="queue">
+        <div class="trace-toolbar"><div class="trace-status" aria-live="polite"></div><div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div></div>
+        <div class="cols-2 ratio-3-2">
+          <div class="tree-stage">
+            <svg aria-hidden="true"><line class="tree-edge" x1="50%" y1="17%" x2="28%" y2="46%"/><line class="tree-edge" x1="50%" y1="17%" x2="72%" y2="46%"/><line class="tree-edge" x1="28%" y1="46%" x2="16%" y2="78%"/><line class="tree-edge" x1="28%" y1="46%" x2="40%" y2="78%"/><line class="tree-edge" x1="72%" y1="46%" x2="62%" y2="78%"/><line class="tree-edge" x1="72%" y1="46%" x2="84%" y2="78%"/></svg>
+            <div class="tree-node" data-node="A" style="left:calc(50% - 29px);top:20px">A</div><div class="tree-node" data-node="B" style="left:calc(28% - 29px);top:100px">B</div><div class="tree-node" data-node="C" style="left:calc(72% - 29px);top:100px">C</div><div class="tree-node" data-node="D" style="left:calc(16% - 29px);top:195px">D</div><div class="tree-node" data-node="E" style="left:calc(40% - 29px);top:195px">E</div><div class="tree-node" data-node="F" style="left:calc(62% - 29px);top:195px">F</div><div class="tree-node" data-node="G" style="left:calc(84% - 29px);top:195px">G</div>
+          </div>
+          <div class="panel">
+            <h3>Queue · front → back</h3>
+            <div class="queue-strip"><div class="queue-slot" data-slot="0"></div><div class="queue-slot" data-slot="1"></div><div class="queue-slot" data-slot="2"></div><div class="queue-slot" data-slot="3"></div></div>
+            <p class="small muted" style="margin-top:16px">Remove the front node and process it. Mark each undiscovered neighbor when it is enqueued.</p>
+          </div>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"activeNode":null,"visited":["A"],"queue":["A"],"status":"Discover A when it enters the queue."},
+          {"activeNode":"A","visited":["A","B","C"],"queue":["B","C"],"status":"Process A; discover and enqueue B and C immediately."},
+          {"activeNode":"B","visited":["A","B","C","D","E"],"queue":["C","D","E"],"status":"Process B; discover and enqueue D and E."},
+          {"activeNode":"C","visited":["A","B","C","D","E","F","G"],"queue":["D","E","F","G"],"status":"Process C; discover and enqueue F and G."},
+          {"activeNode":"D","visited":["A","B","C","D","E","F","G"],"queue":["E","F","G"],"status":"Process D. It has no undiscovered neighbors."},
+          {"activeNode":"E","visited":["A","B","C","D","E","F","G"],"queue":["F","G"],"status":"Process E."},
+          {"activeNode":"F","visited":["A","B","C","D","E","F","G"],"queue":["G"],"status":"Process F."},
+          {"activeNode":"G","visited":["A","B","C","D","E","F","G"],"queue":[],"status":"Process G. The queue is empty; traversal is complete."}
+        ]</script>
+      </div>
+      <div class="takeaway">With adjacency lists, BFS takes Θ(V + E) time and Θ(V) auxiliary space.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 76 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">7 · Operation prices</div>
+      <h2>A data structure is a bundle of operation trade-offs</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Structure / operation</th><th>Typical cost</th><th>Qualification</th></tr></thead>
+        <tbody>
+          <tr><td>list index</td><td>Θ(1)</td><td>known integer position</td></tr>
+          <tr><td>list append</td><td>amortized Θ(1)</td><td>occasional resize costs Θ(n)</td></tr>
+          <tr><td>list front insert / pop(0)</td><td>Θ(n)</td><td>later elements shift</td></tr>
+          <tr><td>dict / set lookup</td><td>expected Θ(1)</td><td>worst O(n)</td></tr>
+          <tr><td>deque operations at either end</td><td>Θ(1)</td><td>middle indexing is Θ(n)</td></tr>
+          <tr><td>heap peek / push / pop</td><td>Θ(1) / Θ(log n) / Θ(log n)</td><td>only the root is globally best</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">“Expected,” “amortized,” “worst-case,” and “output-sensitive” are different claims. Say which one you mean.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 77 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">8 · Assignment transfer</div>
+      <h2>Each exercise is really a structure-selection question</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Problem</th><th>Core idea</th><th>Structure / pattern</th></tr></thead>
+        <tbody>
+          <tr><td>Best Time to Buy/Sell</td><td>carry best seen so far</td><td>one scan</td></tr>
+          <tr><td>Two Sum</td><td>remember complements</td><td>dictionary</td></tr>
+          <tr><td>High Five</td><td>group scores, retain best few</td><td>dictionary + sort / heap</td></tr>
+          <tr><td>Moving Average</td><td>remove oldest, add newest</td><td>queue / deque</td></tr>
+          <tr><td>Top K Frequent</td><td>count, then retain k best</td><td>Counter + heap</td></tr>
+          <tr><td>Longest Substring</td><td>maintain a valid moving window</td><td>set + two pointers</td></tr>
+          <tr><td>Merge Intervals</td><td>create order, then scan</td><td>sort + one pass</td></tr>
+        </tbody>
+      </table>
+    </main>
+  </div>
+</section>
+
+<!-- 78 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">8 · Reference desk</div>
+      <h2>Authoritative documentation for the library tools used today</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel compact"><h3>Python</h3><ul><li><a href="https://docs.python.org/3/howto/sorting.html">Sorting HOWTO</a></li><li><a href="https://docs.python.org/3/library/bisect.html">bisect</a></li><li><a href="https://docs.python.org/3/library/heapq.html">heapq</a></li><li><a href="https://docs.python.org/3/library/collections.html#collections.deque">collections.deque</a></li><li><a href="https://docs.python.org/3/reference/expressions.html#operator-precedence">operator precedence</a></li></ul></div>
+        <div class="panel compact"><h3>pandas</h3><ul><li><a href="https://pandas.pydata.org/docs/user_guide/groupby.html">GroupBy guide</a></li><li><a href="https://pandas.pydata.org/docs/reference/api/pandas.merge.html">pandas.merge reference</a></li></ul><h3 style="margin-top:22px">Local practice</h3><ul><li>Lesson 4 notebook</li><li>Assignment A2: Algorithms and Big-O</li></ul></div>
+      </div>
+      <div class="takeaway">Documentation defines behavior. A complexity model explains how the work grows. You need both.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 79 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">8 · Final checklist</div>
+      <h2>Solve first. Trace it. Prove it. Then price it.</h2>
+    </header>
+    <main class="content centered">
+      <div class="rule-list" style="width:900px;text-align:left">
+        <div class="rule"><b>Define</b><span>input, output, preconditions, and edge cases</span></div>
+        <div class="rule"><b>Design</b><span>plain steps, flowchart, state, and invariant</span></div>
+        <div class="rule"><b>Verify</b><span>trace a normal case and a boundary case</span></div>
+        <div class="rule"><b>Analyze</b><span>define n; count time and extra memory</span></div>
+        <div class="rule"><b>Improve</b><span>change the repeated work or choose a better structure</span></div>
+      </div>
+      <div class="question" style="width:900px">Exit ticket: explain one algorithm, its invariant, and its growth in 30 seconds.</div>
+    </main>
+  </div>
+</section>
+
+<div id="hud">
+  <div class="course">Intro to CS · Lesson 4</div>
+  <div id="section-map" aria-hidden="true">
+    <span data-section-name="intro">Start</span><span data-section-name="scans">Scans</span><span data-section-name="sorting">Sort</span><span data-section-name="search">Search</span><span data-section-name="writing">Write</span><span data-section-name="growth">Big-O</span><span data-section-name="dicts">Dicts</span><span data-section-name="structures">Structures</span><span data-section-name="finish">Finish</span>
+  </div>
+  <div class="nav-controls">
+    <button id="prev" type="button" aria-label="Previous step">‹</button>
+    <button id="next" type="button" aria-label="Next step">›</button>
+    <label id="count" for="slide-number">
+      <input id="slide-number" type="text" value="1" inputmode="numeric" pattern="[0-9]*" aria-label="Jump to slide"> / <span id="slide-total"></span>
+    </label>
+  </div>
+</div>
+
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const stage = document.getElementById("stage");
+  const slides = [...document.querySelectorAll(".slide")];
+  const prevButton = document.getElementById("prev");
+  const nextButton = document.getElementById("next");
+  const slideNumber = document.getElementById("slide-number");
+  const slideTotal = document.getElementById("slide-total");
+  const sectionItems = [...document.querySelectorAll("#section-map [data-section-name]")];
+  let currentSlide = 0;
+  let printSnapshot = null;
+
+  function fitStage() {
+    const viewport = window.visualViewport;
+    const width = viewport ? viewport.width : window.innerWidth;
+    const height = viewport ? viewport.height : window.innerHeight;
+    const scale = Math.min(width / 1280, height / 720);
+    stage.style.transform = `translate(-50%, -50%) scale(${scale})`;
+  }
+
+  class TraceController {
+    constructor(root) {
+      this.root = root;
+      this.type = root.dataset.traceType;
+      const source = root.querySelector(".trace-data");
+      try {
+        this.states = JSON.parse(source ? source.textContent : "[]");
+      } catch (error) {
+        this.states = [];
+        console.error("Invalid trace data", error, root);
+      }
+      this.step = 0;
+      this.status = root.querySelector(".trace-status");
+      this.counter = root.querySelector("[data-trace-counter]");
+      root.querySelector(".trace-reset")?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this.setStep(0);
+      });
+      this.render();
+    }
+
+    canNext() { return this.step < this.states.length - 1; }
+    canPrevious() { return this.step > 0; }
+    next() { if (this.canNext()) this.setStep(this.step + 1); }
+    previous() { if (this.canPrevious()) this.setStep(this.step - 1); }
+    setStep(step) {
+      if (!this.states.length) return;
+      this.step = Math.max(0, Math.min(step, this.states.length - 1));
+      this.render();
+      updateControls();
+    }
+
+    renderVariables(state) {
+      const values = state.vars || {};
+      this.root.querySelectorAll("[data-var]").forEach((element) => {
+        element.textContent = values[element.dataset.var] || "";
+      });
+    }
+
+    renderTranscript() {
+      const slide = this.root.closest(".slide");
+      const rows = [...slide.querySelectorAll(".trace-transcript tr[data-step]")];
+      if (!rows.length) return;
+      let active = rows[0];
+      for (const row of rows) {
+        if (Number(row.dataset.step) <= this.step) active = row;
+      }
+      rows.forEach((row) => row.classList.toggle("is-active", row === active));
+    }
+
+    renderArray(state) {
+      const cells = [...this.root.querySelectorAll(".array-cell")];
+      cells.forEach((cell, index) => {
+        if (Array.isArray(state.values) && index < state.values.length) {
+          cell.textContent = state.values[index];
+        }
+        const outsideRange = Array.isArray(state.range) && (index < state.range[0] || index > state.range[1]);
+        const foundIndex = typeof state.found === "number" ? state.found : (state.found === true ? state.current : null);
+        cell.classList.toggle("is-current", state.current === index);
+        cell.classList.toggle("is-best", state.best === index);
+        cell.classList.toggle("is-min", state.min === index);
+        cell.classList.toggle("is-checked", Number.isInteger(state.processedThrough) && index <= state.processedThrough);
+        cell.classList.toggle("is-sorted", Number.isInteger(state.sortedUntil) && index < state.sortedUntil);
+        cell.classList.toggle("is-discarded", outsideRange || (Array.isArray(state.discarded) && state.discarded.includes(index)));
+        cell.classList.toggle("is-found", foundIndex === index);
+      });
+
+      const pointer = this.root.querySelector(".trace-pointer");
+      if (pointer) {
+        if (state.current == null || !cells[state.current]) {
+          pointer.style.visibility = "hidden";
+        } else {
+          pointer.style.visibility = "visible";
+          const first = cells[0];
+          pointer.style.transform = `translateX(${cells[state.current].offsetLeft - first.offsetLeft}px)`;
+          pointer.style.left = `${first.offsetLeft}px`;
+        }
+      }
+      this.renderVariables(state);
+      this.renderTranscript();
+    }
+
+    renderFlow(state) {
+      this.root.querySelectorAll("[data-node]").forEach((node) => {
+        node.classList.toggle("is-active", node.dataset.node === state.activeNode);
+      });
+      this.root.querySelectorAll("[data-edge]").forEach((edge) => {
+        edge.classList.toggle("is-active", edge.dataset.edge === state.activeEdge);
+      });
+      this.renderVariables(state);
+    }
+
+    renderStack(state) {
+      this.root.querySelectorAll(".token[data-index]").forEach((token) => {
+        token.classList.toggle("is-current", Number(token.dataset.index) === state.token);
+      });
+      const values = state.stack || [];
+      this.root.querySelectorAll(".stack-slot[data-slot]").forEach((slot) => {
+        const index = Number(slot.dataset.slot);
+        slot.textContent = index < values.length ? values[index] : "";
+      });
+      this.renderVariables(state);
+    }
+
+    renderQueue(state) {
+      const visited = new Set(state.visited || []);
+      this.root.querySelectorAll(".tree-node[data-node]").forEach((node) => {
+        node.classList.toggle("is-active", node.dataset.node === state.activeNode);
+        node.classList.toggle("is-visited", visited.has(node.dataset.node));
+      });
+      const queue = state.queue || [];
+      this.root.querySelectorAll(".queue-slot[data-slot]").forEach((slot) => {
+        const index = Number(slot.dataset.slot);
+        slot.textContent = index < queue.length ? queue[index] : "";
+      });
+      this.renderVariables(state);
+    }
+
+    render() {
+      if (!this.states.length) return;
+      const state = this.states[this.step];
+      if (this.status) this.status.textContent = state.status || "";
+      if (this.counter) this.counter.textContent = `${this.step + 1} / ${this.states.length}`;
+      if (this.type === "array") this.renderArray(state);
+      if (this.type === "flow") this.renderFlow(state);
+      if (this.type === "stack") this.renderStack(state);
+      if (this.type === "queue") this.renderQueue(state);
+    }
+  }
+
+  const traces = new Map();
+  document.querySelectorAll(".trace[data-trace-type]").forEach((root) => {
+    traces.set(root, new TraceController(root));
+  });
+
+  function traceOnActiveSlide() {
+    const root = slides[currentSlide]?.querySelector(".trace[data-trace-type]");
+    return root ? traces.get(root) : null;
+  }
+
+  function fragmentsOnActiveSlide() {
+    return [...slides[currentSlide].querySelectorAll(".fragment")];
+  }
+
+  function nextHiddenFragment() {
+    return fragmentsOnActiveSlide().find((fragment) => !fragment.classList.contains("visible"));
+  }
+
+  function lastVisibleFragment() {
+    return fragmentsOnActiveSlide().filter((fragment) => fragment.classList.contains("visible")).at(-1);
+  }
+
+  function updateControls() {
+    const trace = traceOnActiveSlide();
+    const hasBackwardStep = (trace && trace.canPrevious()) || Boolean(lastVisibleFragment());
+    const hasForwardStep = (trace && trace.canNext()) || Boolean(nextHiddenFragment());
+    prevButton.disabled = currentSlide === 0 && !hasBackwardStep;
+    nextButton.disabled = currentSlide === slides.length - 1 && !hasForwardStep;
+  }
+
+  function showSlide(index, options = {}) {
+    currentSlide = Math.max(0, Math.min(index, slides.length - 1));
+    slides.forEach((slide, slideIndex) => {
+      const active = slideIndex === currentSlide;
+      slide.classList.toggle("active", active);
+      slide.setAttribute("aria-hidden", active ? "false" : "true");
+      slide.inert = !active;
+    });
+    const activeSlide = slides[currentSlide];
+    const section = activeSlide.dataset.section;
+    const color = getComputedStyle(activeSlide).getPropertyValue("--section-color").trim();
+    stage.style.setProperty("--active-section-color", color);
+    sectionItems.forEach((item) => item.classList.toggle("on", item.dataset.sectionName === section));
+    slideNumber.value = currentSlide + 1;
+    slideTotal.textContent = slides.length;
+    activeSlide.querySelectorAll(".trace[data-trace-type]").forEach((root) => traces.get(root)?.render());
+    if (!options.skipHash) history.replaceState(null, "", `#slide-${currentSlide + 1}`);
+    updateControls();
+  }
+
+  function forward() {
+    const trace = traceOnActiveSlide();
+    if (trace?.canNext()) {
+      trace.next();
+      return;
+    }
+    const fragment = nextHiddenFragment();
+    if (fragment) {
+      fragment.classList.add("visible");
+      updateControls();
+      return;
+    }
+    if (currentSlide < slides.length - 1) showSlide(currentSlide + 1);
+  }
+
+  function backward() {
+    const trace = traceOnActiveSlide();
+    if (trace?.canPrevious()) {
+      trace.previous();
+      return;
+    }
+    const fragment = lastVisibleFragment();
+    if (fragment) {
+      fragment.classList.remove("visible");
+      updateControls();
+      return;
+    }
+    if (currentSlide > 0) showSlide(currentSlide - 1);
+  }
+
+  function jumpToRequestedSlide() {
+    const requested = Number.parseInt(slideNumber.value, 10);
+    if (Number.isNaN(requested)) {
+      slideNumber.value = currentSlide + 1;
+      return;
+    }
+    showSlide(requested - 1);
+  }
+
+  prevButton.addEventListener("click", backward);
+  nextButton.addEventListener("click", forward);
+  slideNumber.addEventListener("change", jumpToRequestedSlide);
+  slideNumber.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      jumpToRequestedSlide();
+      slideNumber.blur();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    const target = event.target;
+    const editing = target instanceof HTMLElement && target.closest("input, textarea, select, [contenteditable='true']");
+    const activatingControl = target instanceof HTMLElement && target.closest("a, button") && event.key === " ";
+    if (editing || activatingControl) return;
+    if (event.repeat) return;
+    if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(event.key)) {
+      event.preventDefault();
+      forward();
+    } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(event.key)) {
+      event.preventDefault();
+      backward();
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      showSlide(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      showSlide(slides.length - 1);
+    } else if (event.key.toLowerCase() === "f") {
+      event.preventDefault();
+      if (document.fullscreenElement) document.exitFullscreen();
+      else stage.requestFullscreen?.();
+    }
+  });
+
+  window.addEventListener("resize", fitStage);
+  window.visualViewport?.addEventListener("resize", fitStage);
+  window.addEventListener("hashchange", () => {
+    const match = location.hash.match(/^#slide-(\d+)$/);
+    if (match) showSlide(Number(match[1]) - 1, { skipHash: true });
+  });
+
+  window.addEventListener("beforeprint", () => {
+    printSnapshot = [...traces.values()].map((trace) => trace.step);
+    [...traces.values()].forEach((trace) => trace.setStep(trace.states.length - 1));
+  });
+  window.addEventListener("afterprint", () => {
+    if (!printSnapshot) return;
+    [...traces.values()].forEach((trace, index) => trace.setStep(printSnapshot[index] || 0));
+    printSnapshot = null;
+    showSlide(currentSlide, { skipHash: true });
+  });
+
+  const initialMatch = location.hash.match(/^#slide-(\d+)$/);
+  const initialSlide = initialMatch ? Number(initialMatch[1]) - 1 : 0;
+  fitStage();
+  showSlide(initialSlide, { skipHash: true });
+})();
+</script>
+</body>
+</html>

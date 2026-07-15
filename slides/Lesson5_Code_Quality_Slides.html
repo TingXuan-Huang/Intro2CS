@@ -1,0 +1,2820 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 5 · Code Quality and Testing</title>
+<style>
+  :root {
+    --paper: #f8fafc;
+    --surface: #ffffff;
+    --surface-2: #edf2f7;
+    --ink: #172033;
+    --muted: #536178;
+    --line: #c9d4e2;
+    --navy: #1e3a5f;
+    --blue: #1e5a89;
+    --teal: #0f766e;
+    --purple: #6d4c7d;
+    --amber: #986018;
+    --cyan: #176b80;
+    --green: #176b43;
+    --maroon: #8a3f5f;
+    --slate: #475569;
+    --red: #b42318;
+    --red-bg: #fff1f0;
+    --green-bg: #edf8f2;
+    --yellow-bg: #fff7df;
+    --font-sans: "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif;
+    --font-mono: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; }
+  body {
+    overflow: hidden;
+    background: #111827;
+    color: var(--ink);
+    font-family: var(--font-sans);
+  }
+  a { color: var(--blue); }
+  code, pre, .mono { font-family: var(--font-mono); }
+
+  #stage {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 1280px;
+    height: 720px;
+    transform-origin: center center;
+    overflow: hidden;
+    background: var(--paper);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .48);
+  }
+
+  .slide {
+    --section-color: var(--navy);
+    position: absolute;
+    inset: 0;
+    display: none;
+    background: var(--paper);
+  }
+  .slide.active { display: block; }
+  .slide[data-section="intro"] { --section-color: var(--navy); }
+  .slide[data-section="contracts"] { --section-color: var(--teal); }
+  .slide[data-section="tools"] { --section-color: var(--blue); }
+  .slide[data-section="shape"] { --section-color: var(--purple); }
+  .slide[data-section="errors"] { --section-color: var(--amber); }
+  .slide[data-section="tests"] { --section-color: var(--green); }
+  .slide[data-section="finish"] { --section-color: var(--slate); }
+  .slide::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 7px;
+    background: var(--section-color);
+  }
+
+  .slide-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 46px 72px 78px;
+  }
+  .slide-header { margin-bottom: 20px; }
+  .section-label {
+    margin-bottom: 8px;
+    color: var(--section-color);
+    font-size: 15px;
+    font-weight: 760;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  h1 {
+    max-width: 1080px;
+    font-size: 58px;
+    line-height: 1.08;
+    letter-spacing: -.025em;
+    font-weight: 740;
+  }
+  h2 {
+    max-width: 1120px;
+    font-size: 39px;
+    line-height: 1.13;
+    letter-spacing: -.018em;
+    font-weight: 730;
+  }
+  h3 {
+    font-size: 23px;
+    line-height: 1.23;
+    font-weight: 730;
+  }
+  p, li { font-size: 20px; line-height: 1.4; }
+  .lead {
+    max-width: 930px;
+    color: var(--muted);
+    font-size: 27px;
+    line-height: 1.42;
+  }
+  .small { font-size: 17px; line-height: 1.4; }
+  .tiny { font-size: 14px; line-height: 1.35; }
+  .muted { color: var(--muted); }
+  .strong { color: var(--ink); font-weight: 730; }
+  code.inline {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #e8eef5;
+    color: #1d3654;
+    font-size: .9em;
+  }
+
+  .content {
+    min-height: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .centered {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  .cols-2, .cols-3, .cols-4 {
+    min-height: 0;
+    display: grid;
+    gap: 20px;
+    align-items: stretch;
+  }
+  .cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ratio-3-2 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+  .ratio-2-3 { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+  .ratio-5-4 { grid-template-columns: minmax(0, 5fr) minmax(0, 4fr); }
+  .align-center { align-items: center; }
+
+  .panel {
+    min-width: 0;
+    padding: 18px 21px;
+    border: 1px solid var(--line);
+    border-top: 4px solid var(--section-color);
+    background: var(--surface);
+  }
+  .panel h3 { margin-bottom: 9px; }
+  .panel p + p, .panel ul, .panel ol { margin-top: 8px; }
+  .panel ul, .panel ol { padding-left: 23px; }
+  .panel li + li { margin-top: 5px; }
+  .panel.compact { padding: 13px 16px; }
+  .panel.compact p, .panel.compact li { font-size: 17px; }
+  .panel.warning { border-top-color: var(--red); background: var(--red-bg); }
+  .panel.good { border-top-color: var(--green); background: var(--green-bg); }
+
+  .takeaway {
+    margin-top: auto;
+    padding: 12px 16px;
+    border-left: 5px solid var(--section-color);
+    background: #e9f0f6;
+    color: #24364d;
+    font-size: 19px;
+    line-height: 1.4;
+  }
+  .question {
+    padding: 17px 21px;
+    border: 2px solid var(--blue);
+    background: #edf5fb;
+    color: #173b5d;
+    font-size: 23px;
+    line-height: 1.36;
+    font-weight: 680;
+  }
+  .answer {
+    padding: 15px 19px;
+    border-left: 5px solid var(--green);
+    background: var(--green-bg);
+    font-size: 19px;
+    line-height: 1.4;
+  }
+  .fragment { visibility: hidden; opacity: 0; }
+  .fragment.visible { visibility: visible; opacity: 1; }
+
+  .code-title {
+    margin-bottom: 7px;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 740;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .code-block, .output-block, .pseudo-block {
+    min-width: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    border: 1px solid var(--line);
+    background: #0f172a;
+    color: #e7edf5;
+    padding: 15px 18px;
+    font-family: var(--font-mono);
+    font-size: 17px;
+    line-height: 1.45;
+  }
+  .output-block, .pseudo-block { background: var(--surface); color: #203047; }
+  .pseudo-block { border-left: 4px solid var(--section-color); }
+  .comment { color: #9fb0c5; }
+  .string { color: #8dd3c7; }
+  .number { color: #f4c27a; }
+  .keyword { color: #c6a7e2; }
+  .error { color: #ef6b62; font-weight: 730; }
+  .ok { color: #7ad3a2; font-weight: 730; }
+  .output-block .comment { color: #8494a9; }
+  .output-block .error { color: var(--red); }
+  .output-block .ok { color: var(--green); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    font-size: 18px;
+    line-height: 1.3;
+  }
+  th {
+    padding: 10px 12px;
+    border-top: 2px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+    color: #34445a;
+    background: #e8eef4;
+    text-align: left;
+    font-size: 15px;
+    line-height: 1.24;
+    letter-spacing: .052em;
+    text-transform: uppercase;
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: 2px solid var(--ink); }
+  td:first-child { font-weight: 700; }
+  table.compact { font-size: 16px; }
+  table.compact th { font-size: 14px; }
+  table.compact td { padding-top: 7px; padding-bottom: 7px; }
+
+  .flow {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .flow-node {
+    min-width: 0;
+    flex: 1;
+    padding: 13px;
+    border: 1px solid #a9b6c6;
+    background: var(--surface);
+  }
+  .flow-node b {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--section-color);
+    font-size: 17px;
+  }
+  .flow-node span { font-size: 16px; line-height: 1.3; }
+  .flow-arrow {
+    align-self: center;
+    color: #66758a;
+    font-size: 25px;
+    font-weight: 700;
+  }
+
+  .rule-list { display: grid; gap: 12px; }
+  .rule {
+    display: grid;
+    grid-template-columns: 205px minmax(0, 1fr);
+    gap: 19px;
+    align-items: baseline;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .rule b { color: var(--section-color); font-size: 21px; }
+  .rule span { font-size: 19px; line-height: 1.35; }
+
+  .big-claim {
+    max-width: 1010px;
+    font-size: 45px;
+    line-height: 1.24;
+    font-weight: 730;
+    letter-spacing: -.018em;
+  }
+
+  .number-strip {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+  }
+  .number-box {
+    min-width: 120px;
+    padding: 18px 15px;
+    border: 2px solid #9bacc0;
+    background: var(--surface);
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 25px;
+    font-weight: 720;
+  }
+  .number-box small {
+    display: block;
+    margin-top: 5px;
+    color: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .trace {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+  }
+  .trace-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 38px;
+  }
+  .trace-status {
+    min-width: 0;
+    flex: 1;
+    color: #26384f;
+    font-size: 18px;
+    line-height: 1.32;
+    font-weight: 650;
+  }
+  .trace-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  .trace-reset {
+    min-width: 76px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .trace-reset:focus-visible { outline: 3px solid #4e8fc1; outline-offset: 2px; }
+  .trace-board {
+    position: relative;
+    min-height: 160px;
+    padding: 28px 18px 16px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .array-strip {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding-top: 28px;
+  }
+  .array-cell {
+    position: relative;
+    width: 92px;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #9bacbf;
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 720;
+    transition: transform .2s ease, background-color .2s ease, border-color .2s ease, opacity .2s ease;
+  }
+  .array-cell::after {
+    content: attr(data-index);
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -22px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+  }
+  .array-cell.is-current { border-color: var(--blue); box-shadow: inset 0 0 0 2px var(--blue); }
+  .array-cell.is-best { border-color: var(--green); background: var(--green-bg); }
+  .array-cell.is-min { border-color: var(--amber); background: var(--yellow-bg); }
+  .array-cell.is-sorted { border-color: var(--teal); background: #e9f7f5; }
+  .array-cell.is-checked { background: #eef2f7; }
+  .array-cell.is-discarded { opacity: .28; }
+  .array-cell.is-found { border-color: var(--green); background: var(--green-bg); }
+  .array-cell.is-found::before {
+    content: "MATCH";
+    position: absolute;
+    top: -27px;
+    color: var(--green);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 760;
+    letter-spacing: .08em;
+  }
+  .trace-pointer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 92px;
+    color: var(--blue);
+    text-align: center;
+    font-size: 14px;
+    font-weight: 740;
+    transition: transform .22s ease;
+  }
+  .trace-pointer::after { content: "↓"; display: block; font-size: 22px; line-height: 1; }
+  .trace-variables {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 27px;
+  }
+  .trace-variable {
+    min-width: 140px;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    font-family: var(--font-mono);
+    font-size: 15px;
+    text-align: center;
+  }
+  .trace-transcript { font-size: 14px; }
+  .trace-transcript th { padding: 6px 8px; font-size: 12px; }
+  .trace-transcript td { padding: 5px 8px; }
+  .trace-transcript tr.is-active td { background: #e9f0f6; }
+
+  .flowchart-wrap {
+    position: relative;
+    min-height: 360px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .flowchart-svg { width: 100%; height: 360px; display: block; }
+  .flowchart-svg .fc-edge {
+    fill: none;
+    stroke: #94a3b8;
+    stroke-width: 2;
+    transition: stroke .2s ease, stroke-width .2s ease, opacity .2s ease;
+  }
+  .flowchart-svg .fc-node rect,
+  .flowchart-svg .fc-node path {
+    fill: #ffffff;
+    stroke: #8294aa;
+    stroke-width: 2;
+    transition: fill .2s ease, stroke .2s ease, stroke-width .2s ease;
+  }
+  .flowchart-svg .fc-node text {
+    fill: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 650;
+    text-anchor: middle;
+    dominant-baseline: middle;
+  }
+  .flowchart-svg .fc-node.is-active rect,
+  .flowchart-svg .fc-node.is-active path {
+    fill: #e8f2fa;
+    stroke: var(--blue);
+    stroke-width: 4;
+  }
+  .flowchart-svg .fc-edge.is-active { stroke: var(--blue); stroke-width: 4; }
+
+  .stack-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr);
+    gap: 20px;
+    align-items: stretch;
+  }
+  .token-strip {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 13px;
+  }
+  .token {
+    min-width: 48px;
+    padding: 9px 8px;
+    border: 1px solid #9bacbf;
+    background: var(--surface);
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 18px;
+    transition: background-color .2s ease, border-color .2s ease, transform .2s ease;
+  }
+  .token.is-current { border-color: var(--blue); background: #e8f2fa; transform: translateY(-5px); }
+  .stack-columns { display: flex; justify-content: center; gap: 28px; }
+  .stack-column { width: 150px; }
+  .stack-column h3 { margin-bottom: 7px; font-size: 16px; text-align: center; }
+  .stack-frame {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 5px;
+    min-height: 198px;
+    padding: 7px;
+    border: 3px solid #8193aa;
+    border-top: none;
+    background: #f7f9fc;
+  }
+  .stack-slot {
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #b9c4d1;
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: 17px;
+  }
+  .stack-slot:empty { visibility: hidden; }
+
+  #hud {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    height: 54px;
+    display: grid;
+    grid-template-columns: 190px 1fr 168px;
+    align-items: center;
+    padding: 0 25px;
+    border-top: 1px solid #b8c4d2;
+    background: #edf1f5;
+    color: #4a596d;
+  }
+  #hud .course {
+    font-size: 13px;
+    font-weight: 730;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  #section-map {
+    display: flex;
+    justify-content: center;
+    gap: 11px;
+  }
+  #section-map span {
+    padding: 5px 0 4px;
+    border-bottom: 3px solid transparent;
+    font-size: 9.5px;
+    font-weight: 730;
+    letter-spacing: .035em;
+    text-transform: uppercase;
+    opacity: .38;
+  }
+  #section-map span.on {
+    border-bottom-color: var(--active-section-color, var(--navy));
+    color: var(--ink);
+    opacity: 1;
+  }
+  .nav-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .nav-controls button {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .nav-controls button:disabled { opacity: .35; cursor: default; }
+  .nav-controls button:focus-visible { outline: 3px solid #4e8fc1; outline-offset: 2px; }
+  #count {
+    min-width: 62px;
+    text-align: right;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  #slide-number {
+    width: 34px;
+    padding: 2px 3px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  #slide-number:focus-visible {
+    outline: 3px solid #4e8fc1;
+    outline-offset: 2px;
+  }
+  #rotate-note {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    padding: 28px;
+    background: #111827;
+    color: white;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 22px;
+    line-height: 1.4;
+  }
+
+  @media (max-width: 900px) and (orientation: portrait) {
+    #rotate-note { display: flex; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .array-cell, .trace-pointer, .token, .stack-slot,
+    .flowchart-svg .fc-edge, .flowchart-svg .fc-node rect,
+    .flowchart-svg .fc-node path { transition-duration: 0s !important; }
+  }
+  @media print {
+    @page { size: 13.333in 7.5in; margin: 0; }
+    html, body {
+      width: auto;
+      height: auto;
+      overflow: visible;
+      background: white;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    #stage {
+      position: relative;
+      left: auto;
+      top: auto;
+      width: auto;
+      height: auto;
+      transform: none !important;
+      box-shadow: none;
+      overflow: visible;
+    }
+    .slide {
+      position: relative;
+      display: block !important;
+      width: 13.333in;
+      height: 7.5in;
+      break-after: page;
+      page-break-after: always;
+    }
+    .slide:last-of-type { break-after: auto; page-break-after: auto; }
+    .fragment { visibility: visible !important; opacity: 1 !important; }
+    .trace-reset { display: none !important; }
+    #hud, #rotate-note { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="rotate-note">Rotate your device to landscape for presentation view.</div>
+<div id="stage">
+
+<!-- 1 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Intro to CS · Lesson 5</div>
+      <h1>What makes code worth trusting twice?</h1>
+    </header>
+    <main class="content centered">
+      <p class="lead">Functions as contracts, functional tools, refactoring, errors, and testing with pytest</p>
+      <div class="question" style="max-width:980px">Everything so far ran once, for you, today. This lesson is about code that runs again — next week, on new data, in someone else's hands — and deserves to be believed when it does.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · The bridge</div>
+      <h2>Four threads from Lessons 1–4 run into this lesson</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Lesson</th><th>The idea it contributed</th><th>Where it lands today</th></tr></thead>
+        <tbody>
+          <tr><td>Lesson 1</td><td>a structure is a bundle of properties; a type is a claim about legitimate operations</td><td>type hints, purity, aliasing</td></tr>
+          <tr><td>Lesson 2</td><td>pandas verbs — load, clean, <code class="inline">groupby</code>, <code class="inline">merge</code> — and <em>interviewing the data</em></td><td>pipelines, validate early</td></tr>
+          <tr><td>Lesson 3</td><td>the terminal, virtual environments, git — the <code class="inline">add → commit</code> rhythm</td><td>modules, committing green steps</td></tr>
+          <tr><td>Lesson 4</td><td>algorithms, Big-O, and the breaking inputs: empty, one element, ties</td><td>vectorization, the tests worth writing</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">Nothing in this lesson is brand new machinery. It is the same ideas, pointed at the code itself.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · The goal</div>
+      <h2>Code that works once vs code you can trust twice</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel warning">
+          <h3>Works once</h3>
+          <p>"It printed the right number today."</p>
+          <p>One tangled cell; results printed and scrolled away; nothing named, nothing returned, nothing checkable.</p>
+        </div>
+        <div class="panel good">
+          <h3>Trust twice</h3>
+          <p>Reusable next month, readable by a colleague, checkable automatically.</p>
+          <p>Named contracts that return values; a module you import; tests that prove the answers didn't move.</p>
+        </div>
+      </div>
+      <div class="takeaway">Correct today and trustworthy tomorrow are different properties — and only one of them survives contact with new data.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · The route</div>
+      <h2>Five units, one staircase out of the tangled cell</h2>
+    </header>
+    <main class="content centered">
+      <div class="flow" style="width:100%">
+        <div class="flow-node"><b>Tangled cell</b><span>runs once, prints, forgets</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>1 · Contracts</b><span>name the inputs, the promise, the return</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>2 · Functional tools</b><span>comprehensions, <span class="mono">sorted</span>, chains</span></div>
+      </div>
+      <div class="flow" style="width:100%">
+        <div class="flow-node"><b>3 · Refactor &amp; modules</b><span>kill the smells, split into files you import</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>4 · Errors</b><span>read tracebacks, fail loudly at the door</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>5 · Testing</b><span>prove it, automatically — twice</span></div>
+      </div>
+      <p class="lead">Each unit hands its output to the next: contracts make tools composable, tools make refactoring safe, refactored modules are what tests import.</p>
+    </main>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · Materials</div>
+      <h2>Three sessions, one notebook, one exercise folder</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel"><h3>Session ①</h3><p>Units 1–2: contracts and the functional toolkit.</p></div>
+        <div class="panel"><h3>Session ②</h3><p>Units 3–4: refactoring, modules, and failing well.</p></div>
+        <div class="panel"><h3>Session ③</h3><p>Unit 5: pytest — and the course-wide reveal.</p></div>
+      </div>
+      <div class="cols-2">
+        <div class="panel compact"><h3>Practice · <span class="mono">lesson5_exercise/</span></h3><p>A working-but-awful script, <code class="inline">messy_analysis.py</code>, and a pytest checker, <code class="inline">test_lesson5.py</code>, that you make pass — committing each green step.</p></div>
+        <div class="panel compact"><h3>House rule</h3><p>Everything the notebook writes at run time goes under <code class="inline">../data/</code> (gitignored) — Lesson 2's rule: never write run-time artifacts into the repo tree.</p></div>
+      </div>
+      <div class="takeaway">The lesson runs top to bottom, offline, in the same course environment as Lessons 1–4.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide" data-section="contracts">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Functions as contracts</div>
+      <h2>A function is a promise with three visible parts</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel"><h3>Signature</h3><p>The name and the inputs: what you must supply.</p><p class="mono small">revenue(quantity, unit_price)</p></div>
+        <div class="panel"><h3>Docstring</h3><p>The promise: what it does and what it returns.</p><p class="mono small">"""Revenue for one order line…"""</p></div>
+        <div class="panel"><h3>Return value</h3><p>The deliverable: the answer handed back to the caller.</p><p class="mono small">return quantity * unit_price</p></div>
+      </div>
+      <div class="question">Read a function's first two lines and you should know how to <em>use</em> it without reading its body. That is the whole idea.</div>
+      <div class="takeaway">A function is not a way to avoid retyping. It is a contract other code can rely on.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide" data-section="contracts">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · The contract in code</div>
+      <h2>The caller reads the signature and docstring, not the body</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div>
+          <pre class="code-block"><span class="keyword">def</span> revenue(quantity: <span class="number">int</span>, unit_price: <span class="number">float</span>) -&gt; <span class="number">float</span>:
+    <span class="string">"""Revenue for one order line: quantity times unit price."""</span>
+    <span class="keyword">return</span> quantity * unit_price
+
+print(<span class="string">"revenue(3, 2.5) ="</span>, revenue(3, 2.5))
+print(<span class="string">"the promise    :"</span>, revenue.__doc__)</pre>
+          <pre class="output-block">revenue(3, 2.5) = 7.5
+the promise    : Revenue for one order line: quantity times unit price.</pre>
+        </div>
+        <div class="panel">
+          <h3>Read it aloud</h3>
+          <p>"Give me a whole number and a decimal; I hand back a decimal — the line's revenue."</p>
+          <p class="muted">The docstring lives on the function itself: <code class="inline">revenue.__doc__</code>. Help systems, editors, and colleagues all read it there.</p>
+        </div>
+      </div>
+      <div class="takeaway">Signature · docstring · return value — the contract. Everything else is implementation.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide" data-section="contracts">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Return, don't print</div>
+      <h2>A printed answer is thrown away; a returned answer composes</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel warning">
+          <h3>Prints — and forgets</h3>
+          <pre class="code-block"><span class="keyword">def</span> print_revenue(quantity, unit_price):
+    print(quantity * unit_price)
+
+shown = print_revenue(3, 2.5)   <span class="comment"># prints 7.5…</span>
+print(shown)                    <span class="comment"># …but gave back:</span></pre>
+          <pre class="output-block">7.5
+None</pre>
+        </div>
+        <div class="panel good">
+          <h3>Returns — and composes</h3>
+          <pre class="code-block"><span class="keyword">def</span> return_revenue(quantity, unit_price):
+    <span class="keyword">return</span> quantity * unit_price
+
+handed = return_revenue(3, 2.5)
+print(handed * 2)               <span class="comment"># reusable!</span></pre>
+          <pre class="output-block">15.0</pre>
+        </div>
+      </div>
+      <div class="takeaway">Only a returned value can be stored, combined with others, and — in Unit 5 — tested. The caller of a printing function gets <code class="inline">None</code>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="slide" data-section="contracts">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · The strongest promise</div>
+      <h2>Pure functions: same input, same output, nothing touched</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel good">
+          <h3>Pure</h3>
+          <p>Depends only on its inputs; changes nothing outside itself.</p>
+          <p>Call it a thousand times: the same answer, no surprises — and, in Unit 5, <span class="strong">trivially easy to test</span>.</p>
+        </div>
+        <div class="panel">
+          <h3>Side-effecting</h3>
+          <p>Reaches outside: prints, writes a file, or <em>modifies its argument</em>.</p>
+          <p>Not evil — writing your cleaned CSV to disk is the point of some functions — but effects belong at the <span class="strong">edges</span> of a program, clearly labelled.</p>
+        </div>
+      </div>
+      <div class="takeaway">The dangerous side effect is the quiet one: a function that silently edits the object its caller still holds.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="slide" data-section="contracts">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Mutation, caught in the act</div>
+      <h2>The mutating version edits the caller's frame — Lesson 1's aliasing, again</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="keyword">def</span> drop_cheap_MUTATING(orders):
+    orders.drop(orders[orders[<span class="string">"price"</span>] &lt; 1.0].index,
+                inplace=<span class="keyword">True</span>)   <span class="error"># edits in place</span>
+    <span class="keyword">return</span> orders
+
+<span class="keyword">def</span> drop_cheap_PURE(orders):
+    <span class="keyword">return</span> orders[orders[<span class="string">"price"</span>] &gt;= 1.0].reset_index(drop=<span class="keyword">True</span>)
+
+toy = pd.DataFrame({<span class="string">"item"</span>: [<span class="string">"a"</span>,<span class="string">"b"</span>,<span class="string">"c"</span>], <span class="string">"price"</span>: [0.5, 2.0, 3.0]})
+drop_cheap_PURE(toy)      <span class="comment"># toy still has 3 rows — safe</span>
+drop_cheap_MUTATING(toy)  <span class="comment"># toy now has 2 rows — surprise!</span></pre>
+        <div>
+          <pre class="output-block">after PURE call,     original still has 3 rows
+after MUTATING call, original now has   2 rows</pre>
+          <div class="panel warning" style="margin-top:14px">
+            <h3>Why it hurts</h3>
+            <p>Every step downstream now works on a corrupted frame — and the crash, if any, happens far from this line.</p>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">Two names for one object (Lesson 1's aliasing) plus <code class="inline">inplace=True</code> is how "cleaning" becomes corruption.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="slide" data-section="contracts">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Purity is in your exercise contract</div>
+      <h2>The checker demands purity, in writing</h2>
+    </header>
+    <main class="content">
+      <div class="question" style="max-width:1050px"><span class="mono">clean_prices(transactions)</span> — "Return a NEW frame … <b>Must not modify the frame passed in.</b>"</div>
+      <div class="cols-2">
+        <div class="panel"><h3>Why the contract insists</h3><p>Cleaning runs early. If it mutated its input, every later step — country totals, the customer ranking — would silently read corrupted data.</p></div>
+        <div class="panel"><h3>How it will be enforced</h3><p>Unit 5 shows the test: call <code class="inline">clean_prices</code>, then <code class="inline">assert</code> the input still has all its rows. Purity is a <em>checkable</em> property.</p></div>
+      </div>
+      <div class="takeaway">Keep cleaning functions pure; push printing and saving to the edges of the program.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="slide" data-section="contracts">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Type hints</div>
+      <h2>Type hints are property declarations in the signature</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="keyword">def</span> revenue(quantity: <span class="number">int</span>, unit_price: <span class="number">float</span>) -&gt; <span class="number">float</span>: …
+
+<span class="keyword">def</span> keep_real_prices(orders: pd.DataFrame) -&gt; pd.DataFrame: …
+
+<span class="comment"># "-&gt; pd.DataFrame" promises the caller a table, not a number.</span></pre>
+        <div class="panel">
+          <h3>Three facts about hints</h3>
+          <ul>
+            <li>Python does <b>not</b> enforce them at run time.</li>
+            <li>Humans read them as documentation.</li>
+            <li>Tools — editors, type checkers — verify them.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">Lesson 1's central idea — a type is a claim about which operations are legitimate — written directly into the contract.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 13 -->
+<section class="slide" data-section="contracts">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Before</div>
+      <h2>One long procedural paragraph — it works, and it grows unmanageable</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="comment"># BEFORE — load, clean, summarise, all tangled together</span>
+raw = pd.read_csv(<span class="string">"../course_data/online_retail_sample.csv"</span>)
+raw[<span class="string">"Description"</span>] = raw[<span class="string">"Description"</span>].str.strip()
+raw[<span class="string">"revenue"</span>] = raw[<span class="string">"Quantity"</span>] * raw[<span class="string">"UnitPrice"</span>]
+raw = raw[raw[<span class="string">"UnitPrice"</span>] &gt;= 1.0].reset_index(drop=<span class="keyword">True</span>)
+print(<span class="string">"rows kept:"</span>, len(raw))
+print(<span class="string">"total revenue:"</span>, round(raw[<span class="string">"revenue"</span>].sum(), 2))</pre>
+        <div class="panel warning">
+          <h3>What's wrong — nothing, yet</h3>
+          <p>It is correct. But no step has a name, nothing is returned, and the only output is print.</p>
+          <p class="muted">This is exactly the Lesson-2 cell shape that becomes a 300-line script under deadline.</p>
+        </div>
+      </div>
+      <div class="takeaway">The problem with tangled code is not that it is wrong. It is that you cannot <em>reuse, verify, or safely change</em> any part of it.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 14 -->
+<section class="slide" data-section="contracts">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · After</div>
+      <h2>Three named contracts — same numbers, new properties</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block" style="font-size:14.5px;line-height:1.5"><span class="keyword">def</span> load_orders(path: <span class="number">str</span>) -&gt; pd.DataFrame:
+    <span class="string">"""Read the retail CSV, tidy Description, add revenue."""</span>
+    orders = pd.read_csv(path)
+    orders[<span class="string">"Description"</span>] = orders[<span class="string">"Description"</span>].str.strip()
+    orders[<span class="string">"revenue"</span>] = orders[<span class="string">"Quantity"</span>] * orders[<span class="string">"UnitPrice"</span>]
+    <span class="keyword">return</span> orders
+
+<span class="keyword">def</span> keep_real_prices(orders: pd.DataFrame) -&gt; pd.DataFrame:
+    <span class="string">"""Return a NEW frame with rows priced at 1.00 or more (pure)."""</span>
+    <span class="keyword">return</span> orders[orders[<span class="string">"UnitPrice"</span>] &gt;= 1.0].reset_index(drop=<span class="keyword">True</span>)
+
+<span class="keyword">def</span> total_revenue(orders: pd.DataFrame) -&gt; <span class="number">float</span>:
+    <span class="string">"""Grand total of revenue — a Lesson-4 scan — rounded to 2 dp."""</span>
+    <span class="keyword">return</span> round(orders[<span class="string">"revenue"</span>].sum(), 2)</pre>
+        <div class="panel good">
+          <h3>What changed</h3>
+          <ul>
+            <li>Each step has a <b>name</b> you can read.</li>
+            <li>Each has a <b>docstring</b> you can trust.</li>
+            <li>Each <b>returns</b> a value you can test.</li>
+            <li><code class="inline">keep_real_prices</code> is pure by design.</li>
+          </ul>
+          <p class="muted">The final exercise asks you to carve up a much uglier script exactly this way.</p>
+        </div>
+      </div>
+      <div class="takeaway">Refactoring did not change one number. It changed who can trust the code, and how.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 15 -->
+<section class="slide" data-section="contracts">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Checkpoint</div>
+      <h2>Read a contract, predict the behavior</h2>
+    </header>
+    <main class="content">
+      <div class="question"><span class="mono">def clean_prices(transactions: pd.DataFrame) -&gt; pd.DataFrame:</span> — from the signature alone: what do you hand it, what comes back, and what does the word "pure" add that the hint cannot?</div>
+      <div class="answer fragment">
+        You hand it a DataFrame; you get a DataFrame back — the hints declare those properties, though Python won't enforce them. "Pure" adds the promise hints cannot express: the frame you passed in is <b>unchanged</b> afterwards, and the result is a <b>new</b> object. That promise is exactly what a test can check.
+      </div>
+      <div class="takeaway">Contracts are read in layers: name, hints, docstring — then, in Unit 5, tests that make the promises enforceable.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 16 -->
+<section class="slide" data-section="tools">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Functional tools</div>
+      <h2>Small tools that replace loops: declare the rule once</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel"><h3>Lesson 4 said</h3><p>Most analytics is scanning, filtering, and combining values.</p></div>
+        <div class="panel"><h3>This unit says</h3><p>Python has a compact, readable vocabulary for exactly those moves.</p></div>
+        <div class="panel"><h3>The punchline</h3><p>A pandas chain <em>is</em> this idea — a pipeline of pure transformations.</p></div>
+      </div>
+      <div class="question">Each tool takes a rule — an expression or a function — and applies it everywhere. You say <em>what</em>; Python runs the loop.</div>
+      <div class="takeaway">You have used pieces of this toolkit already. Today we name them deliberately.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 17 -->
+<section class="slide" data-section="tools">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Comprehensions</div>
+      <h2>One line builds a list, a dict, or a set from a rule</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">prices = [0.5, 2.0, 3.5, 0.8, 5.0]
+
+<span class="comment"># list: keep prices &gt;= 1, express in pence</span>
+pence = [round(p * 100) <span class="keyword">for</span> p <span class="keyword">in</span> prices <span class="keyword">if</span> p &gt;= 1.0]
+
+<span class="comment"># dict: build a lookup (Lesson 4's O(1) friend)</span>
+price_label = {p: (<span class="string">"cheap"</span> <span class="keyword">if</span> p &lt; 1.0 <span class="keyword">else</span> <span class="string">"ok"</span>) <span class="keyword">for</span> p <span class="keyword">in</span> prices}
+
+<span class="comment"># set: unique first letters (uniqueness is a Lesson 1 property)</span>
+words = [<span class="string">"metal"</span>, <span class="string">"mug"</span>, <span class="string">"doormat"</span>, <span class="string">"mug"</span>]
+firsts = {w[0] <span class="keyword">for</span> w <span class="keyword">in</span> words}</pre>
+        <div>
+          <pre class="output-block">list  : [200, 350, 500]
+dict  : {0.5: 'cheap', 2.0: 'ok', 3.5: 'ok',
+         0.8: 'cheap', 5.0: 'ok'}
+set   : {'m', 'd'}</pre>
+          <div class="panel compact" style="margin-top:14px"><p>The brackets tell you the structure you get back: <code class="inline">[…]</code> list, <code class="inline">{k: v}</code> dict, <code class="inline">{…}</code> set — each with its Lesson 1 properties.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Transform and filter in one readable line — it says <em>what</em>, not <em>how</em>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 18 -->
+<section class="slide" data-section="tools">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Comprehension anatomy</div>
+      <h2>Three slots: expression, source, condition</h2>
+    </header>
+    <main class="content">
+      <div class="pseudo-block" style="font-size:22px;text-align:center">[ <b>round(p * 100)</b>   for <b>p in prices</b>   if <b>p &gt;= 1.0</b> ]</div>
+      <div class="cols-3">
+        <div class="panel"><h3>Expression</h3><p><span class="mono">round(p * 100)</span> — the transform applied to each survivor.</p></div>
+        <div class="panel"><h3>Source</h3><p><span class="mono">for p in prices</span> — the scan (Lesson 4's Θ(n) walk).</p></div>
+        <div class="panel"><h3>Condition</h3><p><span class="mono">if p &gt;= 1.0</span> — the filter; rows failing it never reach the expression.</p></div>
+      </div>
+      <div class="takeaway">When the rule outgrows one readable line — nested conditions, multiple steps — fall back to a plain loop. Readability is the contract.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 19 -->
+<section class="slide" data-section="tools">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · sorted with key=</div>
+      <h2>The key function defines what "comes first" means</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">customers = [
+    {<span class="string">"id"</span>: 111, <span class="string">"total"</span>: 50.0},
+    {<span class="string">"id"</span>: 999, <span class="string">"total"</span>: 50.0},
+    {<span class="string">"id"</span>: 555, <span class="string">"total"</span>: 50.0},
+    {<span class="string">"id"</span>: 222, <span class="string">"total"</span>: 90.0},
+]
+
+ranked = sorted(customers,
+                key=<span class="keyword">lambda</span> c: (-c[<span class="string">"total"</span>], c[<span class="string">"id"</span>]))</pre>
+        <div class="panel">
+          <h3>Read the lambda aloud</h3>
+          <p>"Given one customer, return the value to compare them by."</p>
+          <p>A <code class="inline">lambda</code> is just a one-line unnamed function (Lesson 4). When the logic outgrows a line, promote it to a named <code class="inline">def</code>.</p>
+        </div>
+      </div>
+      <div class="takeaway">Lesson 4 built leaderboards this way. Today's addition is the <b>tuple key</b> — sorting by several things at once.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 20 -->
+<section class="slide" data-section="tools">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · The tuple-key trick</div>
+      <h2>(-total, id): descending on one field, ascending on the tie-break</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>How tuples compare</h3>
+          <p>Python compares the first fields; only on a tie does it look at the second.</p>
+          <p>Negating a numeric field <b>flips its direction</b>: biggest total becomes smallest key.</p>
+          <p class="mono small">(-90.0, 222) &lt; (-50.0, 111) &lt; (-50.0, 555) &lt; (-50.0, 999)</p>
+        </div>
+        <table>
+          <thead><tr><th>Rank</th><th>Customer</th><th>Total</th><th>Why here</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td class="mono">222</td><td>90.0</td><td>highest total</td></tr>
+            <tr><td>2</td><td class="mono">111</td><td>50.0</td><td>tie → smallest id</td></tr>
+            <tr><td>3</td><td class="mono">555</td><td>50.0</td><td>tie → next id</td></tr>
+            <tr><td>4</td><td class="mono">999</td><td>50.0</td><td>tie → largest id</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="takeaway">"Sort by total <b>descending</b>, ties by id <b>ascending</b>" — precisely how the exercise's <code class="inline">top_customers</code> must break ties.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 21 -->
+<section class="slide" data-section="tools">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Animated trace</div>
+      <h2>Watch the tuple keys decide the ranking</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div class="trace" data-trace-type="array">
+          <div class="trace-toolbar">
+            <div class="trace-status" aria-live="polite" aria-atomic="true"></div>
+            <div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div>
+          </div>
+          <div class="trace-board">
+            <div class="array-strip">
+              <div class="trace-pointer" style="width:132px">key of</div>
+              <div class="array-cell" data-index="0" style="width:132px;font-size:19px">111 · 50</div>
+              <div class="array-cell" data-index="1" style="width:132px;font-size:19px">999 · 50</div>
+              <div class="array-cell" data-index="2" style="width:132px;font-size:19px">555 · 50</div>
+              <div class="array-cell" data-index="3" style="width:132px;font-size:19px">222 · 90</div>
+            </div>
+            <div class="trace-variables">
+              <div class="trace-variable" data-var="key" style="min-width:210px"></div>
+            </div>
+          </div>
+          <script type="application/json" class="trace-data">[
+            {"current":null,"vars":{"key":"key = (-total, id)"},"status":"Four customers — three tie at 50.0. Compute each customer's sort key first."},
+            {"current":0,"processedThrough":0,"vars":{"key":"key(111) = (-50.0, 111)"},"status":"Customer 111: negate the total, keep the id."},
+            {"current":1,"processedThrough":1,"vars":{"key":"key(999) = (-50.0, 999)"},"status":"Customer 999 ties on the first field — the id will decide."},
+            {"current":2,"processedThrough":2,"vars":{"key":"key(555) = (-50.0, 555)"},"status":"Customer 555: same story."},
+            {"current":3,"processedThrough":3,"vars":{"key":"key(222) = (-90.0, 222)"},"status":"Customer 222: −90.0 is the smallest first field of all."},
+            {"current":null,"values":["222 · 90","111 · 50","555 · 50","999 · 50"],"sortedUntil":4,"vars":{"key":"ascending by key"},"status":"Sort ascending by key: (−90.0, 222) comes first, then the three ties ordered by id — 111, 555, 999."}
+          ]</script>
+        </div>
+        <table class="trace-transcript compact">
+          <thead><tr><th>Customer</th><th>Key</th><th>Final rank</th></tr></thead>
+          <tbody>
+            <tr data-step="1"><td>111</td><td>(-50.0, 111)</td><td>2</td></tr>
+            <tr data-step="2"><td>999</td><td>(-50.0, 999)</td><td>4</td></tr>
+            <tr data-step="3"><td>555</td><td>(-50.0, 555)</td><td>3</td></tr>
+            <tr data-step="4"><td>222</td><td>(-90.0, 222)</td><td>1</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 22 -->
+<section class="slide" data-section="tools">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · map and filter</div>
+      <h2>map + filter and a comprehension say the same thing</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">Nested calls, read inside-out</div>
+          <pre class="code-block">nums = [1, 2, 3, 4, 5, 6]
+
+doubled_evens = list(
+    map(<span class="keyword">lambda</span> n: n * 2,
+        filter(<span class="keyword">lambda</span> n: n % 2 == 0, nums)))</pre>
+        </div>
+        <div>
+          <div class="code-title">One line, read left-to-right</div>
+          <pre class="code-block">doubled_evens = [n * 2 <span class="keyword">for</span> n <span class="keyword">in</span> nums
+                        <span class="keyword">if</span> n % 2 == 0]</pre>
+          <pre class="output-block">map + filter : [4, 8, 12]
+comprehension: [4, 8, 12]
+same result  : True</pre>
+        </div>
+      </div>
+      <div class="takeaway">Both are the functional idea — apply a rule everywhere. In Python, the comprehension is usually the more readable spelling; recognize <code class="inline">map</code>/<code class="inline">filter</code> when you meet them in other people's code.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 23 -->
+<section class="slide" data-section="tools">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · zip and enumerate</div>
+      <h2>Walk two lists in step; count as you go</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">ids = [111, 222, 555]
+totals = [50.0, 90.0, 50.0]
+
+<span class="comment"># zip pairs them up — and a dict comprehension indexes them</span>
+lookup = {cid: total <span class="keyword">for</span> cid, total <span class="keyword">in</span> zip(ids, totals)}
+
+<span class="comment"># enumerate hands you the running position — no manual counter</span>
+<span class="keyword">for</span> rank, c <span class="keyword">in</span> enumerate(ranked, start=1):
+    print(<span class="string">f"#{rank}: customer {c['id']} spent {c['total']}"</span>)</pre>
+        <div>
+          <pre class="output-block">zipped lookup: {111: 50.0, 222: 90.0, 555: 50.0}
+#1: customer 222 spent 90.0
+#2: customer 111 spent 50.0
+#3: customer 555 spent 50.0
+#4: customer 999 spent 50.0</pre>
+          <div class="panel compact" style="margin-top:14px"><p><code class="inline">start=1</code> gives human ranks. No index arithmetic, no off-by-one.</p></div>
+        </div>
+      </div>
+      <div class="takeaway"><code class="inline">zip</code> feeds Lesson 4's "build a lookup" pattern; <code class="inline">enumerate</code> replaces every hand-rolled counter variable.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 24 -->
+<section class="slide" data-section="tools">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · The bridge</div>
+      <h2>A pandas chain <em>is</em> a functional pipeline</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">Step by step — a variable per step</div>
+          <pre class="code-block">step1 = orders[orders[<span class="string">"Country"</span>] == <span class="string">"United Kingdom"</span>]
+step2 = step1.groupby(<span class="string">"StockCode"</span>)[<span class="string">"revenue"</span>].sum()
+step3 = step2.sort_values(ascending=<span class="keyword">False</span>)
+top_uk = step3.head(3)</pre>
+        </div>
+        <div>
+          <div class="code-title">The same pipeline as one chain</div>
+          <pre class="code-block">top_uk = (
+    orders
+    .query(<span class="string">"Country == 'United Kingdom'"</span>)   <span class="comment"># filter</span>
+    .groupby(<span class="string">"StockCode"</span>)[<span class="string">"revenue"</span>].sum()  <span class="comment"># group</span>
+    .sort_values(ascending=<span class="keyword">False</span>)           <span class="comment"># order</span>
+    .head(3)                                <span class="comment"># slice</span>
+)</pre>
+        </div>
+      </div>
+      <div class="takeaway">Each verb takes a frame and returns a <b>new</b> one — Lesson 2's rule — so the steps snap together like pipe segments. The two spellings produce equal results.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 25 -->
+<section class="slide" data-section="tools">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Chain discipline</div>
+      <h2>Chains are for reading, not for showing off</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel good"><h3>Do</h3><p>Wrap the chain in parentheses and put one verb per line — the pipeline reads top to bottom: <em>filter, group, reduce, order, slice</em>.</p></div>
+        <div class="panel"><h3>Pause</h3><p>If a step needs a comment, or you want to inspect its result, give it a <b>name</b>. A variable is a breakpoint for humans.</p></div>
+        <div class="panel warning"><h3>Don't</h3><p>A ten-method run-on that nobody can read is not functional style — it is the tangled cell again, rotated 90°.</p></div>
+      </div>
+      <div class="takeaway">Reading a chain aloud is reading the algorithm. When you can't read it aloud, break it.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 26 -->
+<section class="slide" data-section="tools">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · .apply vs vectorization</div>
+      <h2>Same answer; a Python loop vs compiled column math</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">big = pd.concat([orders] * 300, ignore_index=<span class="keyword">True</span>)  <span class="comment"># ~15k rows</span>
+
+apply_rev = big.apply(
+    <span class="keyword">lambda</span> row: row[<span class="string">"Quantity"</span>] * row[<span class="string">"UnitPrice"</span>],
+    axis=1)                       <span class="comment"># a Python loop per row</span>
+
+vector_rev = big[<span class="string">"Quantity"</span>] * big[<span class="string">"UnitPrice"</span>]
+                                  <span class="comment"># one compiled operation</span></pre>
+        <div>
+          <pre class="output-block">rows: 15300
+  .apply row-wise :   0.19 s
+  vectorized      :   0.0004 s
+  same answer     : True
+  speedup         : ~500x</pre>
+          <div class="panel compact" style="margin-top:14px"><p>Numbers vary by machine; the <em>shape</em> of the gap does not — Lesson 4's algorithm-vs-implementation distinction, live.</p></div>
+        </div>
+      </div>
+      <div class="takeaway"><code class="inline">.apply</code> is defensible when the per-row work truly can't be vectorized. It should be a <b>choice</b>, not a habit.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 27 -->
+<section class="slide" data-section="tools">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Checkpoint</div>
+      <h2>Read the key, predict the order</h2>
+    </header>
+    <main class="content">
+      <div class="question"><span class="mono">sorted(rows, key=lambda r: (r["country"], -r["revenue"]))</span> — in plain English, what order does this produce?</div>
+      <div class="answer fragment">
+        Countries in <b>ascending</b> (alphabetical) order; within each country, revenue in <b>descending</b> order — the negation flips only the second field. Tuple position sets priority; sign sets direction.
+      </div>
+      <div class="takeaway">If you can translate any tuple key into a sentence, you can write any leaderboard.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 28 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Session 2 warm-up</div>
+      <h2>Five questions from last time — answer from memory first</h2>
+    </header>
+    <main class="content">
+      <div class="rule-list">
+        <div class="rule"><b>Q1</b><span>A function is a contract with three visible parts — name them.</span></div>
+        <div class="rule"><b>Q2</b><span>Why prefer returning a value over printing it?</span></div>
+        <div class="rule"><b>Q3</b><span>What makes a function <em>pure</em>, and why does the exercise's <span class="mono">clean_prices</span> insist on it?</span></div>
+        <div class="rule"><b>Q4</b><span>Read the sort key <span class="mono">(-total, id)</span> in plain English.</span></div>
+        <div class="rule"><b>Q5</b><span><span class="mono">df.apply(..., axis=1)</span> and <span class="mono">df["a"] * df["b"]</span> give the same answer — why prefer the second?</span></div>
+      </div>
+      <div class="takeaway">Say your answers out loud before turning the page. Retrieval, not recognition, is what sticks.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 29 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Warm-up answers</div>
+      <h2>Check yourself</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Q</th><th>Answer</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Signature (name + inputs), docstring (the promise), return value (the deliverable).</td></tr>
+          <tr><td>2</td><td>A returned value can be stored, combined, and tested; a printed one is thrown away — the caller gets <code class="inline">None</code>.</td></tr>
+          <tr><td>3</td><td>It changes nothing outside itself and never modifies its argument — same input, same output. <code class="inline">clean_prices</code> must be pure so cleaning doesn't corrupt the frame every later step still reads.</td></tr>
+          <tr><td>4</td><td>Sort by total <em>descending</em>; break ties by id <em>ascending</em> — the negation flips total's direction.</td></tr>
+          <tr><td>5</td><td><code class="inline">.apply(axis=1)</code> is a Python loop over rows; the vectorized product runs in compiled code on the whole column — same result, far cheaper.</td></tr>
+        </tbody>
+      </table>
+    </main>
+  </div>
+</section>
+
+<!-- 30 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · The specimen</div>
+      <h2>messy_analysis.py: correct, and everything this unit warns about</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>What it does</h3>
+          <p>Loads the retail CSV, cleans prices, totals revenue for three countries, ranks the top 3 customers — and prints correct numbers for all of it.</p>
+        </div>
+        <div class="panel warning">
+          <h3>House rule</h3>
+          <p><b>Do not edit this file.</b> It is your reference for correct behavior — the refactor must reproduce its numbers exactly.</p>
+        </div>
+      </div>
+      <div class="question">Read it first. Then ask: to add <em>France</em> to the country totals, how many places would you have to touch — and how would you know you broke nothing?</div>
+      <div class="takeaway">No functions, copy-pasted paragraphs, magic numbers, a deeply nested loop, and <code class="inline">print()</code> where a <code class="inline">return</code> should be.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 31 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Exhibit A</div>
+      <h2>The copy-paste paragraphs, side by side</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block"><span class="comment"># revenue for United Kingdom</span>
+uk_total = 0
+<span class="keyword">for</span> i <span class="keyword">in</span> range(len(data)):
+    <span class="keyword">if</span> data.loc[i, <span class="string">"Country"</span>] == <span class="string">"United Kingdom"</span>:
+        uk_total = uk_total + data.loc[i, <span class="string">"revenue"</span>]
+print(<span class="string">"United Kingdom revenue:"</span>, round(uk_total, 2))</pre>
+        <pre class="code-block"><span class="comment"># revenue for EIRE</span>
+eire_total = 0
+<span class="keyword">for</span> i <span class="keyword">in</span> range(len(data)):
+    <span class="keyword">if</span> data.loc[i, <span class="string">"Country"</span>] == <span class="string">"EIRE"</span>:
+        eire_total = eire_total + data.loc[i, <span class="string">"revenue"</span>]
+print(<span class="string">"EIRE revenue:"</span>, round(eire_total, 2))</pre>
+      </div>
+      <p class="small muted">…and a third copy for Netherlands. Three paragraphs, one idea, three chances to diverge.</p>
+      <div class="takeaway">Change the rule once — say, rounding — and you must fix it in three places. You will miss one.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 32 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Exhibit B</div>
+      <h2>The top-3 selection loop: three ifs deep</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="keyword">for</span> rank <span class="keyword">in</span> range(3):
+    best_pos = -1
+    <span class="keyword">for</span> j <span class="keyword">in</span> range(len(customer_ids)):
+        <span class="keyword">if</span> totals[j] <span class="keyword">is None</span>:
+            <span class="keyword">continue</span>
+        <span class="keyword">if</span> best_pos == -1:
+            best_pos = j
+        <span class="keyword">elif</span> totals[j] &gt; totals[best_pos]:
+            best_pos = j
+        <span class="keyword">elif</span> totals[j] == totals[best_pos] <span class="keyword">and</span> \
+             customer_ids[j] &lt; customer_ids[best_pos]:
+            best_pos = j
+    print(<span class="string">"  #"</span> + str(rank + 1), <span class="string">"customer"</span>, …)
+    totals[best_pos] = <span class="keyword">None</span>   <span class="comment"># "remove" by overwriting</span></pre>
+        <div class="panel warning">
+          <h3>Buried treasure</h3>
+          <p>Inside the nesting hides a real business rule: <b>ties go to the smaller customer id</b>.</p>
+          <p>It works — Lesson 4's selection-scan pattern — but the rule is invisible unless you trace all three branches.</p>
+          <p class="muted">Compare: <span class="mono">sorted(…, key=lambda …: (-total, id))[:3]</span> states the same rule in one line.</p>
+        </div>
+      </div>
+      <div class="takeaway">Deep nesting doesn't make code wrong. It makes the <em>rules</em> inside it unreadable — and unreadable rules drift.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 33 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · The smell taxonomy</div>
+      <h2>Four code smells, caught red-handed</h2>
+    </header>
+    <main class="content">
+      <div class="cols-4">
+        <div class="panel compact"><h3>Copy-paste blocks</h3><p>Three near-identical country loops.</p><p class="muted">Change once → fix three places → miss one.</p></div>
+        <div class="panel compact"><h3>Magic numbers</h3><p><span class="mono">&gt;= 1.0</span>, unexplained.</p><p class="muted">A price floor? A currency assumption? The code won't say.</p></div>
+        <div class="panel compact"><h3>Deep nesting</h3><p>The top-3 loop, three <span class="mono">if</span>s deep.</p><p class="muted">Hard to read; easy to get the tie-break subtly wrong.</p></div>
+        <div class="panel compact"><h3>Print, not return</h3><p>Every result printed, nothing returned.</p><p class="muted">Nothing reusable, nothing testable (Unit 1).</p></div>
+      </div>
+      <div class="takeaway">None of these is a bug — the script is <b>correct</b>. They are what makes correct code impossible to trust, extend, or test.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 34 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · The cure</div>
+      <h2>Extract functions — into a module you import</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block" style="font-size:14.5px;line-height:1.5"><span class="comment"># retail_utils.py — your first multi-file project</span>
+<span class="string">"""Retail helpers, extracted from messy_analysis.py."""</span>
+<span class="keyword">import</span> pandas <span class="keyword">as</span> pd
+
+PRICE_FLOOR = 1.0   <span class="comment"># the magic 1.0, named once</span>
+
+<span class="keyword">def</span> load_orders(path):
+    <span class="string">"""Read the CSV, tidy Description, add revenue."""</span>
+    orders = pd.read_csv(path)
+    orders[<span class="string">"Description"</span>] = orders[<span class="string">"Description"</span>].str.strip()
+    orders[<span class="string">"revenue"</span>] = orders[<span class="string">"Quantity"</span>] * orders[<span class="string">"UnitPrice"</span>]
+    <span class="keyword">return</span> orders
+
+<span class="keyword">def</span> keep_real_prices(orders):
+    <span class="string">"""Return a NEW frame priced at or above PRICE_FLOOR (pure)."""</span>
+    <span class="keyword">return</span> orders[orders[<span class="string">"UnitPrice"</span>] &gt;= PRICE_FLOOR].reset_index(drop=<span class="keyword">True</span>)</pre>
+        <div class="panel good">
+          <h3>Each smell, answered</h3>
+          <ul>
+            <li>Magic number → <b>named constant</b> <code class="inline">PRICE_FLOOR</code>.</li>
+            <li>Tangle → <b>one job per function</b>, docstring each.</li>
+            <li>Print → every function <b>returns</b>.</li>
+            <li>A file of helpers → a <b>module</b> any script can import.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">A module is just a <code class="inline">.py</code> file of related contracts. <code class="inline">%%writefile</code> in the notebook writes it to disk instead of running it.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 35 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · The collapse</div>
+      <h2>Three copy-pasted loops were one groupby wearing three costumes</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">Before · 18 lines, three copies</div>
+          <pre class="code-block">uk_total = 0
+<span class="keyword">for</span> i <span class="keyword">in</span> range(len(data)): …
+eire_total = 0
+<span class="keyword">for</span> i <span class="keyword">in</span> range(len(data)): …
+nl_total = 0
+<span class="keyword">for</span> i <span class="keyword">in</span> range(len(data)): …</pre>
+        </div>
+        <div>
+          <div class="code-title">After · one contract</div>
+          <pre class="code-block"><span class="keyword">def</span> revenue_by_country(orders):
+    <span class="string">"""The three country loops, collapsed into one groupby."""</span>
+    <span class="keyword">return</span> (orders
+            .groupby(<span class="string">"Country"</span>)[<span class="string">"revenue"</span>]
+            .sum().round(2).to_dict())</pre>
+          <pre class="output-block">{'EIRE': 148.88, 'Netherlands': 16.45,
+ 'United Kingdom': 1220.07}</pre>
+        </div>
+      </div>
+      <div class="takeaway">Adding France now costs <b>zero</b> edits — groupby covers every country. The copy-paste smell was a missing abstraction.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 36 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Modules and import</div>
+      <h2>The import line is itself a contract</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="comment"># a module is found on sys.path — add the folder, then import</span>
+sys.path.insert(0, <span class="string">"../data/lesson5_demo"</span>)
+<span class="keyword">from</span> retail_utils <span class="keyword">import</span> load_orders, keep_real_prices, revenue_by_country
+
+demo = keep_real_prices(load_orders(<span class="string">"../course_data/online_retail_sample.csv"</span>))
+print(revenue_by_country(demo))</pre>
+        <div class="panel">
+          <h3>What the import promises</h3>
+          <p><em>A module named <code class="inline">retail_utils</code> exists, and it offers these three functions.</em></p>
+          <p class="muted">Break either half and Python says so immediately: <code class="inline">ModuleNotFoundError</code> or <code class="inline">ImportError</code> — a contract violation, named at the door.</p>
+        </div>
+      </div>
+      <div class="takeaway">In the exercise, <code class="inline">test_lesson5.py</code> begins with <code class="inline">from analysis import …</code> — the checker's first assertion is that your module exists.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 37 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · The invariant</div>
+      <h2>Same numbers, better shape</h2>
+    </header>
+    <main class="content">
+      <div class="number-strip">
+        <div class="number-box" style="min-width:220px">1220.07<small>United Kingdom</small></div>
+        <div class="number-box" style="min-width:220px">148.88<small>EIRE</small></div>
+        <div class="number-box" style="min-width:220px">16.45<small>Netherlands</small></div>
+      </div>
+      <p class="lead" style="align-self:center;text-align:center">The script printed these. The module returns exactly these. That identity is the whole point.</p>
+      <div class="takeaway">Refactoring changes the code's <b>shape</b>. The one thing it must never change: <b>the answers</b>. Unit 5 turns that sentence into an automated check.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 38 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Animated flowchart</div>
+      <h2>The refactor loop: one function, one green test, one commit</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="flow">
+        <div class="trace-toolbar"><div class="trace-status" aria-live="polite"></div><div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div></div>
+        <div class="flowchart-wrap" style="min-height:330px">
+          <svg class="flowchart-svg" viewBox="0 0 900 330" style="height:330px" role="img" aria-label="Refactor loop flowchart">
+            <defs><marker id="arrow-refactor" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0l10 5-10 5z" fill="#94a3b8"/></marker></defs>
+            <path class="fc-edge" data-edge="pick-extract" d="M145 78v52" marker-end="url(#arrow-refactor)"/>
+            <path class="fc-edge" data-edge="extract-run" d="M145 180v52" marker-end="url(#arrow-refactor)"/>
+            <path class="fc-edge" data-edge="run-green" d="M250 257h123" marker-end="url(#arrow-refactor)"/>
+            <path class="fc-edge" data-edge="green-fix" d="M480 212v-44" marker-end="url(#arrow-refactor)"/>
+            <path class="fc-edge" data-edge="fix-run" d="M385 143H145v85" marker-end="url(#arrow-refactor)"/>
+            <path class="fc-edge" data-edge="green-commit" d="M587 257h91" marker-end="url(#arrow-refactor)"/>
+            <path class="fc-edge" data-edge="commit-pick" d="M678 243V53H252" marker-end="url(#arrow-refactor)"/>
+            <path class="fc-edge" data-edge="commit-done" d="M773 232v-52" marker-end="url(#arrow-refactor)"/>
+            <g class="fc-node" data-node="pick"><rect x="40" y="28" width="210" height="50" rx="25"/><text x="145" y="53">pick one failing test</text></g>
+            <g class="fc-node" data-node="extract"><rect x="40" y="130" width="210" height="50"/><text x="145" y="155">extract one function</text></g>
+            <g class="fc-node" data-node="run"><rect x="40" y="232" width="210" height="50"/><text x="145" y="257">run pytest</text></g>
+            <g class="fc-node" data-node="green"><path d="M480 212l107 45-107 45-107-45z"/><text x="480" y="257">green?</text></g>
+            <g class="fc-node" data-node="fix"><rect x="385" y="118" width="190" height="50"/><text x="480" y="143">read the failure · fix</text></g>
+            <g class="fc-node" data-node="commit"><rect x="678" y="232" width="190" height="50"/><text x="773" y="257">git add → git commit</text></g>
+            <g class="fc-node" data-node="done"><path d="M700 130h160l-15 48H685z"/><text x="773" y="154">all 12 green</text></g>
+            <text x="497" y="196" font-size="14" fill="#536178">no</text>
+            <text x="620" y="245" font-size="14" fill="#536178">yes</text>
+            <text x="560" y="43" font-size="14" fill="#536178">tests remain</text>
+            <text x="800" y="205" font-size="14" fill="#536178">none left</text>
+          </svg>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"activeNode":"pick","status":"Twelve tests are red. Pick one — say, test_load_transactions_returns_every_row."},
+          {"activeEdge":"pick-extract","activeNode":"extract","status":"Extract just enough into analysis.py: a load_transactions function."},
+          {"activeEdge":"extract-run","activeNode":"run","status":"python3 -m pytest test_lesson5.py -v"},
+          {"activeEdge":"run-green","activeNode":"green","status":"Your test still fails — the Description column wasn't stripped."},
+          {"activeEdge":"green-fix","activeNode":"fix","status":"Read the failure bottom-up (Unit 4) and add the missing .str.strip()."},
+          {"activeEdge":"fix-run","activeNode":"run","status":"Run pytest again."},
+          {"activeEdge":"run-green","activeNode":"green","status":"Green — the extracted function reproduces the script's behavior."},
+          {"activeEdge":"green-commit","activeNode":"commit","status":"Commit the green step — Lesson 3's add → commit rhythm, now with proof attached."},
+          {"activeEdge":"commit-pick","activeNode":"pick","status":"Eleven to go. Each cycle is small: one function, one green test, one commit."},
+          {"activeEdge":"commit-done","activeNode":"done","status":"When all 12 are green, the refactor is finished — and provably unchanged."}
+        ]</script>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 39 -->
+<section class="slide" data-section="shape">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Checkpoint</div>
+      <h2>What does the import promise?</h2>
+    </header>
+    <main class="content">
+      <div class="question"><span class="mono">from retail_utils import revenue_by_country</span> — name everything this single line asserts, and what happens when each assertion fails.</div>
+      <div class="answer fragment">
+        It asserts (1) a module named <code class="inline">retail_utils</code> can be found on <code class="inline">sys.path</code> — otherwise <code class="inline">ModuleNotFoundError</code>; and (2) that module defines a name <code class="inline">revenue_by_country</code> — otherwise <code class="inline">ImportError</code>. Both fail immediately, at the door, naming the missing piece — which is exactly how you want contracts to fail.
+      </div>
+      <div class="takeaway">An import is the first test your module ever passes.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 40 -->
+<section class="slide" data-section="errors">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Errors and defensive code</div>
+      <h2>Refactored code still meets bad input — fail well</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel"><h3>1 · Read</h3><p>Tracebacks bottom-up: the last line is the fact, the frames above are the route.</p></div>
+        <div class="panel"><h3>2 · Catch</h3><p>Only the narrow exception you expected — never a blanket.</p></div>
+        <div class="panel"><h3>3 · Raise</h3><p>The instant a contract is broken — at the door, with a message that names the problem.</p></div>
+      </div>
+      <div class="takeaway">Failing well is a feature. A clear early failure is worth more than a mysterious late one — and infinitely more than a silent wrong answer.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 41 -->
+<section class="slide" data-section="errors">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Read tracebacks bottom-up</div>
+      <h2>Bottom = what went wrong; up = where it happened</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div>
+          <pre class="code-block"><span class="keyword">def</span> parse_price(text):
+    <span class="keyword">return</span> float(text)          <span class="comment"># blows up on bad text</span>
+
+<span class="keyword">def</span> load_prices(values):
+    <span class="keyword">return</span> [parse_price(v) <span class="keyword">for</span> v <span class="keyword">in</span> values]
+
+load_prices([<span class="string">"1.95"</span>, <span class="string">"not-available"</span>, <span class="string">"2.10"</span>])</pre>
+          <pre class="output-block">Traceback (most recent call last):
+  File "cell", line 7, in &lt;module&gt;
+    load_prices(["1.95", "not-available", "2.10"])
+  File "cell", line 5, in load_prices
+    return [parse_price(v) for v in values]
+  File "cell", line 2, in parse_price
+    return float(text)
+<span class="error">ValueError: could not convert string to float: 'not-available'</span></pre>
+        </div>
+        <div class="panel">
+          <h3>Reading order</h3>
+          <p><b>Start at the bottom:</b> the <code class="inline">ValueError</code> line is the fact — it even shows the offending text.</p>
+          <p><b>Then climb:</b> <code class="inline">parse_price</code> raised it; <code class="inline">load_prices</code> called that; the cell called that.</p>
+          <p class="muted">The top line is where Python <em>started</em>, not where it broke.</p>
+        </div>
+      </div>
+      <div class="takeaway">A traceback is a map of the call stack at the moment of failure — read it bottom-up, always.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 42 -->
+<section class="slide" data-section="errors">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Animated trace</div>
+      <h2>The call stack builds the traceback, frame by frame</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="stack">
+        <div class="trace-toolbar"><div class="trace-status" aria-live="polite"></div><div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div></div>
+        <div class="cols-2 ratio-3-2 align-center">
+          <pre class="code-block">load_prices([<span class="string">"1.95"</span>, <span class="string">"not-available"</span>, <span class="string">"2.10"</span>])
+        │
+        └─&gt; parse_price(<span class="string">"1.95"</span>)     ✓ 1.95
+            parse_price(<span class="string">"not-available"</span>)
+                    │
+                    └─&gt; float(<span class="string">"not-available"</span>)
+                        <span class="error">ValueError</span></pre>
+          <div class="panel" style="display:flex;flex-direction:column;align-items:center">
+            <h3 style="margin-bottom:8px">Call stack · grows upward</h3>
+            <div class="stack-column" style="width:190px">
+              <div class="stack-frame">
+                <div class="stack-slot" data-slot="0"></div>
+                <div class="stack-slot" data-slot="1"></div>
+                <div class="stack-slot" data-slot="2"></div>
+                <div class="stack-slot" data-slot="3"></div>
+              </div>
+            </div>
+            <div class="trace-variables" style="margin-top:14px"><div class="trace-variable" data-var="frames" style="min-width:190px"></div></div>
+          </div>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"stack":[],"vars":{"frames":"stack empty"},"status":"Before the call: nothing is running."},
+          {"stack":["<module>"],"vars":{"frames":"1 frame"},"status":"The cell's top-level code starts running — the first frame."},
+          {"stack":["<module>","load_prices"],"vars":{"frames":"2 frames"},"status":"The cell calls load_prices(values) — a new frame goes on top."},
+          {"stack":["<module>","load_prices","parse_price"],"vars":{"frames":"3 frames"},"status":"The comprehension reaches 'not-available' and calls parse_price."},
+          {"stack":["<module>","load_prices","parse_price","float(…)"],"vars":{"frames":"4 frames"},"status":"float() cannot parse the text. It raises ValueError in the deepest frame."},
+          {"stack":["<module>","load_prices","parse_price","float(…)"],"vars":{"frames":"unwinding…"},"status":"The error travels back down through every open frame. The traceback prints one entry per frame — deepest last."},
+          {"stack":["<module>","load_prices","parse_price","float(…)"],"vars":{"frames":"read bottom-up"},"status":"So the bottom line of a traceback is the deepest frame — the fact. Everything above it is the route that led there."}
+        ]</script>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 43 -->
+<section class="slide" data-section="errors">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · try / except</div>
+      <h2>Catch the narrow case you expected — and improve the message</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="keyword">def</span> read_table(path):
+    <span class="string">"""Load a CSV; turn a missing file into an actionable message."""</span>
+    <span class="keyword">try</span>:
+        <span class="keyword">return</span> pd.read_csv(path)
+    <span class="keyword">except</span> FileNotFoundError:
+        <span class="keyword">raise</span> FileNotFoundError(
+            <span class="string">f"No file at {path!r} — check the path and your "</span>
+            <span class="string">"working directory (Lesson 2's first aid: "</span>
+            <span class="string">"print(Path.cwd()))."</span>
+        )</pre>
+        <div class="panel good">
+          <h3>Only <span class="mono">FileNotFoundError</span></h3>
+          <p>A different failure — a permissions error, a malformed file — is <b>not</b> swallowed. It surfaces, which is exactly what you want.</p>
+          <p class="muted">The re-raise keeps the error type but upgrades the message with what the reader should do next.</p>
+        </div>
+      </div>
+      <div class="takeaway"><code class="inline">try/except</code> is for the narrow, <em>expected</em> case. It is a tool for better messages, not a lid for problems.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 44 -->
+<section class="slide" data-section="errors">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · The anti-pattern</div>
+      <h2>A bare except is a lid on a boiling pot</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel warning">
+          <h3>Never this</h3>
+          <pre class="code-block"><span class="keyword">try</span>:
+    result = analyse(df)
+<span class="keyword">except</span>:          <span class="error"># catches EVERYTHING</span>
+    result = <span class="keyword">None</span></pre>
+          <p>This swallows the typo in <code class="inline">analyse</code>, the missing column, the keyboard interrupt — every future bug, silently.</p>
+        </div>
+        <div class="panel">
+          <h3>Ask before you catch</h3>
+          <ul>
+            <li>Which <b>specific</b> exception do I expect here?</li>
+            <li>Can I actually <b>do something</b> about it?</li>
+            <li>If not both — don't catch. Let it surface.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">Code that cannot fail loudly will eventually fail silently — and a silent wrong answer is the most expensive bug there is.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 45 -->
+<section class="slide" data-section="errors">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Raise early</div>
+      <h2>Validate at the door: raise the instant a contract is broken</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">REQUIRED = {<span class="string">"Quantity"</span>, <span class="string">"UnitPrice"</span>, <span class="string">"Country"</span>, <span class="string">"source_customer_id"</span>}
+
+<span class="keyword">def</span> load_validated(path):
+    <span class="string">"""Load the retail CSV and FAIL LOUDLY if it isn't shaped as promised."""</span>
+    orders = pd.read_csv(path)
+    missing = REQUIRED - set(orders.columns)
+    <span class="keyword">if</span> missing:
+        <span class="keyword">raise</span> ValueError(<span class="string">f"{path}: missing required columns {sorted(missing)}"</span>)
+    <span class="keyword">if</span> len(orders) == 0:
+        <span class="keyword">raise</span> ValueError(<span class="string">f"{path}: file has a header but zero rows"</span>)
+    <span class="keyword">return</span> orders</pre>
+        <div class="panel">
+          <h3>The set difference is the interview</h3>
+          <p><span class="mono">REQUIRED − columns</span> names exactly what's absent — a Lesson 1 set operation doing Lesson 2's "interview the data," in code.</p>
+        </div>
+      </div>
+      <div class="takeaway">Validate early — at the door, not in the kitchen. The check costs three lines; the debugging session it replaces costs an afternoon.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 46 -->
+<section class="slide" data-section="errors">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · The payoff</div>
+      <h2>At the door vs five cells later</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel good">
+          <h3>With the check</h3>
+          <pre class="output-block">caught early: broken.csv: missing
+required columns ['UnitPrice']</pre>
+          <p>The failure names the file <em>and</em> the column, before any analysis ran.</p>
+        </div>
+        <div class="panel warning">
+          <h3>Without it</h3>
+          <pre class="output-block"><span class="error">KeyError: 'UnitPrice'</span>
+  <span class="comment"># …five cells later, deep inside
+  # a groupby, nowhere near the cause</span></pre>
+          <p>Or worse: no crash at all, and a subtly wrong number nobody questions.</p>
+        </div>
+      </div>
+      <div class="takeaway">A validated failure at the door beats a mysterious <code class="inline">KeyError</code> later — this is exactly how the finance assignment's checker guards its inputs.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 47 -->
+<section class="slide" data-section="errors">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Animated flowchart</div>
+      <h2>load_validated: two doors, then trust</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="flow">
+        <div class="trace-toolbar"><div class="trace-status" aria-live="polite"></div><div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div></div>
+        <div class="flowchart-wrap" style="min-height:340px">
+          <svg class="flowchart-svg" viewBox="0 0 1100 340" style="height:340px" role="img" aria-label="Validate-early flowchart">
+            <defs><marker id="arrow-validate" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0l10 5-10 5z" fill="#94a3b8"/></marker></defs>
+            <path class="fc-edge" data-edge="start-read" d="M212 94h54" marker-end="url(#arrow-validate)"/>
+            <path class="fc-edge" data-edge="read-cols" d="M462 94h39" marker-end="url(#arrow-validate)"/>
+            <path class="fc-edge" data-edge="cols-raise1" d="M610 150v72" marker-end="url(#arrow-validate)"/>
+            <path class="fc-edge" data-edge="cols-rows" d="M717 94h26" marker-end="url(#arrow-validate)"/>
+            <path class="fc-edge" data-edge="rows-raise2" d="M840 146v76" marker-end="url(#arrow-validate)"/>
+            <path class="fc-edge" data-edge="rows-ret" d="M937 94h24" marker-end="url(#arrow-validate)"/>
+            <g class="fc-node" data-node="start"><rect x="40" y="70" width="172" height="48" rx="24"/><text x="126" y="94">load_validated(path)</text></g>
+            <g class="fc-node" data-node="read"><rect x="268" y="70" width="194" height="48"/><text x="365" y="94">pd.read_csv(path)</text></g>
+            <g class="fc-node" data-node="cols"><path d="M610 40l107 54-107 54-107-54z"/><text x="610" y="88">required columns</text><text x="610" y="106">all present?</text></g>
+            <g class="fc-node" data-node="rows"><path d="M840 44l97 50-97 50-97-50z"/><text x="840" y="94">len &gt; 0?</text></g>
+            <g class="fc-node" data-node="raise1"><path d="M525 224h175l-15 48H510z"/><text x="605" y="248">raise ValueError(missing)</text></g>
+            <g class="fc-node" data-node="raise2"><path d="M760 224h168l-15 48H745z"/><text x="836" y="248">raise ValueError(empty)</text></g>
+            <g class="fc-node" data-node="ret"><path d="M965 70h122l-12 48H953z"/><text x="1023" y="94">return orders</text></g>
+            <text x="628" y="192" font-size="14" fill="#536178">missing</text>
+            <text x="722" y="80" font-size="14" fill="#536178">yes</text>
+            <text x="858" y="192" font-size="14" fill="#536178">zero</text>
+            <text x="944" y="80" font-size="14" fill="#536178">rows</text>
+          </svg>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"activeNode":"start","status":"Happy path first: call load_validated on the real retail CSV."},
+          {"activeEdge":"start-read","activeNode":"read","status":"pandas reads the file: 60 rows, all expected columns."},
+          {"activeEdge":"read-cols","activeNode":"cols","status":"REQUIRED − columns is empty — Quantity, UnitPrice, Country, source_customer_id all present."},
+          {"activeEdge":"cols-rows","activeNode":"rows","status":"60 > 0 — the file has data, not just a header."},
+          {"activeEdge":"rows-ret","activeNode":"ret","status":"Both doors passed. The caller receives a frame it can trust."},
+          {"activeNode":"read","status":"Second run: broken.csv — the same frame saved without its UnitPrice column."},
+          {"activeEdge":"read-cols","activeNode":"cols","status":"REQUIRED − columns = {'UnitPrice'} — not empty."},
+          {"activeEdge":"cols-raise1","activeNode":"raise1","status":"raise ValueError(\"broken.csv: missing required columns ['UnitPrice']\") — at the door, naming the column."},
+          {"activeNode":"raise1","status":"No analysis ever ran on the bad frame. Without this door, the failure would be a KeyError five cells later — or a wrong number, never noticed."}
+        ]</script>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 48 -->
+<section class="slide" data-section="errors">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Takeaway</div>
+      <h2>Lesson 2 interviewed the data. Now the code conducts the interview</h2>
+    </header>
+    <main class="content">
+      <div class="rule-list" style="max-width:1000px">
+        <div class="rule"><b>Read</b><span>tracebacks bottom-up: last line is the fact, frames above are the route.</span></div>
+        <div class="rule"><b>Catch</b><span>only the narrow exception you expected — and re-raise with a better message.</span></div>
+        <div class="rule"><b>Raise</b><span><code class="inline">ValueError</code> the instant an input breaks the contract — name the file, the column, the fix.</span></div>
+        <div class="rule"><b>Never</b><span>a bare <code class="inline">except:</code> — code that cannot fail loudly will fail silently.</span></div>
+      </div>
+      <div class="takeaway">Defensive code is the contract idea pointed at run time: declare what must be true, and refuse to continue when it isn't.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 49 -->
+<section class="slide" data-section="tests">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Session 3 warm-up</div>
+      <h2>Five questions from last time — answer from memory first</h2>
+    </header>
+    <main class="content">
+      <div class="rule-list">
+        <div class="rule"><b>Q1</b><span>Name three of the four code smells in <span class="mono">messy_analysis.py</span>.</span></div>
+        <div class="rule"><b>Q2</b><span>What does <span class="mono">from retail_utils import revenue_by_country</span> promise?</span></div>
+        <div class="rule"><b>Q3</b><span>Refactoring changed the code's <em>shape</em> — what must it never change?</span></div>
+        <div class="rule"><b>Q4</b><span>In a traceback, which line is the actual error?</span></div>
+        <div class="rule"><b>Q5</b><span>Why raise a <span class="mono">ValueError</span> at load time instead of letting the analysis crash later?</span></div>
+      </div>
+      <div class="takeaway">These five are the exact skills the exercise grades. If any feels shaky, revisit that unit before continuing.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 50 -->
+<section class="slide" data-section="tests">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Warm-up answers</div>
+      <h2>Check yourself</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Q</th><th>Answer</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Any three of: copy-paste blocks (the country loops), magic numbers (<code class="inline">1.0</code>), deep nesting (the top-3 loop), print-instead-of-return.</td></tr>
+          <tr><td>2</td><td>That a module named <code class="inline">retail_utils</code> exists and offers a <code class="inline">revenue_by_country</code> function — the import is a contract.</td></tr>
+          <tr><td>3</td><td>The answers — the numbers the code computes must stay identical.</td></tr>
+          <tr><td>4</td><td>The bottom line; the frames above only tell you where it happened.</td></tr>
+          <tr><td>5</td><td>A clear failure at the door names the real problem; a late crash surfaces far from the cause, as a cryptic <code class="inline">KeyError</code> or a wrong result.</td></tr>
+        </tbody>
+      </table>
+    </main>
+  </div>
+</section>
+
+<!-- 51 -->
+<section class="slide" data-section="tests">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Testing with pytest</div>
+      <h2>The payoff: returned values can be checked automatically</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel"><h3>Unit 1 built it</h3><p>Your functions <b>return</b> values instead of printing them.</p></div>
+        <div class="panel"><h3>So Unit 5 can</h3><p>Compare those values against answers you verified <b>by hand</b>.</p></div>
+        <div class="panel"><h3>Lesson 3 runs it</h3><p><code class="inline">pytest</code> is a terminal tool — the command line work pays off here.</p></div>
+      </div>
+      <div class="question">A test is a tiny experiment: set up known inputs, run the function, assert the answer. Do it once, and the computer re-runs the experiment forever.</div>
+      <div class="takeaway">This is where "trust twice" stops being a slogan and becomes a command you can run.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 52 -->
+<section class="slide" data-section="tests">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · The atom</div>
+      <h2><span class="mono" style="font-size:34px">assert</span> — passes silently, fails loudly</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="keyword">def</span> discounted(price, fraction):
+    <span class="string">"""Price after a fractional discount, rounded to 2 dp."""</span>
+    <span class="keyword">return</span> round(price * (1 - fraction), 2)
+
+<span class="keyword">assert</span> discounted(100.0, 0.10) == 90.0   <span class="comment"># passes silently</span>
+<span class="keyword">assert</span> discounted(50.0, 0.0) == 50.0     <span class="comment"># no discount, no change</span>
+
+<span class="keyword">assert</span> discounted(100.0, 0.10) == 91.0, <span class="string">"expected 90.0"</span></pre>
+        <div>
+          <pre class="output-block"><span class="error">AssertionError</span>: expected 90.0</pre>
+          <div class="panel compact" style="margin-top:14px">
+            <p>An <code class="inline">assert</code> is a claim: "this expression is <code class="inline">True</code>."</p>
+            <p>True → nothing happens. False → <code class="inline">AssertionError</code>, with your message attached.</p>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">Every test you will ever write is asserts arranged politely. Master this one keyword and pytest is just an organizer.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 53 -->
+<section class="slide" data-section="tests">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · The rhythm</div>
+      <h2>Arrange, act, assert — every test, the same three beats</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="keyword">def</span> test_discounted_ten_percent():
+    price, fraction = 100.0, 0.10         <span class="comment"># arrange</span>
+    result = discounted(price, fraction)  <span class="comment"># act</span>
+    <span class="keyword">assert</span> result == 90.0                 <span class="comment"># assert</span></pre>
+        <div class="rule-list">
+          <div class="rule"><b>Arrange</b><span>Build known inputs — small enough to verify by hand.</span></div>
+          <div class="rule"><b>Act</b><span>Call the function under test, once.</span></div>
+          <div class="rule"><b>Assert</b><span>State the answer you computed yourself.</span></div>
+        </div>
+      </div>
+      <div class="takeaway">Wrap each check in a function named <code class="inline">test_…</code> — that prefix is how pytest discovers what to run.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 54 -->
+<section class="slide" data-section="tests">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · A module and its tests</div>
+      <h2>Two files: the contract, and the experiments that check it</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">discounts.py</div>
+          <pre class="code-block"><span class="keyword">def</span> discounted(price, fraction):
+    <span class="string">"""Discounted price, 2 dp."""</span>
+    <span class="keyword">return</span> round(price * (1 - fraction), 2)
+
+<span class="keyword">def</span> average(values):
+    <span class="string">"""Mean; empty list -&gt; 0.0 (our convention)."""</span>
+    <span class="keyword">if not</span> values:      <span class="comment"># the empty edge case</span>
+        <span class="keyword">return</span> 0.0
+    <span class="keyword">return</span> round(sum(values) / len(values), 2)</pre>
+        </div>
+        <div>
+          <div class="code-title">test_discounts.py</div>
+          <pre class="code-block"><span class="keyword">from</span> discounts <span class="keyword">import</span> average, discounted
+
+<span class="keyword">def</span> test_discounted_ten_percent():
+    <span class="keyword">assert</span> discounted(100.0, 0.10) == 90.0
+
+<span class="keyword">def</span> test_average_of_a_few_numbers():
+    <span class="keyword">assert</span> average([10, 20, 30]) == 20.0
+
+<span class="keyword">def</span> test_average_of_one_element():   <span class="comment"># one element</span>
+    <span class="keyword">assert</span> average([42]) == 42.0
+
+<span class="keyword">def</span> test_average_of_empty_is_zero(): <span class="comment"># empty input</span>
+    <span class="keyword">assert</span> average([]) == 0.0</pre>
+        </div>
+      </div>
+      <div class="takeaway">Note what the empty-list test really checks: a <b>documented convention</b>. The docstring promised 0.0; the test holds the docstring to it.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 55 -->
+<section class="slide" data-section="tests">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Green</div>
+      <h2>Running pytest: one line per test, then the verdict</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div>
+          <div class="code-title">Terminal — Lesson 3's home ground</div>
+          <pre class="code-block">$ python3 -m pytest test_discounts.py -v</pre>
+          <pre class="output-block">test_discounts.py::test_discounted_ten_percent <span class="ok">PASSED</span>
+test_discounts.py::test_discounted_zero_is_no_change <span class="ok">PASSED</span>
+test_discounts.py::test_average_of_a_few_numbers <span class="ok">PASSED</span>
+test_discounts.py::test_average_of_one_element <span class="ok">PASSED</span>
+test_discounts.py::test_average_of_empty_is_zero <span class="ok">PASSED</span>
+
+<span class="ok">========== 5 passed in 0.02s ==========</span></pre>
+        </div>
+        <div class="panel">
+          <h3>How discovery works</h3>
+          <p>pytest imports the file, finds every function named <code class="inline">test_…</code>, and runs each one.</p>
+          <p>No exception → <span class="strong">PASSED</span>. An <code class="inline">AssertionError</code> (or any other) → <span class="strong">FAILED</span>.</p>
+          <p class="muted">Green means: every contract you wrote down held, just now, on this machine.</p>
+        </div>
+      </div>
+      <div class="takeaway">Five asserts you wrote once are now a permanent experiment anyone can re-run with one command.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 56 -->
+<section class="slide" data-section="tests">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Red</div>
+      <h2>What failure looks like — and how to read it</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div>
+          <pre class="code-block"><span class="keyword">def</span> test_intentionally_wrong():
+    <span class="keyword">assert</span> discounted(100.0, 0.10) == 91.0  <span class="comment"># real answer: 90.0</span></pre>
+          <pre class="output-block">test_discounts_broken.py::test_intentionally_wrong <span class="error">FAILED</span>
+
+    def test_intentionally_wrong():
+&gt;       assert discounted(100.0, 0.10) == 91.0
+<span class="error">E       assert 90.0 == 91.0</span>
+
+<span class="error">========== 1 failed in 0.04s ==========</span></pre>
+        </div>
+        <div class="panel">
+          <h3>Read it bottom-up</h3>
+          <p>Exactly like a Unit 4 traceback: the <code class="inline">E</code> line shows <b>both sides</b> of the comparison — the gap is obvious.</p>
+          <p>The <code class="inline">&gt;</code> arrow points at the exact line that failed.</p>
+        </div>
+      </div>
+      <div class="takeaway">A failing test is not a disaster. It is the tool doing its job — pointing at the exact line to fix.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 57 -->
+<section class="slide" data-section="tests">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · When red appears</div>
+      <h2>Two suspects, one procedure</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel"><h3>Suspect 1: the function</h3><p>The code under test computes the wrong value — the usual case, and the one tests exist to catch.</p></div>
+        <div class="panel"><h3>Suspect 2: the test</h3><p>Your expectation was wrong. Re-derive the expected answer <b>by hand</b> before touching the code.</p></div>
+      </div>
+      <div class="question">Never "fix" a red test by editing the assertion until it passes. First decide which suspect is guilty — with arithmetic, not hope.</div>
+      <div class="takeaway">A test you adjusted to match the code's output tests nothing. The expected value must come from outside the code.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 58 -->
+<section class="slide" data-section="tests">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Which tests to write</div>
+      <h2>Edge cases worth testing come from the Lesson 4 checklist</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel"><h3>Empty input</h3><p class="mono small">test_average_of_empty_is_zero
+test_clean_prices_on_an_empty_frame</p><p>What is the documented convention when there is nothing to process?</p></div>
+        <div class="panel"><h3>One element</h3><p class="mono small">test_average_of_one_element
+test_top_customers_single_row</p><p>Does the loop that runs zero times still return the right shape?</p></div>
+        <div class="panel"><h3>Ties</h3><p class="mono small">test_top_customers_breaks_ties_by_smaller_id</p><p>Is the tie-break a stated rule, or an accident of iteration order?</p></div>
+      </div>
+      <div class="takeaway">One happy-path test plus these three edges covers most beginner functions. The edges are where untested code actually breaks.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 59 -->
+<section class="slide" data-section="tests">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · The reveal</div>
+      <h2>You've been graded by this machinery all along</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="comment"># from YOUR OWN exercise checker — test_lesson5.py:</span>
+<span class="keyword">def</span> test_clean_prices_does_not_mutate_its_input():   <span class="comment"># purity!</span>
+<span class="keyword">def</span> test_clean_prices_on_an_empty_frame():           <span class="comment"># empty</span>
+<span class="keyword">def</span> test_top_customers_breaks_ties_by_smaller_id():  <span class="comment"># ties</span>
+<span class="keyword">def</span> test_top_customers_single_row():                 <span class="comment"># one row</span>
+<span class="keyword">def</span> test_revenue_by_country_totals():                <span class="comment"># 1220.07…</span></pre>
+        <div class="panel good">
+          <h3>Same machinery</h3>
+          <p>Every auto-graded exercise in this course is exactly what you just wrote: <code class="inline">test_…</code> functions full of <code class="inline">assert</code>, checking contracts and edge cases.</p>
+          <p class="strong">You can now read every checker in the course — and write your own.</p>
+        </div>
+      </div>
+      <div class="takeaway">The grader was never magic. It was contracts plus asserts — and now it's yours.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 60 -->
+<section class="slide" data-section="tests">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · The exercise contract</div>
+      <h2>analysis.py: four functions the checker will hold you to</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Function</th><th>Returns</th><th>The fine print</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">load_transactions(path)</td><td>DataFrame</td><td>tidy Description the way the script does; add the same revenue column; keep all 60 rows</td></tr>
+          <tr><td class="mono">clean_prices(transactions)</td><td>DataFrame</td><td>a NEW frame keeping the script's 51 rows — <b>must not modify the frame passed in</b></td></tr>
+          <tr><td class="mono">revenue_by_country(transactions)</td><td>dict</td><td>{country: total}, rounded to 2 dp; empty frame → {}</td></tr>
+          <tr><td class="mono">top_customers(transactions, n=3)</td><td>list of pairs</td><td>total descending; <b>ties → smaller id</b>; fewer than n customers → return all</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">Twelve tests pin this contract down — including edge cases the script never meets. Answer those by <em>reading the script's logic</em>, not by running it.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 61 -->
+<section class="slide" data-section="tests">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Same DNA</div>
+      <h2>The finance assignment's grader is this pattern, dressed up</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>What it shares</h3>
+          <p>Asserts on known inputs. Edge cases from the same checklist. Failures that show both sides of the comparison.</p>
+        </div>
+        <div class="panel">
+          <h3>What it adds</h3>
+          <p>Friendly ✅/❌ printing, and it keeps running after a failure to report every check — conveniences, not new machinery.</p>
+        </div>
+      </div>
+      <div class="question">Design rule you can steal: messages point at the <b>problem</b>, never at the <b>solution</b>. A good checker teaches without spoiling.</div>
+      <div class="takeaway">From now on, when a checker rejects your work, you can open it and read exactly what it asked for.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 62 -->
+<section class="slide" data-section="tests">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Your turn</div>
+      <h2>Refactor messy_analysis.py — and prove the numbers never moved</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel"><h3>Start</h3><p><code class="inline">cd lesson5_exercise/</code> — pytest fails to collect: <code class="inline">analysis.py</code> doesn't exist yet. That's the intended starting state.</p></div>
+        <div class="panel"><h3>Loop</h3><p>Extract one function at a time. Run <code class="inline">pytest -v</code> after each. Commit each green step — Lesson 3's rhythm.</p></div>
+        <div class="panel"><h3>Rule</h3><p>All 12 tests green <b>without changing a single number</b> the script prints. Do not edit <code class="inline">messy_analysis.py</code> itself.</p></div>
+      </div>
+      <div class="takeaway">This is the whole lesson in one exercise: contracts (Unit 1), tools (Unit 2), extraction (Unit 3), reading failures (Unit 4), tests as proof (Unit 5).</div>
+    </main>
+  </div>
+</section>
+
+<!-- 63 -->
+<section class="slide" data-section="tests">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Checkpoint</div>
+      <h2>Design the test before writing it</h2>
+    </header>
+    <main class="content">
+      <div class="question">How would you test that <span class="mono">clean_prices</span> is pure — without looking at its code? Name the arrange, the act, and the assert.</div>
+      <div class="answer fragment">
+        <b>Arrange:</b> load a frame and record a fact about it — say, <code class="inline">rows_before = len(transactions)</code>. <b>Act:</b> call <code class="inline">clean_prices(transactions)</code> and ignore the result. <b>Assert:</b> <code class="inline">len(transactions) == rows_before</code>. If the function mutated its input, the count changed — purity is checkable from the outside.
+      </div>
+      <div class="takeaway">That is literally <code class="inline">test_clean_prices_does_not_mutate_its_input</code> from your checker — you just reinvented it.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 64 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">6 · The thread</div>
+      <h2>Where the earlier lessons went</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Earlier idea</th><th>Its Lesson 5 form</th></tr></thead>
+        <tbody>
+          <tr><td>L1 · a type is a claim about legitimate operations</td><td><b>type hints</b> in signatures</td></tr>
+          <tr><td>L2 · interview the data before trusting it</td><td>validate early, <b>raise ValueError</b></td></tr>
+          <tr><td>L2 · each verb returns a new frame</td><td>method chains as <b>functional pipelines</b></td></tr>
+          <tr><td>L3 · the <code class="inline">git add → commit</code> rhythm</td><td><b>commit each green-test step</b></td></tr>
+          <tr><td>L3 · <code class="inline">if __name__ == "__main__"</code></td><td>scripts that <b>import cleanly</b>, so tests can too</td></tr>
+          <tr><td>L4 · algorithm vs implementation</td><td><code class="inline">.apply</code> (a Python loop) vs <b>vectorization</b></td></tr>
+          <tr><td>L4 · edge cases: empty, one, ties</td><td><b>the tests worth writing</b></td></tr>
+        </tbody>
+      </table>
+    </main>
+  </div>
+</section>
+
+<!-- 65 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">6 · Inventory</div>
+      <h2>What you can do now</h2>
+    </header>
+    <main class="content">
+      <div class="rule-list" style="max-width:1050px">
+        <div class="rule"><b>Contract</b><span>write a function as signature, docstring, return value, type hints.</span></div>
+        <div class="rule"><b>Purity</b><span>tell pure from side-effecting code — and keep cleaning functions pure.</span></div>
+        <div class="rule"><b>Toolkit</b><span>comprehensions, <code class="inline">sorted(key=…)</code>, <code class="inline">zip</code>/<code class="inline">enumerate</code> — and read a pandas chain as a pipeline.</span></div>
+        <div class="rule"><b>Refactor</b><span>name the smells in your own code and extract functions into a module you import.</span></div>
+        <div class="rule"><b>Fail well</b><span>read tracebacks bottom-up, catch the narrow exception, raise early.</span></div>
+        <div class="rule"><b>Test</b><span>write <code class="inline">test_…</code> functions, run pytest — and read any checker in this course.</span></div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 66 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">6 · One sentence</div>
+      <h2>The lesson, compressed</h2>
+    </header>
+    <main class="content centered">
+      <p class="big-claim">Code you can trust twice is code shaped into <span style="border-bottom:6px solid var(--teal)">named contracts</span> and kept honest by <span style="border-bottom:6px solid var(--green)">tests</span>.</p>
+      <p class="lead">The same move as every earlier lesson: make the properties explicit.</p>
+    </main>
+  </div>
+</section>
+
+<!-- 67 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">6 · Reference desk</div>
+      <h2>Where to go deeper</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel compact"><h3>Documentation &amp; guides</h3><ul>
+          <li><a href="https://docs.pytest.org/en/stable/getting-started.html">pytest — Get Started</a> — install, first test, run from the terminal</li>
+          <li><a href="https://realpython.com/list-comprehension-python/">Real Python — comprehensions</a> — the functional toolkit in depth</li>
+          <li><a href="https://peps.python.org/pep-0008/">PEP 8</a> — the style guide every Python project assumes</li>
+          <li><a href="https://www.fluentpython.com/">Fluent Python</a> (Ramalho) — functions and the data model, selected chapters</li>
+        </ul></div>
+        <div class="panel compact"><h3>Local practice</h3><ul>
+          <li>Lesson 5 notebook — runs top to bottom, offline</li>
+          <li><code class="inline">lesson5_exercise/</code> — the refactor-and-test exercise</li>
+          <li><code class="inline">pandas-finance-assignment/</code> — read its checker with new eyes</li>
+        </ul></div>
+      </div>
+      <div class="takeaway">Documentation defines behavior; tests pin down the behavior <em>you</em> rely on. You need both.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 68 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">6 · Final checklist</div>
+      <h2>Name it. Keep it pure. Guard the door. Prove it. Commit.</h2>
+    </header>
+    <main class="content centered">
+      <div class="rule-list" style="width:900px;text-align:left">
+        <div class="rule"><b>Name</b><span>every step is a function with a signature, docstring, and return</span></div>
+        <div class="rule"><b>Purify</b><span>transformations return new structures; effects live at the edges</span></div>
+        <div class="rule"><b>Guard</b><span>validate inputs at the door; raise with a message that names the fix</span></div>
+        <div class="rule"><b>Prove</b><span>one happy-path test plus empty, one element, and ties</span></div>
+        <div class="rule"><b>Commit</b><span>each green step, so the history reads as a chain of kept promises</span></div>
+      </div>
+      <div class="question" style="width:900px">Exit ticket: in 30 seconds — one contract you wrote, one smell you killed, and the test that proves the numbers didn't change.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 69 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">6 · Next</div>
+      <h2>Where the course goes from here</h2>
+    </header>
+    <main class="content centered">
+      <p class="big-claim" style="font-size:38px">Next: databases and SQL — where "declare the properties, let the engine run the algorithm" stops being a habit and becomes <em>the entire language</em>.</p>
+      <p class="lead">Lessons 4 and 5 taught you to state what must be true. SQL is a language that accepts nothing else.</p>
+    </main>
+  </div>
+</section>
+
+<div id="hud">
+  <div class="course">Intro to CS · Lesson 5</div>
+  <div id="section-map" aria-hidden="true">
+    <span data-section-name="intro">Start</span><span data-section-name="contracts">Contracts</span><span data-section-name="tools">Tools</span><span data-section-name="shape">Refactor</span><span data-section-name="errors">Errors</span><span data-section-name="tests">Tests</span><span data-section-name="finish">Finish</span>
+  </div>
+  <div class="nav-controls">
+    <button id="prev" type="button" aria-label="Previous step">‹</button>
+    <button id="next" type="button" aria-label="Next step">›</button>
+    <label id="count" for="slide-number">
+      <input id="slide-number" type="text" value="1" inputmode="numeric" pattern="[0-9]*" aria-label="Jump to slide"> / <span id="slide-total"></span>
+    </label>
+  </div>
+</div>
+
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const stage = document.getElementById("stage");
+  const slides = [...document.querySelectorAll(".slide")];
+  const prevButton = document.getElementById("prev");
+  const nextButton = document.getElementById("next");
+  const slideNumber = document.getElementById("slide-number");
+  const slideTotal = document.getElementById("slide-total");
+  const sectionItems = [...document.querySelectorAll("#section-map [data-section-name]")];
+  let currentSlide = 0;
+  let printSnapshot = null;
+
+  function fitStage() {
+    const viewport = window.visualViewport;
+    const width = viewport ? viewport.width : window.innerWidth;
+    const height = viewport ? viewport.height : window.innerHeight;
+    const scale = Math.min(width / 1280, height / 720);
+    stage.style.transform = `translate(-50%, -50%) scale(${scale})`;
+  }
+
+  class TraceController {
+    constructor(root) {
+      this.root = root;
+      this.type = root.dataset.traceType;
+      const source = root.querySelector(".trace-data");
+      try {
+        this.states = JSON.parse(source ? source.textContent : "[]");
+      } catch (error) {
+        this.states = [];
+        console.error("Invalid trace data", error, root);
+      }
+      this.step = 0;
+      this.status = root.querySelector(".trace-status");
+      this.counter = root.querySelector("[data-trace-counter]");
+      root.querySelector(".trace-reset")?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this.setStep(0);
+      });
+      this.render();
+    }
+
+    canNext() { return this.step < this.states.length - 1; }
+    canPrevious() { return this.step > 0; }
+    next() { if (this.canNext()) this.setStep(this.step + 1); }
+    previous() { if (this.canPrevious()) this.setStep(this.step - 1); }
+    setStep(step) {
+      if (!this.states.length) return;
+      this.step = Math.max(0, Math.min(step, this.states.length - 1));
+      this.render();
+      updateControls();
+    }
+
+    renderVariables(state) {
+      const values = state.vars || {};
+      this.root.querySelectorAll("[data-var]").forEach((element) => {
+        element.textContent = values[element.dataset.var] || "";
+      });
+    }
+
+    renderTranscript() {
+      const slide = this.root.closest(".slide");
+      const rows = [...slide.querySelectorAll(".trace-transcript tr[data-step]")];
+      if (!rows.length) return;
+      let active = rows[0];
+      for (const row of rows) {
+        if (Number(row.dataset.step) <= this.step) active = row;
+      }
+      rows.forEach((row) => row.classList.toggle("is-active", row === active));
+    }
+
+    renderArray(state) {
+      const cells = [...this.root.querySelectorAll(".array-cell")];
+      cells.forEach((cell, index) => {
+        if (Array.isArray(state.values) && index < state.values.length) {
+          cell.textContent = state.values[index];
+        }
+        const outsideRange = Array.isArray(state.range) && (index < state.range[0] || index > state.range[1]);
+        const foundIndex = typeof state.found === "number" ? state.found : (state.found === true ? state.current : null);
+        cell.classList.toggle("is-current", state.current === index);
+        cell.classList.toggle("is-best", state.best === index);
+        cell.classList.toggle("is-min", state.min === index);
+        cell.classList.toggle("is-checked", Number.isInteger(state.processedThrough) && index <= state.processedThrough);
+        cell.classList.toggle("is-sorted", Number.isInteger(state.sortedUntil) && index < state.sortedUntil);
+        cell.classList.toggle("is-discarded", outsideRange || (Array.isArray(state.discarded) && state.discarded.includes(index)));
+        cell.classList.toggle("is-found", foundIndex === index);
+      });
+
+      const pointer = this.root.querySelector(".trace-pointer");
+      if (pointer) {
+        if (state.current == null || !cells[state.current]) {
+          pointer.style.visibility = "hidden";
+        } else {
+          pointer.style.visibility = "visible";
+          const first = cells[0];
+          pointer.style.transform = `translateX(${cells[state.current].offsetLeft - first.offsetLeft}px)`;
+          pointer.style.left = `${first.offsetLeft}px`;
+        }
+      }
+      this.renderVariables(state);
+      this.renderTranscript();
+    }
+
+    renderFlow(state) {
+      this.root.querySelectorAll("[data-node]").forEach((node) => {
+        node.classList.toggle("is-active", node.dataset.node === state.activeNode);
+      });
+      this.root.querySelectorAll("[data-edge]").forEach((edge) => {
+        edge.classList.toggle("is-active", edge.dataset.edge === state.activeEdge);
+      });
+      this.renderVariables(state);
+    }
+
+    renderStack(state) {
+      this.root.querySelectorAll(".token[data-index]").forEach((token) => {
+        token.classList.toggle("is-current", Number(token.dataset.index) === state.token);
+      });
+      const values = state.stack || [];
+      this.root.querySelectorAll(".stack-slot[data-slot]").forEach((slot) => {
+        const index = Number(slot.dataset.slot);
+        slot.textContent = index < values.length ? values[index] : "";
+      });
+      this.renderVariables(state);
+    }
+
+    render() {
+      if (!this.states.length) return;
+      const state = this.states[this.step];
+      if (this.status) this.status.textContent = state.status || "";
+      if (this.counter) this.counter.textContent = `${this.step + 1} / ${this.states.length}`;
+      if (this.type === "array") this.renderArray(state);
+      if (this.type === "flow") this.renderFlow(state);
+      if (this.type === "stack") this.renderStack(state);
+    }
+  }
+
+  const traces = new Map();
+  document.querySelectorAll(".trace[data-trace-type]").forEach((root) => {
+    traces.set(root, new TraceController(root));
+  });
+
+  function traceOnActiveSlide() {
+    const root = slides[currentSlide]?.querySelector(".trace[data-trace-type]");
+    return root ? traces.get(root) : null;
+  }
+
+  function fragmentsOnActiveSlide() {
+    return [...slides[currentSlide].querySelectorAll(".fragment")];
+  }
+
+  function nextHiddenFragment() {
+    return fragmentsOnActiveSlide().find((fragment) => !fragment.classList.contains("visible"));
+  }
+
+  function lastVisibleFragment() {
+    return fragmentsOnActiveSlide().filter((fragment) => fragment.classList.contains("visible")).at(-1);
+  }
+
+  function updateControls() {
+    const trace = traceOnActiveSlide();
+    const hasBackwardStep = (trace && trace.canPrevious()) || Boolean(lastVisibleFragment());
+    const hasForwardStep = (trace && trace.canNext()) || Boolean(nextHiddenFragment());
+    prevButton.disabled = currentSlide === 0 && !hasBackwardStep;
+    nextButton.disabled = currentSlide === slides.length - 1 && !hasForwardStep;
+  }
+
+  function showSlide(index, options = {}) {
+    currentSlide = Math.max(0, Math.min(index, slides.length - 1));
+    slides.forEach((slide, slideIndex) => {
+      const active = slideIndex === currentSlide;
+      slide.classList.toggle("active", active);
+      slide.setAttribute("aria-hidden", active ? "false" : "true");
+      slide.inert = !active;
+    });
+    const activeSlide = slides[currentSlide];
+    const section = activeSlide.dataset.section;
+    const color = getComputedStyle(activeSlide).getPropertyValue("--section-color").trim();
+    stage.style.setProperty("--active-section-color", color);
+    sectionItems.forEach((item) => item.classList.toggle("on", item.dataset.sectionName === section));
+    slideNumber.value = currentSlide + 1;
+    slideTotal.textContent = slides.length;
+    activeSlide.querySelectorAll(".trace[data-trace-type]").forEach((root) => traces.get(root)?.render());
+    if (!options.skipHash) history.replaceState(null, "", `#slide-${currentSlide + 1}`);
+    updateControls();
+  }
+
+  function forward() {
+    const trace = traceOnActiveSlide();
+    if (trace?.canNext()) {
+      trace.next();
+      return;
+    }
+    const fragment = nextHiddenFragment();
+    if (fragment) {
+      fragment.classList.add("visible");
+      updateControls();
+      return;
+    }
+    if (currentSlide < slides.length - 1) showSlide(currentSlide + 1);
+  }
+
+  function backward() {
+    const trace = traceOnActiveSlide();
+    if (trace?.canPrevious()) {
+      trace.previous();
+      return;
+    }
+    const fragment = lastVisibleFragment();
+    if (fragment) {
+      fragment.classList.remove("visible");
+      updateControls();
+      return;
+    }
+    if (currentSlide > 0) showSlide(currentSlide - 1);
+  }
+
+  function jumpToRequestedSlide() {
+    const requested = Number.parseInt(slideNumber.value, 10);
+    if (Number.isNaN(requested)) {
+      slideNumber.value = currentSlide + 1;
+      return;
+    }
+    showSlide(requested - 1);
+  }
+
+  prevButton.addEventListener("click", backward);
+  nextButton.addEventListener("click", forward);
+  slideNumber.addEventListener("change", jumpToRequestedSlide);
+  slideNumber.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      jumpToRequestedSlide();
+      slideNumber.blur();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    const target = event.target;
+    const editing = target instanceof HTMLElement && target.closest("input, textarea, select, [contenteditable='true']");
+    const activatingControl = target instanceof HTMLElement && target.closest("a, button") && event.key === " ";
+    if (editing || activatingControl) return;
+    if (event.repeat) return;
+    if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(event.key)) {
+      event.preventDefault();
+      forward();
+    } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(event.key)) {
+      event.preventDefault();
+      backward();
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      showSlide(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      showSlide(slides.length - 1);
+    } else if (event.key.toLowerCase() === "f") {
+      event.preventDefault();
+      if (document.fullscreenElement) document.exitFullscreen();
+      else stage.requestFullscreen?.();
+    }
+  });
+
+  window.addEventListener("resize", fitStage);
+  window.visualViewport?.addEventListener("resize", fitStage);
+  window.addEventListener("hashchange", () => {
+    const match = location.hash.match(/^#slide-(\d+)$/);
+    if (match) showSlide(Number(match[1]) - 1, { skipHash: true });
+  });
+
+  window.addEventListener("beforeprint", () => {
+    printSnapshot = [...traces.values()].map((trace) => trace.step);
+    [...traces.values()].forEach((trace) => trace.setStep(trace.states.length - 1));
+  });
+  window.addEventListener("afterprint", () => {
+    if (!printSnapshot) return;
+    [...traces.values()].forEach((trace, index) => trace.setStep(printSnapshot[index] || 0));
+    printSnapshot = null;
+    showSlide(currentSlide, { skipHash: true });
+  });
+
+  const initialMatch = location.hash.match(/^#slide-(\d+)$/);
+  const initialSlide = initialMatch ? Number(initialMatch[1]) - 1 : 0;
+  fitStage();
+  showSlide(initialSlide, { skipHash: true });
+})();
+</script>
+</body>
+</html>

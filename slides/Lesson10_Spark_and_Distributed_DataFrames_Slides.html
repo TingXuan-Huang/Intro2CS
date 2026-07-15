@@ -1,0 +1,2060 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 10 · Spark and Distributed DataFrames</title>
+<style>
+  :root {
+    --paper: #f8fafc;
+    --surface: #ffffff;
+    --surface-2: #edf2f7;
+    --ink: #172033;
+    --muted: #536178;
+    --line: #c9d4e2;
+    --navy: #1e3a5f;
+    --blue: #1e5a89;
+    --teal: #0f766e;
+    --purple: #6d4c7d;
+    --amber: #986018;
+    --cyan: #176b80;
+    --green: #176b43;
+    --maroon: #8a3f5f;
+    --slate: #475569;
+    --red: #b42318;
+    --red-bg: #fff1f0;
+    --green-bg: #edf8f2;
+    --yellow-bg: #fff7df;
+    --font-sans: "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif;
+    --font-mono: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; }
+  body {
+    overflow: hidden;
+    background: #111827;
+    color: var(--ink);
+    font-family: var(--font-sans);
+  }
+  a { color: var(--blue); }
+  code, pre, .mono { font-family: var(--font-mono); }
+
+  #stage {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 1280px;
+    height: 720px;
+    transform-origin: center center;
+    overflow: hidden;
+    background: var(--paper);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .48);
+  }
+
+  .slide {
+    --section-color: var(--navy);
+    position: absolute;
+    inset: 0;
+    display: none;
+    background: var(--paper);
+  }
+  .slide.active { display: block; }
+  .slide[data-section="intro"] { --section-color: var(--navy); }
+  .slide[data-section="plan"] { --section-color: var(--teal); }
+  .slide[data-section="spelling"] { --section-color: var(--blue); }
+  .slide[data-section="layout"] { --section-color: var(--amber); }
+  .slide[data-section="fit"] { --section-color: var(--purple); }
+  .slide[data-section="finish"] { --section-color: var(--slate); }
+  .slide::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 7px;
+    background: var(--section-color);
+  }
+
+  .slide-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 46px 72px 78px;
+  }
+  .slide-header { margin-bottom: 20px; }
+  .section-label {
+    margin-bottom: 8px;
+    color: var(--section-color);
+    font-size: 15px;
+    font-weight: 760;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  h1 {
+    max-width: 1080px;
+    font-size: 58px;
+    line-height: 1.08;
+    letter-spacing: -.025em;
+    font-weight: 740;
+  }
+  h2 {
+    max-width: 1120px;
+    font-size: 39px;
+    line-height: 1.13;
+    letter-spacing: -.018em;
+    font-weight: 730;
+  }
+  h3 {
+    font-size: 23px;
+    line-height: 1.23;
+    font-weight: 730;
+  }
+  p, li { font-size: 20px; line-height: 1.4; }
+  .lead {
+    max-width: 930px;
+    color: var(--muted);
+    font-size: 27px;
+    line-height: 1.42;
+  }
+  .small { font-size: 17px; line-height: 1.4; }
+  .tiny { font-size: 14px; line-height: 1.35; }
+  .muted { color: var(--muted); }
+  .strong { color: var(--ink); font-weight: 730; }
+  code.inline {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #e8eef5;
+    color: #1d3654;
+    font-size: .9em;
+  }
+
+  .content {
+    min-height: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .centered {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  .cols-2, .cols-3, .cols-4 {
+    min-height: 0;
+    display: grid;
+    gap: 20px;
+    align-items: stretch;
+  }
+  .cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ratio-3-2 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+  .ratio-2-3 { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+  .ratio-5-4 { grid-template-columns: minmax(0, 5fr) minmax(0, 4fr); }
+  .align-center { align-items: center; }
+
+  .panel {
+    min-width: 0;
+    padding: 18px 21px;
+    border: 1px solid var(--line);
+    border-top: 4px solid var(--section-color);
+    background: var(--surface);
+  }
+  .panel h3 { margin-bottom: 9px; }
+  .panel p + p, .panel ul, .panel ol { margin-top: 8px; }
+  .panel ul, .panel ol { padding-left: 23px; }
+  .panel li + li { margin-top: 5px; }
+  .panel.compact { padding: 13px 16px; }
+  .panel.compact p, .panel.compact li { font-size: 17px; }
+  .panel.warning { border-top-color: var(--red); background: var(--red-bg); }
+  .panel.good { border-top-color: var(--green); background: var(--green-bg); }
+
+  .takeaway {
+    margin-top: auto;
+    padding: 12px 16px;
+    border-left: 5px solid var(--section-color);
+    background: #e9f0f6;
+    color: #24364d;
+    font-size: 19px;
+    line-height: 1.4;
+  }
+  .question {
+    padding: 17px 21px;
+    border: 2px solid var(--blue);
+    background: #edf5fb;
+    color: #173b5d;
+    font-size: 23px;
+    line-height: 1.36;
+    font-weight: 680;
+  }
+  .answer {
+    padding: 15px 19px;
+    border-left: 5px solid var(--green);
+    background: var(--green-bg);
+    font-size: 19px;
+    line-height: 1.4;
+  }
+  .fragment { visibility: hidden; opacity: 0; }
+  .fragment.visible { visibility: visible; opacity: 1; }
+
+  .code-title {
+    margin-bottom: 7px;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 740;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .code-block, .output-block, .pseudo-block {
+    min-width: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    border: 1px solid var(--line);
+    background: #0f172a;
+    color: #e7edf5;
+    padding: 15px 18px;
+    font-family: var(--font-mono);
+    font-size: 17px;
+    line-height: 1.45;
+  }
+  .output-block, .pseudo-block { background: var(--surface); color: #203047; }
+  .pseudo-block { border-left: 4px solid var(--section-color); }
+  .comment { color: #9fb0c5; }
+  .string { color: #8dd3c7; }
+  .number { color: #f4c27a; }
+  .keyword { color: #c6a7e2; }
+  .error { color: #ef6b62; font-weight: 730; }
+  .ok { color: #7ad3a2; font-weight: 730; }
+  .output-block .comment { color: #8494a9; }
+  .output-block .error { color: var(--red); }
+  .output-block .ok { color: var(--green); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    font-size: 18px;
+    line-height: 1.3;
+  }
+  th {
+    padding: 10px 12px;
+    border-top: 2px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+    color: #34445a;
+    background: #e8eef4;
+    text-align: left;
+    font-size: 15px;
+    line-height: 1.24;
+    letter-spacing: .052em;
+    text-transform: uppercase;
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: 2px solid var(--ink); }
+  td:first-child { font-weight: 700; }
+  table.compact { font-size: 16px; }
+  table.compact th { font-size: 14px; }
+  table.compact td { padding-top: 7px; padding-bottom: 7px; }
+
+  .flow {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .flow-node {
+    min-width: 0;
+    flex: 1;
+    padding: 13px;
+    border: 1px solid #a9b6c6;
+    background: var(--surface);
+  }
+  .flow-node b {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--section-color);
+    font-size: 17px;
+  }
+  .flow-node span { font-size: 16px; line-height: 1.3; }
+  .flow-arrow {
+    align-self: center;
+    color: #66758a;
+    font-size: 25px;
+    font-weight: 700;
+  }
+
+  .rule-list { display: grid; gap: 12px; }
+  .rule {
+    display: grid;
+    grid-template-columns: 205px minmax(0, 1fr);
+    gap: 19px;
+    align-items: baseline;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .rule b { color: var(--section-color); font-size: 21px; }
+  .rule span { font-size: 19px; line-height: 1.35; }
+
+  .big-claim {
+    max-width: 1010px;
+    font-size: 45px;
+    line-height: 1.24;
+    font-weight: 730;
+    letter-spacing: -.018em;
+  }
+
+  .number-strip {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+  }
+  .number-box {
+    min-width: 120px;
+    padding: 18px 15px;
+    border: 2px solid #9bacc0;
+    background: var(--surface);
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 25px;
+    font-weight: 720;
+  }
+  .number-box small {
+    display: block;
+    margin-top: 5px;
+    color: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .trace {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+  }
+  .trace-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 38px;
+  }
+  .trace-status {
+    min-width: 0;
+    flex: 1;
+    color: #26384f;
+    font-size: 18px;
+    line-height: 1.32;
+    font-weight: 650;
+  }
+  .trace-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  .trace-reset {
+    min-width: 76px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .trace-reset:focus-visible { outline: 3px solid #4e8fc1; outline-offset: 2px; }
+  .trace-board {
+    position: relative;
+    min-height: 160px;
+    padding: 28px 18px 16px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .array-strip {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding-top: 28px;
+  }
+  .array-cell {
+    position: relative;
+    width: 92px;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #9bacbf;
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 720;
+    transition: transform .2s ease, background-color .2s ease, border-color .2s ease, opacity .2s ease;
+  }
+  .array-cell::after {
+    content: attr(data-index);
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -22px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+  }
+  .array-cell.is-current { border-color: var(--blue); box-shadow: inset 0 0 0 2px var(--blue); }
+  .array-cell.is-best { border-color: var(--green); background: var(--green-bg); }
+  .array-cell.is-min { border-color: var(--amber); background: var(--yellow-bg); }
+  .array-cell.is-sorted { border-color: var(--teal); background: #e9f7f5; }
+  .array-cell.is-checked { background: #eef2f7; }
+  .array-cell.is-discarded { opacity: .28; }
+  .array-cell.is-found { border-color: var(--green); background: var(--green-bg); }
+  .array-cell.is-found::before {
+    content: "OK";
+    position: absolute;
+    top: -27px;
+    color: var(--green);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 760;
+    letter-spacing: .08em;
+  }
+  .trace-pointer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 92px;
+    color: var(--blue);
+    text-align: center;
+    font-size: 14px;
+    font-weight: 740;
+    transition: transform .22s ease;
+  }
+  .trace-pointer::after { content: "↓"; display: block; font-size: 22px; line-height: 1; }
+  .trace-variables {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 27px;
+  }
+  .trace-variable {
+    min-width: 140px;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    font-family: var(--font-mono);
+    font-size: 15px;
+    text-align: center;
+  }
+  .trace-transcript { font-size: 14px; }
+  .trace-transcript th { padding: 6px 8px; font-size: 12px; }
+  .trace-transcript td { padding: 5px 8px; }
+  .trace-transcript tr.is-active td { background: #e9f0f6; }
+
+  .flowchart-wrap {
+    position: relative;
+    min-height: 360px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .flowchart-svg { width: 100%; height: 360px; display: block; }
+  .flowchart-svg .fc-edge {
+    fill: none;
+    stroke: #94a3b8;
+    stroke-width: 2;
+    transition: stroke .2s ease, stroke-width .2s ease, opacity .2s ease;
+  }
+  .flowchart-svg .fc-node rect,
+  .flowchart-svg .fc-node path {
+    fill: #ffffff;
+    stroke: #8294aa;
+    stroke-width: 2;
+    transition: fill .2s ease, stroke .2s ease, stroke-width .2s ease;
+  }
+  .flowchart-svg .fc-node text {
+    fill: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 650;
+    text-anchor: middle;
+    dominant-baseline: middle;
+  }
+  .flowchart-svg .fc-node.is-active rect,
+  .flowchart-svg .fc-node.is-active path {
+    fill: #e8f2fa;
+    stroke: var(--blue);
+    stroke-width: 4;
+  }
+  .flowchart-svg .fc-edge.is-active { stroke: var(--blue); stroke-width: 4; }
+
+  #hud {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    height: 54px;
+    display: grid;
+    grid-template-columns: 190px 1fr 168px;
+    align-items: center;
+    padding: 0 25px;
+    border-top: 1px solid #b8c4d2;
+    background: #edf1f5;
+    color: #4a596d;
+  }
+  #hud .course {
+    font-size: 13px;
+    font-weight: 730;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  #section-map {
+    display: flex;
+    justify-content: center;
+    gap: 13px;
+  }
+  #section-map span {
+    padding: 5px 0 4px;
+    border-bottom: 3px solid transparent;
+    font-size: 10.5px;
+    font-weight: 730;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+    opacity: .38;
+  }
+  #section-map span.on {
+    border-bottom-color: var(--active-section-color, var(--navy));
+    color: var(--ink);
+    opacity: 1;
+  }
+  .nav-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .nav-controls button {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .nav-controls button:disabled { opacity: .35; cursor: default; }
+  .nav-controls button:focus-visible { outline: 3px solid #4e8fc1; outline-offset: 2px; }
+  #count {
+    min-width: 62px;
+    text-align: right;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  #slide-number {
+    width: 34px;
+    padding: 2px 3px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  #slide-number:focus-visible {
+    outline: 3px solid #4e8fc1;
+    outline-offset: 2px;
+  }
+  #rotate-note {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    padding: 28px;
+    background: #111827;
+    color: white;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 22px;
+    line-height: 1.4;
+  }
+
+  @media (max-width: 900px) and (orientation: portrait) {
+    #rotate-note { display: flex; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .array-cell, .trace-pointer,
+    .flowchart-svg .fc-edge, .flowchart-svg .fc-node rect,
+    .flowchart-svg .fc-node path { transition-duration: 0s !important; }
+  }
+  @media print {
+    @page { size: 13.333in 7.5in; margin: 0; }
+    html, body {
+      width: auto;
+      height: auto;
+      overflow: visible;
+      background: white;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    #stage {
+      position: relative;
+      left: auto;
+      top: auto;
+      width: auto;
+      height: auto;
+      transform: none !important;
+      box-shadow: none;
+      overflow: visible;
+    }
+    .slide {
+      position: relative;
+      display: block !important;
+      width: 13.333in;
+      height: 7.5in;
+      break-after: page;
+      page-break-after: always;
+    }
+    .slide:last-of-type { break-after: auto; page-break-after: auto; }
+    .fragment { visibility: visible !important; opacity: 1 !important; }
+    .trace-reset { display: none !important; }
+    #hud, #rotate-note { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="rotate-note">Rotate your device to landscape for presentation view.</div>
+<div id="stage">
+
+
+<!-- 1 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Intro to CS · Lesson 10 · Optional</div>
+      <h1>Spark and distributed DataFrames: when one machine isn't enough</h1>
+    </header>
+    <main class="content centered">
+      <p class="lead">Driver and executors, partitions, lazy plans, a third spelling of the retail analysis — and the honest question of when you actually need any of it</p>
+      <div class="question" style="max-width:990px">This lesson is <strong>optional</strong>. Lessons 8–9 proved pandas and SQL can express the same analysis. Today a third engine spells it a third way — and the interesting part is not the syntax, it is <em>how</em> the work runs.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · The bridge from Lessons 8–9</div>
+      <h2>You already know this analysis in two spellings</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>What Lessons 8–9 established</h3>
+          <p>The monthly-revenue question — join transactions to customers, derive revenue, group by country and month — has a <strong>pandas spelling</strong> and a <strong>SQL spelling</strong>, and they agree to the cent.</p>
+        </div>
+        <div class="panel good">
+          <h3>What today adds</h3>
+          <p>A <strong>third spelling</strong>: a Spark DataFrame — a <em>lazy plan</em> that can run across partitions when one process or one database file is no longer enough.</p>
+        </div>
+      </div>
+      <div class="pseudo-block">retail CSVs → typed Spark DataFrames → lazy transformations → action → result
+                         │                         │
+                         └── Parquet partitions ───┘</div>
+      <div class="takeaway">Same question, same answer, third engine. What changes is not the analysis — it is the execution model underneath it.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · Why this lesson exists</div>
+      <h2>Lesson 4 said cost has a shape — Spark is what you reach for when the shape wins</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>The scaling mindset, resumed</h3>
+          <p>Lesson 4 taught you to ask "what happens when n doubles?" Most of this course, n was small enough that <em>any</em> engine worked. Spark is for the day the honest answer becomes "one machine can no longer hold or finish it."</p>
+        </div>
+        <div class="panel warning">
+          <h3>The equally honest flip side</h3>
+          <p>Spark carries real costs — JVM startup, serialization, shuffles. On a dataset that fits in memory, it is usually <strong>slower</strong> than pandas. Unit 5 makes "when NOT to use Spark" an explicit skill.</p>
+        </div>
+      </div>
+      <div class="question">The goal today is not "learn a cluster." It is: understand the execution model well enough to know when it is worth paying for.</div>
+      <div class="takeaway">Optional means: skip the syntax if you like, but keep the judgement — choosing the smallest engine that fits is a permanent skill.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · The lesson arc</div>
+      <h2>Five units: plan, spelling, windows, layout, judgement</h2>
+    </header>
+    <main class="content">
+      <div class="flow" style="width:100%">
+        <div class="flow-node"><b>1 · A plan</b><span>lazy transformations vs actions</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>2 · Spelling</b><span>the retail answer in Spark + Spark SQL</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>3 · Windows</b><span>rank without collapsing</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>4 · Layout</b><span>Parquet partitions · pruning · shuffles</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>5 · Fit</b><span>the smallest engine that fits</span></div>
+      </div>
+      <div class="cols-3">
+        <div class="panel compact"><h3>New today</h3><p>Driver/executors, partitions, lazy evaluation, query plans, shuffles, partition pruning.</p></div>
+        <div class="panel compact"><h3>Familiar, re-spelled</h3><p>Joins, groups, windows — Lesson 9's exact moves in a third syntax.</p></div>
+        <div class="panel compact"><h3>The judgement call</h3><p>pandas vs SQLite vs Spark — a table you will reuse for years.</p></div>
+      </div>
+      <div class="takeaway">The notebook is deliberately small. The execution model is the content; the syntax is a costume you have seen twice before.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · Setup</div>
+      <h2>A real Spark, living entirely on your laptop</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block" style="font-size:15px"><span class="comment"># Spark workers must run the same Python as this kernel; without this pin</span>
+<span class="comment"># they spawn whatever python3 is on PATH and fail on version skew.</span>
+os.environ.setdefault(<span class="string">'PYSPARK_PYTHON'</span>, sys.executable)
+os.environ.setdefault(<span class="string">'PYSPARK_DRIVER_PYTHON'</span>, sys.executable)
+
+<span class="keyword">from</span> pyspark.sql <span class="keyword">import</span> SparkSession, Window, functions <span class="keyword">as</span> F
+
+spark = (SparkSession.builder.master(<span class="string">'local[2]'</span>).appName(<span class="string">'intro-cs-spark'</span>)
+         .config(<span class="string">'spark.ui.enabled'</span>, <span class="string">'false'</span>)
+         .config(<span class="string">'spark.sql.shuffle.partitions'</span>, <span class="string">'2'</span>).getOrCreate())
+print(<span class="string">'Spark:'</span>, spark.version)</pre>
+        <div class="panel">
+          <h3>What <code class="inline">local[2]</code> means</h3>
+          <p>One JVM on your machine pretending to be a two-worker cluster. Every idea today — partitions, tasks, shuffles — is <strong>real</strong>; only the network is missing.</p>
+          <p class="muted">Requires <code class="inline">pip install pyspark</code> and a Java 17+ runtime. No cluster, no account, no network.</p>
+        </div>
+      </div>
+      <div class="takeaway">"Local mode" is not a simulation. It is the same engine, executing the same plans, on a cluster of size one.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · Materials</div>
+      <h2>Two sessions, one notebook, one exercise folder</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel compact"><h3>Session ①</h3><p>Units 1–3: the lazy-plan model, the retail answer in Spark and Spark SQL, and windows.</p></div>
+        <div class="panel compact"><h3>Session ②</h3><p>Units 4–5: partitioned Parquet, pruning, shuffles — then the engine-choice judgement and wrap-up.</p></div>
+      </div>
+      <div class="cols-2">
+        <div class="panel compact"><h3>Practice · <span class="mono">lesson10_exercise/</span></h3><p>Implement one join/aggregation and one window query as <strong>Spark DataFrames</strong> — graded by a pytest checker against pinned retail answers, one local worker, no cluster.</p></div>
+        <div class="panel compact"><h3>House rules</h3><p>The notebook writes only under <code class="inline">../data/</code> (gitignored) — Lesson 2's rule. Run top to bottom; stop the session with <code class="inline">spark.stop()</code> when done.</p></div>
+      </div>
+      <div class="takeaway">Same pinned retail CSVs as Lessons 2, 8, and 9 — 60 transactions, 10 customers — so every Spark answer can be checked against ones you already trust.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide" data-section="plan">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · The cast</div>
+      <h2>One driver, many executors</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>The driver</h3>
+          <p>The program you talk to — your notebook's <code class="inline">spark</code> object. It <strong>holds the plan</strong>, splits work into tasks, hands tasks out, and combines the partial results.</p>
+          <p class="muted">The driver coordinates; it does not want your whole dataset in its lap.</p>
+        </div>
+        <div class="panel">
+          <h3>The executors</h3>
+          <p>The workers that <strong>hold the data and do the work</strong> — each one processes its own slice, in parallel with the others.</p>
+          <p class="muted">On a real cluster they are separate machines. In <code class="inline">local[2]</code>, two worker threads on your laptop.</p>
+        </div>
+      </div>
+      <div class="question">Sound familiar? It is the client/server split from Lesson 6, turned inward: one coordinator that asks, many workers that answer.</div>
+      <div class="takeaway">Every Spark question — "why lazy?", "why shuffle?" — comes back to this split: the plan lives in one place, the data lives in many.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide" data-section="plan">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Partitions</div>
+      <h2>A Spark DataFrame is sliced into partitions</h2>
+    </header>
+    <main class="content">
+      <div class="number-strip">
+        <div class="number-box" style="min-width:190px">rows 0–29<small>partition 0 · executor A</small></div>
+        <div class="number-box" style="min-width:190px">rows 30–59<small>partition 1 · executor B</small></div>
+      </div>
+      <div class="cols-2">
+        <div class="panel compact">
+          <h3>What a partition is</h3>
+          <p>A horizontal slice of the rows, living on one executor. The DataFrame you type against is the <strong>union of its partitions</strong> — no single machine ever needs to hold all of it.</p>
+        </div>
+        <div class="panel compact">
+          <h3>What a task is</h3>
+          <p>One unit of work on one partition. A job over 200 partitions becomes 200 tasks that can run wherever there are free executors.</p>
+        </div>
+      </div>
+      <div class="takeaway">Partitions are why Spark scales: the same per-slice work runs on 2 slices or 2,000 — Lesson 4's "shape of the work" made physical.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="slide" data-section="plan">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Animated trace</div>
+      <h2>Follow one action through driver, tasks, and executors</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="flow">
+        <div class="trace-toolbar"><div class="trace-status" aria-live="polite"></div><div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div></div>
+        <div class="flowchart-wrap" style="min-height:330px">
+          <svg class="flowchart-svg" viewBox="0 0 1000 320" style="height:330px" role="img" aria-label="Driver splits an action into tasks that executors run in parallel">
+            <defs><marker id="arrow-job" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0l10 5-10 5z" fill="#94a3b8"/></marker></defs>
+            <path class="fc-edge" data-edge="d-t" d="M216 160H298" marker-end="url(#arrow-job)"/>
+            <path class="fc-edge" data-edge="t-a" d="M470 146L558 86" marker-end="url(#arrow-job)"/>
+            <path class="fc-edge" data-edge="t-b" d="M470 174L558 234" marker-end="url(#arrow-job)"/>
+            <path class="fc-edge" data-edge="a-r" d="M760 80L828 142" marker-end="url(#arrow-job)"/>
+            <path class="fc-edge" data-edge="b-r" d="M760 240L834 180" marker-end="url(#arrow-job)"/>
+            <g class="fc-node" data-node="driver"><rect x="36" y="132" width="180" height="56" rx="28"/><text x="126" y="153">driver</text><text x="126" y="171">transactions.count()</text></g>
+            <g class="fc-node" data-node="tasks"><rect x="298" y="132" width="172" height="56"/><text x="384" y="153">one task per</text><text x="384" y="171">partition</text></g>
+            <g class="fc-node" data-node="execA"><rect x="558" y="48" width="202" height="56"/><text x="659" y="69">executor A</text><text x="659" y="87">counts partition 0 → 30</text></g>
+            <g class="fc-node" data-node="execB"><rect x="558" y="212" width="202" height="56"/><text x="659" y="233">executor B</text><text x="659" y="251">counts partition 1 → 30</text></g>
+            <g class="fc-node" data-node="result"><path d="M834 132h140l-14 56H820z"/><text x="898" y="163">60</text></g>
+          </svg>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"activeNode":"driver","status":"You call transactions.count() — an action. The driver must now actually produce a number."},
+          {"activeEdge":"d-t","activeNode":"tasks","status":"The driver splits the job into tasks: one per partition. Two partitions of 30 rows each → two tasks."},
+          {"activeEdge":"t-a","activeNode":"execA","status":"Task 1 goes to executor A, which counts only its own slice: partition 0 has 30 rows."},
+          {"activeEdge":"t-b","activeNode":"execB","status":"Task 2 runs AT THE SAME TIME on executor B: partition 1 also has 30 rows. Neither executor ever sees the other's data."},
+          {"activeEdge":"a-r","activeNode":"result","status":"Each executor sends back one small number — not its rows. Partial result from A: 30."},
+          {"activeEdge":"b-r","activeNode":"result","status":"The driver combines the partials: 30 + 30 = 60. The data stayed put; only the summary travelled."}
+        ]</script>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="slide" data-section="plan">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · The central distinction</div>
+      <h2>Transformations record; actions execute</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Kind</th><th>Examples</th><th>What happens when you call it</th></tr></thead>
+        <tbody>
+          <tr><td>Transformation</td><td class="mono">select · filter · groupBy · join · withColumn</td><td>a step is <strong>recorded</strong> onto the plan — no data is touched, it returns instantly</td></tr>
+          <tr><td>Action</td><td class="mono">show · count · write · toPandas · collect</td><td>the whole recorded plan finally <strong>executes</strong> across the partitions</td></tr>
+        </tbody>
+      </table>
+      <div class="cols-2">
+        <div class="panel compact"><h3>The pandas contrast</h3><p>A pandas operation usually runs <em>immediately</em> — you type it, it happens. A Spark transformation such as <code class="inline">filter</code> merely describes what <em>should</em> happen.</p></div>
+        <div class="panel compact"><h3>Why the split exists</h3><p>Deferring execution lets Spark see the <strong>whole plan</strong> before running any of it — and coordinate the work across partitions in one optimized pass.</p></div>
+      </div>
+      <div class="takeaway">Transformations describe <em>what</em>; actions decide <em>when</em>. Nothing runs until an action asks for actual rows.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="slide" data-section="plan">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Laziness in code</div>
+      <h2>Two transformations, zero work — until <code>show</code></h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="comment"># the pinned retail frames, lifted into Spark</span>
+customers = spark.createDataFrame(customers_pd)
+transactions = spark.createDataFrame(transactions_pd)
+
+planned = transactions.filter(F.col(<span class="string">'quantity'</span>) &gt; <span class="number">0</span>) \
+                      .select(<span class="string">'transaction_id'</span>, <span class="string">'customer_id'</span>)
+print(<span class="string">'No result has been displayed yet; this is a transformation plan.'</span>)
+
+planned.show(<span class="number">3</span>)  <span class="comment"># show is an action</span></pre>
+        <div>
+          <pre class="output-block">+--------------+-----------+
+|transaction_id|customer_id|
++--------------+-----------+
+|     536381-01|     C15311|
+|     536381-02|     C15311|
+|     536381-03|     C15311|
++--------------+-----------+
+only showing top 3 rows</pre>
+          <div class="panel compact" style="margin-top:14px"><p>The <code class="inline">filter</code>/<code class="inline">select</code> lines return in a blink no matter how big the data — they only build <code class="inline">planned</code>. The pause, and the rows, arrive at <code class="inline">show(3)</code>.</p></div>
+        </div>
+      </div>
+      <div class="takeaway"><code class="inline">planned</code> is not a table of results. It is a recorded recipe that <code class="inline">show</code> finally cooks.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="slide" data-section="plan">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Reading the plan</div>
+      <h2><code>explain()</code> prints the recipe without cooking it</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div>
+          <div class="code-title">planned.explain() — physical plan (abridged)</div>
+          <pre class="output-block" style="font-size:15px">== Physical Plan ==
+*(1) Project [transaction_id#0, customer_id#1]
++- *(1) Filter (isnotnull(quantity#4L) AND (quantity#4L &gt; 0))
+   +- *(1) Scan ExistingRDD[transaction_id#0, customer_id#1, ...]</pre>
+          <p class="small muted" style="margin-top:10px">Read it bottom-up: scan the rows → keep <code class="inline">quantity &gt; 0</code> → project two columns. Printing this touched no data.</p>
+        </div>
+        <div class="panel">
+          <h3>You have met this before</h3>
+          <p>Lesson 8's <code class="inline">EXPLAIN QUERY PLAN</code> showed how SQLite would run your SQL. Same idea, same skill: <strong>you state the result; an optimizer chooses the procedure</strong> — and <code class="inline">explain</code> lets you audit its choice.</p>
+        </div>
+      </div>
+      <div class="takeaway">Spark's optimizer is the SQL optimizer's idea at cluster scale: a declarative plan it is free to rearrange before running.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 13 -->
+<section class="slide" data-section="plan">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Animated trace</div>
+      <h2>Watch the plan build — then execute on <code>show()</code></h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="flow">
+        <div class="trace-toolbar"><div class="trace-status" aria-live="polite"></div><div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div></div>
+        <div class="flowchart-wrap" style="min-height:330px">
+          <svg class="flowchart-svg" viewBox="0 0 1040 320" style="height:330px" role="img" aria-label="Lazy plan accumulating transformations, then executing when show is called">
+            <defs><marker id="arrow-lazy" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0l10 5-10 5z" fill="#94a3b8"/></marker></defs>
+            <path class="fc-edge" data-edge="t1-t2" d="M244 88H300" marker-end="url(#arrow-lazy)"/>
+            <path class="fc-edge" data-edge="t2-plan" d="M504 88H560" marker-end="url(#arrow-lazy)"/>
+            <path class="fc-edge" data-edge="plan-act" d="M770 88H826" marker-end="url(#arrow-lazy)"/>
+            <path class="fc-edge" data-edge="act-opt" d="M918 116V232H862" marker-end="url(#arrow-lazy)"/>
+            <path class="fc-edge" data-edge="opt-exec" d="M648 232H584" marker-end="url(#arrow-lazy)"/>
+            <path class="fc-edge" data-edge="exec-rows" d="M354 232H286" marker-end="url(#arrow-lazy)"/>
+            <g class="fc-node" data-node="t1"><rect x="40" y="60" width="204" height="56"/><text x="142" y="81">.filter(quantity &gt; 0)</text><text x="142" y="99">recorded</text></g>
+            <g class="fc-node" data-node="t2"><rect x="300" y="60" width="204" height="56"/><text x="402" y="81">.select(2 columns)</text><text x="402" y="99">recorded</text></g>
+            <g class="fc-node" data-node="plan"><rect x="560" y="60" width="210" height="56"/><text x="665" y="81">planned = the plan</text><text x="665" y="99">scan → filter → project</text></g>
+            <g class="fc-node" data-node="act"><rect x="826" y="60" width="184" height="56" rx="28"/><text x="918" y="81">.show(3)</text><text x="918" y="99">an action!</text></g>
+            <g class="fc-node" data-node="opt"><rect x="648" y="204" width="214" height="56"/><text x="755" y="225">optimizer rewrites</text><text x="755" y="243">the whole plan</text></g>
+            <g class="fc-node" data-node="exec"><rect x="354" y="204" width="230" height="56"/><text x="469" y="225">executors run tasks</text><text x="469" y="243">one per partition</text></g>
+            <g class="fc-node" data-node="rows"><path d="M60 204h226l-16 56H44z"/><text x="168" y="225">3 rows</text><text x="168" y="243">printed</text></g>
+          </svg>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"activeNode":"t1","status":"transactions.filter(F.col('quantity') > 0) returns in a millisecond. No row was read — Spark only recorded the step."},
+          {"activeEdge":"t1-t2","activeNode":"t2","status":".select('transaction_id', 'customer_id') — also recorded, also instant. Still zero rows touched."},
+          {"activeEdge":"t2-plan","activeNode":"plan","status":"The variable `planned` IS this recorded plan. planned.explain() prints it — printing a recipe is not cooking it."},
+          {"activeEdge":"plan-act","activeNode":"act","status":"planned.show(3) is an action. Now, and only now, Spark must produce real rows."},
+          {"activeEdge":"act-opt","activeNode":"opt","status":"First the optimizer rewrites the plan it can finally see end-to-end — e.g. reading only the two projected columns during the scan."},
+          {"activeEdge":"opt-exec","activeNode":"exec","status":"The optimized plan becomes tasks; the executors run them over their partitions in parallel."},
+          {"activeEdge":"exec-rows","activeNode":"rows","status":"Three rows print. Laziness meant Spark did exactly the work the action required — with the whole plan visible before any of it ran."}
+        ]</script>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 14 -->
+<section class="slide" data-section="plan">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · The action to distrust</div>
+      <h2><code>collect()</code> pulls everything into the driver's lap</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel warning">
+          <h3>The trap</h3>
+          <p><code class="inline">collect()</code> (and <code class="inline">toPandas()</code>) ship <strong>every row of the result to the driver</strong>. On the retail toy that is 60 rows. On real data it is the single most common way to crash a Spark job — the distributed answer un-distributes itself into one process's memory.</p>
+        </div>
+        <div class="panel good">
+          <h3>The habit</h3>
+          <p>Keep results distributed until they are small: <code class="inline">show()</code> to peek, <code class="inline">count()</code> to size, <code class="inline">write</code> to store. Reach for <code class="inline">toPandas()</code> only when the result is a small summary — like our five country-month rows.</p>
+        </div>
+      </div>
+      <div class="question">This is why the exercise forbids <code class="inline">collect()</code> and <code class="inline">toPandas()</code> inside your functions: your job is to return the <em>plan</em>; the checker decides when to execute it.</div>
+      <div class="takeaway">Avoid <code class="inline">collect()</code> unless the result is truly small enough for the driver. Aggregates first, collect last.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 15 -->
+<section class="slide" data-section="plan">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Checkpoint</div>
+      <h2>Why bother being lazy?</h2>
+    </header>
+    <main class="content">
+      <div class="question">Pandas runs each line immediately and you have never missed laziness. What does Spark gain by refusing to run <code class="inline">filter</code> and <code class="inline">select</code> until an action arrives?</div>
+      <div class="answer fragment">
+        Two things. <strong>Optimization:</strong> at action time Spark sees the whole pipeline, so it can rearrange it — push filters early, read only needed columns, plan joins — exactly as a SQL engine rewrites a query it can see in full (Lessons 8–9). <strong>Coordination:</strong> the plan, not the data, is what travels to executors; each partition then runs the optimized recipe locally. Eager execution would lock in a naive order and force intermediate results into existence that nobody asked for.
+      </div>
+      <div class="takeaway">Laziness is declarativeness in disguise: you state <em>what</em>, and the engine — seeing everything — chooses <em>how</em> and <em>when</em>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 16 -->
+<section class="slide" data-section="spelling">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · The same retail answer</div>
+      <h2>Monthly revenue by country, third spelling</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">Lesson 8 · the SQL spelling</div>
+          <pre class="code-block" style="font-size:14.5px"><span class="keyword">SELECT</span> country, strftime(<span class="string">'%Y-%m'</span>, transaction_date) <span class="keyword">AS</span> month,
+       <span class="keyword">SUM</span>(quantity * unit_price) <span class="keyword">AS</span> revenue
+<span class="keyword">FROM</span> transactions <span class="keyword">JOIN</span> customers <span class="keyword">USING</span> (customer_id)
+<span class="keyword">GROUP BY</span> country, month <span class="keyword">ORDER BY</span> country, month;</pre>
+        </div>
+        <div>
+          <div class="code-title">Lesson 9 · the pandas spelling</div>
+          <pre class="code-block" style="font-size:14.5px">joined = transactions.merge(customers, on=<span class="string">'customer_id'</span>)
+joined[<span class="string">'month'</span>] = joined[<span class="string">'transaction_date'</span>].dt.strftime(<span class="string">'%Y-%m'</span>)
+joined[<span class="string">'revenue'</span>] = joined[<span class="string">'quantity'</span>] * joined[<span class="string">'unit_price'</span>]
+joined.groupby([<span class="string">'country'</span>, <span class="string">'month'</span>]).agg(...)</pre>
+        </div>
+      </div>
+      <div class="question">You know exactly what this analysis produces — five country-month rows, EIRE's 148.88 first. The only open question is what Spark's spelling looks like.</div>
+      <div class="takeaway">A known answer is the best test harness. Every Spark result in this unit can be checked against Lessons 8–9 to the cent.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 17 -->
+<section class="slide" data-section="spelling">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · The Spark spelling</div>
+      <h2>Join, derive, group, aggregate — one lazy chain</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block" style="font-size:15px">monthly_revenue = (transactions.join(customers, <span class="string">'customer_id'</span>)
+    .withColumn(<span class="string">'month'</span>, F.date_format(<span class="string">'transaction_date'</span>, <span class="string">'yyyy-MM'</span>))
+    .withColumn(<span class="string">'revenue'</span>, F.col(<span class="string">'quantity'</span>) * F.col(<span class="string">'unit_price'</span>))
+    .groupBy(<span class="string">'country'</span>, <span class="string">'month'</span>)
+    .agg(F.sum(<span class="string">'revenue'</span>).alias(<span class="string">'revenue'</span>),
+         F.count(<span class="string">'*'</span>).alias(<span class="string">'line_items'</span>))
+    .orderBy(<span class="string">'country'</span>, <span class="string">'month'</span>))
+monthly_revenue.show()</pre>
+        <div>
+          <pre class="output-block" style="font-size:14.5px">+--------------+-------+-------+----------+
+|       country|  month|revenue|line_items|
++--------------+-------+-------+----------+
+|          EIRE|2010-12| 148.88|         6|
+|   Netherlands|2010-12|  23.41|         6|
+|United Kingdom|2010-12| 1209.9|        36|
+|United Kingdom|2011-01|  17.06|         6|
+|United Kingdom|2011-08|  21.84|         6|
++--------------+-------+-------+----------+</pre>
+          <div class="panel compact" style="margin-top:12px"><p>Six chained <strong>transformations</strong> build the plan; <code class="inline">show()</code> is the action that runs it. The numbers match Lessons 8–9 exactly.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Every line has a Lesson 9 twin: <code class="inline">join</code>/<code class="inline">merge</code>, <code class="inline">withColumn</code>/assign, <code class="inline">groupBy</code>/<code class="inline">groupby</code>. New engine, old grammar.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 18 -->
+<section class="slide" data-section="spelling">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · The dictionary</div>
+      <h2>pandas → PySpark, move by move</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Move</th><th>pandas</th><th>PySpark</th><th>Runs</th></tr></thead>
+        <tbody>
+          <tr><td>keep rows</td><td class="mono">df[df.quantity &gt; 0]</td><td class="mono">df.filter(F.col('quantity') &gt; 0)</td><td>at next action</td></tr>
+          <tr><td>derive a column</td><td class="mono">df['revenue'] = q * p</td><td class="mono">df.withColumn('revenue', F.col('q') * F.col('p'))</td><td>at next action</td></tr>
+          <tr><td>join</td><td class="mono">df.merge(other, on='customer_id')</td><td class="mono">df.join(other, 'customer_id')</td><td>at next action</td></tr>
+          <tr><td>group + reduce</td><td class="mono">df.groupby(...).agg(...)</td><td class="mono">df.groupBy(...).agg(F.sum(...))</td><td>at next action</td></tr>
+          <tr><td>sort</td><td class="mono">df.sort_values(...)</td><td class="mono">df.orderBy(...)</td><td>at next action</td></tr>
+        </tbody>
+      </table>
+      <div class="cols-2">
+        <div class="panel compact"><h3>One real difference</h3><p>The right column never runs when you type it. Everything in PySpark's grammar is a transformation; the timing column is the whole story.</p></div>
+        <div class="panel compact"><h3>One cosmetic difference</h3><p>Column references are wrapped: <code class="inline">F.col('quantity')</code> instead of <code class="inline">df.quantity</code> — because the expression must travel to executors, it is an object, not a value.</p></div>
+      </div>
+      <div class="takeaway">If you can write the pandas line, you can write the Spark line. The translation is mechanical; the execution model is the new content.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 19 -->
+<section class="slide" data-section="spelling">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Spark SQL</div>
+      <h2>Your Lesson 8 SQL runs here, verbatim</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">monthly_revenue.createOrReplaceTempView(<span class="string">'monthly_revenue'</span>)
+
+spark.sql(<span class="string">'''SELECT country, month, revenue
+             FROM monthly_revenue
+             ORDER BY country, month'''</span>).show()</pre>
+        <div>
+          <pre class="output-block" style="font-size:14.5px">+--------------+-------+-------+
+|       country|  month|revenue|
++--------------+-------+-------+
+|          EIRE|2010-12| 148.88|
+|   Netherlands|2010-12|  23.41|
+|United Kingdom|2010-12| 1209.9|
+|United Kingdom|2011-01|  17.06|
+|United Kingdom|2011-08|  21.84|
++--------------+-------+-------+</pre>
+        </div>
+      </div>
+      <div class="cols-2">
+        <div class="panel compact"><h3><code class="inline">createOrReplaceTempView</code></h3><p>Gives a DataFrame a table name so SQL can see it — a session-lifetime name for a plan, not a copy of the data.</p></div>
+        <div class="panel compact"><h3>Two doors, one room</h3><p>DataFrame chains and <code class="inline">spark.sql</code> strings compile to the <strong>same plan</strong> and pass through the <strong>same optimizer</strong>. Pick per taste, mix freely.</p></div>
+      </div>
+      <div class="takeaway">Lesson 8's SQL was not SQLite-specific. It is the industry's shared spelling for declarative data work — and Spark speaks it natively.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 20 -->
+<section class="slide" data-section="spelling">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Checkpoint</div>
+      <h2>Which spelling is faster?</h2>
+    </header>
+    <main class="content">
+      <div class="question">A teammate insists the DataFrame chain must be faster than <code class="inline">spark.sql(...)</code> "because SQL is an extra layer of parsing." Are they right?</div>
+      <div class="answer fragment">
+        No — and <code class="inline">explain()</code> proves it. Both spellings are converted to the same logical plan and handed to the same optimizer (Spark's Catalyst); the physical plan that executes is identical. The parsing cost is microseconds, once, on the driver. This is the deep lesson of Lessons 8–9 resurfacing: <strong>in a declarative system, you choose the spelling; the engine chooses the procedure</strong> — so style, readability, and your team's habits are the real deciding factors.
+      </div>
+      <div class="takeaway">Never argue performance between two spellings of the same plan. Run <code class="inline">explain()</code> on both and watch the plans coincide.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 21 -->
+<section class="slide" data-section="spelling">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Windows</div>
+      <h2>Rank customers within each country — without collapsing rows</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block" style="font-size:15px">customer_revenue = (transactions.join(customers, <span class="string">'customer_id'</span>)
+    .withColumn(<span class="string">'revenue'</span>, F.col(<span class="string">'quantity'</span>) * F.col(<span class="string">'unit_price'</span>))
+    .groupBy(<span class="string">'country'</span>, <span class="string">'customer_id'</span>)
+    .agg(F.sum(<span class="string">'revenue'</span>).alias(<span class="string">'revenue'</span>)))
+
+rank_window = Window.partitionBy(<span class="string">'country'</span>).orderBy(F.desc(<span class="string">'revenue'</span>))
+
+(customer_revenue
+ .withColumn(<span class="string">'revenue_rank'</span>, F.dense_rank().over(rank_window))
+ .orderBy(<span class="string">'country'</span>, <span class="string">'revenue_rank'</span>, <span class="string">'customer_id'</span>).show())</pre>
+        <div>
+          <pre class="output-block" style="font-size:13.5px">+--------------+-----------+-------+------------+
+|       country|customer_id|revenue|revenue_rank|
++--------------+-----------+-------+------------+
+|          EIRE|     C14911| 148.88|           1|
+|   Netherlands|     C14646|  23.41|           1|
+|United Kingdom|     C13089| 868.26|           1|
+|United Kingdom|     C14298|  181.2|           2|
+|United Kingdom|     C15311|  89.57|           3|
+|United Kingdom|     C12748|  24.75|           4|
++--------------+-----------+-------+------------+
+<span class="comment">... 4 more United Kingdom rows</span></pre>
+        </div>
+      </div>
+      <div class="takeaway"><code class="inline">Window.partitionBy(...).orderBy(...)</code> is Lesson 9's <code class="inline">OVER (PARTITION BY ... ORDER BY ...)</code> — the same clause, spelled as an object.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 22 -->
+<section class="slide" data-section="spelling">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · The distinction that transfers</div>
+      <h2>groupBy collapses; a window describes</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3><code class="inline">groupBy</code></h3>
+          <p>Ten customers become <strong>one row per country-customer group</strong> — you keep the summary, you lose the individuals. That is what "aggregate" means.</p>
+        </div>
+        <div class="panel">
+          <h3><code class="inline">dense_rank().over(window)</code></h3>
+          <p>Every row <strong>survives</strong>, and each gains a new column computed <em>relative to its group</em>: this customer's standing within its country.</p>
+        </div>
+      </div>
+      <div class="question">Same window, three engines now: Lesson 9 SQL's <code class="inline">DENSE_RANK() OVER (...)</code>, pandas' <code class="inline">groupby(...).rank(method="dense")</code>, and today's <code class="inline">F.dense_rank().over(rank_window)</code>. One idea, three spellings.</div>
+      <div class="takeaway">A window calculates over a group while retaining its rows — the idea is identical to Lesson 9; only the punctuation moved.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 23 -->
+<section class="slide" data-section="spelling">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Checkpoint</div>
+      <h2>Translate before you type</h2>
+    </header>
+    <main class="content">
+      <div class="question">In Lesson 9 you wrote: "each customer's share of their country's total revenue" using <code class="inline">SUM(revenue) OVER (PARTITION BY country)</code>. Without running anything — what are the Spark moves, and when would work actually happen?</div>
+      <div class="answer fragment">
+        Build <code class="inline">customer_revenue</code> exactly as on the last slide; define <code class="inline">total_window = Window.partitionBy('country')</code>; then <code class="inline">.withColumn('share', F.col('revenue') / F.sum('revenue').over(total_window))</code>. All of it is <strong>transformations — nothing runs</strong>. Work happens only at the action you choose (<code class="inline">show</code>, <code class="inline">write</code>, or the checker's <code class="inline">toPandas</code>), at which point the optimizer plans the join, the aggregation, and the window in one pass.
+      </div>
+      <div class="takeaway">If you can say it in Lesson 9's vocabulary, you can spell it in Spark's — and laziness means the spelling is free until an action arrives.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 24 -->
+<section class="slide" data-section="layout">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Session 2 warm-up</div>
+      <h2>Five questions from last time — answer from memory first</h2>
+    </header>
+    <main class="content">
+      <div class="rule-list">
+        <div class="rule"><b>Q1</b><span>Of <span class="mono">filter</span>, <span class="mono">show</span>, <span class="mono">groupBy</span>, <span class="mono">count</span> — which two actually execute work, and what are the other two called?</span></div>
+        <div class="rule"><b>Q2</b><span>Driver vs executor: which holds the plan, and which holds the data?</span></div>
+        <div class="rule"><b>Q3</b><span>Why is <span class="mono">collect()</span> the most common way to crash a Spark job?</span></div>
+        <div class="rule"><b>Q4</b><span>Is a DataFrame chain faster than the same query via <span class="mono">spark.sql</span>? Why?</span></div>
+        <div class="rule"><b>Q5</b><span><span class="mono">groupBy</span> versus a window: which one keeps every row, and what does the other return?</span></div>
+      </div>
+      <div class="takeaway">Say your answers out loud before turning the page. Retrieval, not recognition, is what sticks.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 25 -->
+<section class="slide" data-section="layout">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Session 2 warm-up · answers</div>
+      <h2>Check yourself</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Q</th><th>Answer</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><code class="inline">show</code> and <code class="inline">count</code> are <strong>actions</strong> — they execute. <code class="inline">filter</code> and <code class="inline">groupBy</code> are <strong>transformations</strong> — they only record a step on the plan.</td></tr>
+          <tr><td>2</td><td>The driver holds the plan and coordinates; the executors hold the partitions and do the work.</td></tr>
+          <tr><td>3</td><td>It ships every result row to the single driver process — un-distributing the answer into one machine's memory.</td></tr>
+          <tr><td>4</td><td>Neither is faster: both compile to the same logical plan and pass through the same optimizer. <code class="inline">explain()</code> shows identical physical plans.</td></tr>
+          <tr><td>5</td><td>A window keeps every row and adds a per-group column; <code class="inline">groupBy</code> collapses each group to one summary row.</td></tr>
+        </tbody>
+      </table>
+    </main>
+  </div>
+</section>
+
+<!-- 26 -->
+<section class="slide" data-section="layout">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Physical layout</div>
+      <h2>Where the rows live starts to matter</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>Everything so far ignored layout</h3>
+          <p>Units 1–3 treated partitions as an invisible implementation detail — the same code runs however the rows are sliced.</p>
+        </div>
+        <div class="panel">
+          <h3>Unit 4 makes layout a choice</h3>
+          <p>Two deliberate decisions: <strong>how data is arranged on disk</strong> (partitioned Parquet), and <strong>how it moves between executors</strong> (shuffles). Both change cost, not correctness.</p>
+        </div>
+      </div>
+      <div class="question">Lesson 2 said "storage is not neutral" about file formats. Unit 4 is the same sentence at a different scale: the <em>arrangement</em> of files decides how much of them a query must read.</div>
+      <div class="takeaway">Correct first, laid-out second: layout choices never change the answer — only how much work producing it costs.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 27 -->
+<section class="slide" data-section="layout">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Partitioned Parquet</div>
+      <h2>Write one folder per year</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block" style="font-size:15px">parquet_path = Path(<span class="string">'../data/lesson10_transactions.parquet'</span>)
+
+(transactions.write.mode(<span class="string">'overwrite'</span>)
+    .partitionBy(<span class="string">'transaction_year'</span>)
+    .parquet(str(parquet_path)))
+
+partitioned = spark.read.parquet(str(parquet_path))</pre>
+        <div>
+          <pre class="output-block" style="font-size:14.5px">lesson10_transactions.parquet/
+├── transaction_year=2010/
+│   └── part-00000-….snappy.parquet
+└── transaction_year=2011/
+    └── part-00000-….snappy.parquet</pre>
+          <div class="panel compact" style="margin-top:12px"><p>The partition column becomes <strong>folder names</strong>. Its values are no longer stored in the row data — they are readable from the directory structure alone.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Lesson 2 chose Parquet to preserve types. <code class="inline">partitionBy</code> adds a second promise: queries that filter on the partition column can skip whole folders.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 28 -->
+<section class="slide" data-section="layout">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Partition pruning</div>
+      <h2>The filter runs against folder names, not rows</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div>
+          <div class="code-title">partitioned.filter(F.col('transaction_year') == 2010).explain() — abridged</div>
+          <pre class="output-block" style="font-size:14.5px">== Physical Plan ==
+*(1) ColumnarToRow
++- FileScan parquet [..., transaction_year#7]
+     <span class="ok">PartitionFilters</span>: [isnotnull(transaction_year#7),
+                        (transaction_year#7 = 2010)]
+     PushedFilters: []</pre>
+          <p class="small muted" style="margin-top:10px"><code class="inline">PartitionFilters</code> is the tell: this condition is applied to <strong>directory names</strong> before any file is opened.</p>
+        </div>
+        <div>
+          <pre class="code-block" style="font-size:14.5px">(partitioned
+ .filter(F.col(<span class="string">'transaction_year'</span>) == <span class="number">2010</span>)
+ .groupBy(<span class="string">'source_country'</span>).count().show())</pre>
+          <pre class="output-block" style="font-size:14.5px;margin-top:10px">+--------------+-----+
+|source_country|count|
++--------------+-----+
+|United Kingdom|   36|
+|          EIRE|    6|
+|   Netherlands|    6|
++--------------+-----+</pre>
+        </div>
+      </div>
+      <div class="takeaway">A layout choice at write time became a skipped read at query time. On this toy it saves 12 rows; on a decade of data it skips 90% of the files.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 29 -->
+<section class="slide" data-section="layout">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Animated trace</div>
+      <h2>Pruning: one folder scanned, one never opened</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="array">
+        <div class="trace-toolbar">
+          <div class="trace-status" aria-live="polite" aria-atomic="true"></div>
+          <div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div>
+        </div>
+        <div class="trace-board">
+          <div class="array-strip">
+            <div class="trace-pointer" style="width:250px">compare folder name</div>
+            <div class="array-cell" data-index="folder on disk" style="width:250px;font-size:18px">year=2010 · 48 rows</div>
+            <div class="array-cell" data-index="folder on disk" style="width:250px;font-size:18px">year=2011 · 12 rows</div>
+          </div>
+          <div class="trace-variables">
+            <div class="trace-variable" data-var="filter" style="min-width:290px"></div>
+            <div class="trace-variable" data-var="read" style="min-width:200px"></div>
+          </div>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"current":null,"vars":{"filter":"filter: transaction_year == 2010","read":"rows read: 0"},"status":"The write left one folder per year. The query arrives with a filter on the partition column."},
+          {"current":0,"vars":{"filter":"'year=2010' == 2010 ?  yes","read":"rows read: 0"},"status":"Spark compares the filter against the FOLDER NAME first. year=2010 matches — this folder will be scanned."},
+          {"current":0,"best":0,"vars":{"filter":"'year=2010' == 2010 ?  yes","read":"rows read: 48"},"status":"Only now are the 48 rows inside actually read."},
+          {"current":1,"best":0,"vars":{"filter":"'year=2011' == 2010 ?  no","read":"rows read: 48"},"status":"year=2011 cannot possibly contain a 2010 row. The folder is pruned — not one byte of it is opened."},
+          {"current":null,"best":0,"discarded":[1],"vars":{"filter":"pruned: 1 of 2 folders","read":"rows read: 48 of 60"},"status":"The filter ran against directory names before touching data. With folders 2000–2024, the same query would skip 96% of the files."}
+        ]</script>
+      </div>
+      <div class="takeaway">Pruning is Lesson 4's "don't do the work" beating any "do the work faster": the cheapest rows are the ones never read.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 30 -->
+<section class="slide" data-section="layout">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Shuffles</div>
+      <h2>Some questions force rows to move</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>Why movement is unavoidable</h3>
+          <p><code class="inline">groupBy('country')</code> must bring every row of a country <strong>together</strong> to sum it — but those rows are scattered across partitions on different executors. So Spark redistributes them: that redistribution is a <strong>shuffle</strong>.</p>
+        </div>
+        <div class="panel">
+          <h3>Who needs one</h3>
+          <p><code class="inline">groupBy</code>, <code class="inline">join</code>, and windows — anything where rows sharing a <em>key</em> must meet. Row-local work (<code class="inline">filter</code>, <code class="inline">withColumn</code>, <code class="inline">select</code>) never shuffles: each row's answer needs no other row.</p>
+        </div>
+      </div>
+      <div class="question">Our config set <code class="inline">spark.sql.shuffle.partitions</code> to <code class="inline">2</code> — that line in the setup cell is literally "after a shuffle, deal the rows into two piles."</div>
+      <div class="takeaway">A shuffle is often necessary and always costly at scale: rows serialized, sent across the network, and re-grouped by key.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 31 -->
+<section class="slide" data-section="layout">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Animated trace</div>
+      <h2>A shuffle routes every row to its key's partition</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="array">
+        <div class="trace-toolbar">
+          <div class="trace-status" aria-live="polite" aria-atomic="true"></div>
+          <div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div>
+        </div>
+        <div class="trace-board">
+          <div class="array-strip">
+            <div class="trace-pointer" style="width:120px">route</div>
+            <div class="array-cell" data-index="partition 0" style="width:120px;font-size:17px">UK</div>
+            <div class="array-cell" data-index="partition 0" style="width:120px;font-size:17px">EIRE</div>
+            <div class="array-cell" data-index="partition 0" style="width:120px;font-size:17px">NL</div>
+            <div class="array-cell" data-index="partition 1" style="width:120px;font-size:17px;margin-left:34px">UK</div>
+            <div class="array-cell" data-index="partition 1" style="width:120px;font-size:17px">EIRE</div>
+            <div class="array-cell" data-index="partition 1" style="width:120px;font-size:17px">UK</div>
+          </div>
+          <div class="trace-variables">
+            <div class="trace-variable" data-var="rule" style="min-width:280px"></div>
+            <div class="trace-variable" data-var="moved" style="min-width:170px"></div>
+          </div>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"current":null,"vars":{"rule":"goal: groupBy('country').sum()","moved":"rows moved: 0"},"status":"Rows sit wherever loading left them: each partition holds a mix of countries. To sum per country, same-key rows must meet."},
+          {"current":null,"vars":{"rule":"route = hash(country) % 2","moved":"rows moved: 0"},"status":"The shuffle rule: hash each row's key. Say hash('UK') % 2 = 0, hash('EIRE') % 2 = 1, hash('NL') % 2 = 1. Every executor applies the SAME rule."},
+          {"current":0,"processedThrough":0,"vars":{"rule":"hash('UK') = 0","moved":"rows moved: 0"},"status":"Partition 0, row 1: UK routes to partition 0 — already home, no movement."},
+          {"current":1,"processedThrough":1,"min":1,"vars":{"rule":"hash('EIRE') = 1","moved":"rows moved: 1"},"status":"EIRE routes to partition 1 — this row is serialized and sent across."},
+          {"current":2,"processedThrough":2,"min":2,"vars":{"rule":"hash('NL') = 1","moved":"rows moved: 2"},"status":"NL also routes to partition 1 — another row on the wire."},
+          {"current":3,"processedThrough":3,"min":3,"vars":{"rule":"hash('UK') = 0","moved":"rows moved: 3"},"status":"Partition 1's UK row routes to partition 0 — it crosses in the other direction."},
+          {"current":5,"processedThrough":5,"vars":{"rule":"hash('UK') = 0","moved":"rows moved: 4"},"status":"Partition 1's EIRE stays; its last UK row moves. Every row has now been routed by the shared rule."},
+          {"current":null,"values":["UK","UK","UK","EIRE","EIRE","NL"],"sortedUntil":6,"vars":{"rule":"all UK → p0 · EIRE, NL → p1","moved":"rows moved: 4"},"status":"After the shuffle: partition 0 holds every UK row, partition 1 holds EIRE and NL. Each executor can now sum its groups locally — no key is split."}
+        ]</script>
+      </div>
+      <div class="takeaway">One mechanism to remember: <em>same rule everywhere → same key always lands in the same partition</em>. That is the whole trick.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 32 -->
+<section class="slide" data-section="layout">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · The cost, honestly</div>
+      <h2><code>repartition</code> is a deliberate layout change, not a speed button</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel warning">
+          <h3>What a shuffle spends</h3>
+          <ul>
+            <li><strong>Serialization</strong> — every moving row encoded to bytes and back.</li>
+            <li><strong>Network</strong> — rows crossing between executors (machines, at scale).</li>
+            <li><strong>Disk</strong> — shuffle files written and re-read on both sides.</li>
+          </ul>
+        </div>
+        <div class="panel good">
+          <h3>How to think about it</h3>
+          <ul>
+            <li>Shuffles are often <strong>necessary</strong> — a join is worth its shuffle.</li>
+            <li>Filter and prune <strong>before</strong> the shuffle, so fewer rows move.</li>
+            <li>Call <code class="inline">repartition</code> only when you can say which layout you are buying and why.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="question">On our 60-row toy the shuffle is invisible. The mental model you are building is for the day the same <code class="inline">groupBy</code> moves 60 billion rows between racks.</div>
+      <div class="takeaway">Count shuffles the way Lesson 4 counted comparisons: they are the dominant term in a distributed job's cost.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 33 -->
+<section class="slide" data-section="layout">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Checkpoint</div>
+      <h2>Which of these moves rows?</h2>
+    </header>
+    <main class="content">
+      <div class="question">Four steps from this lesson's own pipeline: ① <code class="inline">filter(quantity &gt; 0)</code> · ② <code class="inline">withColumn('revenue', q * p)</code> · ③ <code class="inline">groupBy('country', 'month').agg(...)</code> · ④ <code class="inline">dense_rank().over(Window.partitionBy('country'))</code>. Which ones shuffle, and why?</div>
+      <div class="answer fragment">
+        ① and ② are <strong>row-local</strong> — each row's outcome depends on that row alone, so every executor works in place; no shuffle. ③ <strong>shuffles</strong>: all rows of a country-month must meet in one partition to be summed. ④ also <strong>shuffles</strong>: ranking within a country requires the whole country in one place, sorted. The window keeps every row where <code class="inline">groupBy</code> collapses them — but both pay the same movement bill first.
+      </div>
+      <div class="takeaway">The question "does this need rows to meet?" predicts every shuffle. If yes, plan for movement; if no, it is free parallelism.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 34 -->
+<section class="slide" data-section="fit">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · The judgement</div>
+      <h2>Choose the smallest engine that fits</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Need</th><th>Best first choice</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Explore a small in-memory table</td><td>pandas</td><td>Immediate, flexible analysis — no ceremony</td></tr>
+          <tr><td>Enforce relationships or query a local durable file</td><td>SQLite</td><td>Schema, constraints, and selective SQL reads (Lessons 7–8)</td></tr>
+          <tr><td>Process a dataset that needs partitioned/distributed execution</td><td>Spark</td><td>Lazy plans and distributed DataFrames</td></tr>
+        </tbody>
+      </table>
+      <div class="question">Notice what the table is <em>not</em> sorted by: fanciness. It is sorted by need — and the top row covers most of the data work you will ever do.</div>
+      <div class="takeaway">This table is the actual deliverable of an optional lesson: not Spark syntax, but knowing which row your problem lives in.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 35 -->
+<section class="slide" data-section="fit">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · When NOT to use Spark</div>
+      <h2>Spark is not automatically better — its costs are real</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel compact warning"><h3>Setup cost</h3><p>A JVM, a session, Java 17+, worker processes — seconds of overhead before the first row, and a heavier debugging surface when anything breaks.</p></div>
+        <div class="panel compact warning"><h3>Serialization cost</h3><p>Data crossing the Python/JVM boundary gets encoded and decoded. pandas touches memory directly; Spark pays a toll at the border.</p></div>
+        <div class="panel compact warning"><h3>Shuffle cost</h3><p>Every <code class="inline">groupBy</code>, join, and window may move rows between workers. At laptop scale this is pure overhead over a pandas <code class="inline">groupby</code>.</p></div>
+      </div>
+      <div class="cols-2">
+        <div class="panel compact"><h3>The symmetric mistake</h3><p>Using pandas on data that does not fit is a crash; using Spark on data that fits easily is a slow, complicated version of a one-liner. Both are engine-choice errors.</p></div>
+        <div class="panel compact good"><h3>The honest heuristic</h3><p>If the data fits comfortably in memory and one machine finishes in acceptable time — the smaller engine wins. Reach up only when a real limit is in sight.</p></div>
+      </div>
+      <div class="takeaway">Use Spark when the data or the workload justifies its costs — and be able to say <em>which</em> cost the scale is buying you out of.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 36 -->
+<section class="slide" data-section="fit">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Checkpoint</div>
+      <h2>The 300 MB question</h2>
+    </header>
+    <main class="content">
+      <div class="question">A colleague hands you a 300 MB CSV of transactions and says "let's do this properly — I'll spin up Spark." Your laptop has 16 GB of RAM. What do you say?</div>
+      <div class="answer fragment">
+        Politely: no. 300 MB fits in memory roughly fifty times over — <code class="inline">pd.read_csv</code> loads it in seconds and every Lesson 2–9 tool applies immediately. Spark would add JVM startup, Python↔JVM serialization, and shuffle machinery to a problem with none of the pain those exist to solve. If durability or constraints matter, SQLite is the step up — not a cluster. Spark enters when data stops fitting or one machine stops finishing: tens of gigabytes and beyond, or work that genuinely wants many machines.
+      </div>
+      <div class="takeaway">"Properly" means matched to the problem. The burden of proof is always on the bigger engine.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 37 -->
+<section class="slide" data-section="fit">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · The through-line</div>
+      <h2>Lesson 4 asked "what happens when n doubles?" — this lesson answers at the far end</h2>
+    </header>
+    <main class="content">
+      <div class="rule-list" style="max-width:1080px">
+        <div class="rule"><b>Know the shape</b><span>Lesson 4: cost grows with a shape. Distributed or not, a linear scan is a linear scan — Spark changes the constant, never the shape.</span></div>
+        <div class="rule"><b>Don't do the work</b><span>Partition pruning and pushed-down filters skip data entirely — the same win as choosing a better algorithm, achieved by layout.</span></div>
+        <div class="rule"><b>Name the bottleneck</b><span>At cluster scale the expensive resource is <em>movement</em> (shuffles), not arithmetic. Optimize what dominates.</span></div>
+        <div class="rule"><b>Then parallelize</b><span>Partitions divide the constant by the worker count — powerful, but the last resort after shape, pruning, and movement are right.</span></div>
+      </div>
+      <div class="takeaway">Scaling is a ladder: better shape, less data touched, less data moved, more machines — in that order.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 38 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Practice · your turn</div>
+      <h2>Two Spark queries, one local worker</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Function</th><th>Returns</th><th>The contract</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">monthly_revenue_by_country(transactions, customers)</td><td>Spark DataFrame</td><td>join on <code class="inline">customer_id</code>; revenue = <code class="inline">quantity * unit_price</code>; month as a <code class="inline">YYYY-MM</code> string; exactly <code class="inline">country, month, revenue, line_items</code>, sorted by country then month</td></tr>
+          <tr><td class="mono">customer_revenue_rank(transactions, customers)</td><td>Spark DataFrame</td><td>same join and aggregation, then <code class="inline">dense_rank</code> over descending revenue within each country; exactly <code class="inline">country, customer_id, revenue, revenue_rank</code>, sorted by country and rank</td></tr>
+        </tbody>
+      </table>
+      <div class="cols-2">
+        <div class="panel compact"><h3>Start</h3><p><code class="inline">cd lesson10_exercise/</code>, then <code class="inline">python3 -m pytest test_lesson10.py -v</code>. Both functions currently raise <code class="inline">NotImplementedError</code> — the intended starting line.</p></div>
+        <div class="panel compact warning"><h3>The one hard rule</h3><p>No <code class="inline">collect()</code>, no <code class="inline">toPandas()</code> inside your functions. You return the <strong>plan</strong>; the checker triggers the action. That rule <em>is</em> Unit 1.</p></div>
+      </div>
+      <div class="takeaway">Everything you need is on slides 17 and 21 — the exercise checks that you can build the plans yourself, not that you memorized them.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 39 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Practice · what "done" looks like</div>
+      <h2>Three green tests, pinned to known answers</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div class="panel">
+          <h3>The checker proves</h3>
+          <ul>
+            <li>Your monthly revenue matches the pinned five rows — EIRE 148.88 through UK's 2011-08 21.84 — <em>and</em> an independent pandas reference computed the same way.</li>
+            <li>Your ranks match the pinned ten rows, C13089 at UK rank 1 down to C13263 at rank 8.</li>
+            <li>Your functions leave the input schemas untouched — queries read, they do not mutate.</li>
+          </ul>
+        </div>
+        <div>
+          <div class="code-title">prerequisites, checked politely</div>
+          <pre class="output-block" style="font-size:14.5px">no java  → "Lesson 10 requires a local
+            Java 17+ runtime."
+no pyspark → "Run `pip install pyspark`,
+            then rerun this checker."</pre>
+          <p class="small muted" style="margin-top:10px">The checker exits with instructions rather than a stack trace — Lesson 5's "fail loudly, helpfully" applied to setup itself. One local worker, <code class="inline">local[1]</code>, no network.</p>
+        </div>
+      </div>
+      <div class="takeaway">Two engines vouch for your answer: Spark computes it, pandas independently confirms it. Agreement across engines is the strongest check you own.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 40 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Wrap-up · connections</div>
+      <h2>Where the earlier lessons went</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Earlier idea</th><th>Its Lesson 10 form</th></tr></thead>
+        <tbody>
+          <tr><td>L2 · choose the format that keeps the shape</td><td>Parquet again — now partitioned into folders a query can skip</td></tr>
+          <tr><td>L4 · cost has a shape; name the dominant term</td><td>shuffles dominate distributed cost; pruning avoids work entirely</td></tr>
+          <tr><td>L5 · contracts and loud failure</td><td>the checker pins answers and exits helpfully when Java/pyspark are missing</td></tr>
+          <tr><td>L6 · one coordinator, many answerers</td><td>driver and executors — client/server turned inward</td></tr>
+          <tr><td>L8 · declare the result, let the optimizer pick the procedure</td><td>lazy plans + Catalyst; <code class="inline">explain()</code> is <code class="inline">EXPLAIN QUERY PLAN</code> at scale</td></tr>
+          <tr><td>L9 · joins, groups, windows</td><td>the identical operations, third spelling, distributed execution</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">Spark introduced almost nothing conceptually new — that is the point. The ideas were built to survive a change of engine.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 41 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Wrap-up · inventory</div>
+      <h2>What you can do now</h2>
+    </header>
+    <main class="content">
+      <div class="rule-list" style="max-width:1050px">
+        <div class="rule"><b>Explain the model</b><span>driver, executors, partitions, tasks — and why the plan travels while the data stays put.</span></div>
+        <div class="rule"><b>Spot the boundary</b><span>transformations record, actions execute; treat <code class="inline">collect()</code> with suspicion.</span></div>
+        <div class="rule"><b>Spell it in Spark</b><span>joins, groups, and windows via the DataFrame API or <code class="inline">spark.sql</code> — knowing both compile to one plan.</span></div>
+        <div class="rule"><b>Reason about layout</b><span>partitioned Parquet, pruning via folder names, and which operations must shuffle.</span></div>
+        <div class="rule"><b>Choose the engine</b><span>pandas, SQLite, or Spark — smallest that fits, with the costs said out loud.</span></div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 42 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">The lesson, one sentence</div>
+    </header>
+    <main class="content centered">
+      <p class="big-claim">Spark is the same declarative data work you know from SQL and pandas, spelled as a <span style="border-bottom:6px solid var(--teal)">lazy plan</span> that an optimizer can execute <span style="border-bottom:6px solid var(--amber)">across partitions</span> — worth its costs only when the data outgrows one machine.</p>
+      <p class="lead">You state what; the engine — seeing the whole plan — decides how, where, and when.</p>
+    </main>
+  </div>
+</section>
+
+<!-- 43 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">What's next</div>
+      <h2>Where the course goes from here</h2>
+    </header>
+    <main class="content centered">
+      <p class="big-claim" style="font-size:38px">Next: Lesson 11 — <em>your first LLM API call</em>. Back to Lesson 6's HTTP, aimed at a model: tokens, prompts, structured JSON out, and the same discipline — inspect the contract, validate the output, keep expensive work bounded.</p>
+      <p class="lead">Assignment 4 builds on it directly. Before you go: <code class="inline">spark.stop()</code> — leave no cluster running, even one of size one.</p>
+    </main>
+  </div>
+</section>
+<div id="hud">
+  <div class="course">Intro to CS · Lesson 10</div>
+  <div id="section-map" aria-hidden="true">
+    <span data-section-name="intro">Setup</span><span data-section-name="plan">Plans</span><span data-section-name="spelling">Spelling</span><span data-section-name="layout">Layout</span><span data-section-name="fit">Fit</span><span data-section-name="finish">Finish</span>
+  </div>
+  <div class="nav-controls">
+    <button id="prev" type="button" aria-label="Previous step">‹</button>
+    <button id="next" type="button" aria-label="Next step">›</button>
+    <label id="count" for="slide-number">
+      <input id="slide-number" type="text" value="1" inputmode="numeric" pattern="[0-9]*" aria-label="Jump to slide"> / <span id="slide-total"></span>
+    </label>
+  </div>
+</div>
+
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const stage = document.getElementById("stage");
+  const slides = [...document.querySelectorAll(".slide")];
+  const prevButton = document.getElementById("prev");
+  const nextButton = document.getElementById("next");
+  const slideNumber = document.getElementById("slide-number");
+  const slideTotal = document.getElementById("slide-total");
+  const sectionItems = [...document.querySelectorAll("#section-map [data-section-name]")];
+  let currentSlide = 0;
+  let printSnapshot = null;
+
+  function fitStage() {
+    const viewport = window.visualViewport;
+    const width = viewport ? viewport.width : window.innerWidth;
+    const height = viewport ? viewport.height : window.innerHeight;
+    const scale = Math.min(width / 1280, height / 720);
+    stage.style.transform = `translate(-50%, -50%) scale(${scale})`;
+  }
+
+  class TraceController {
+    constructor(root) {
+      this.root = root;
+      this.type = root.dataset.traceType;
+      const source = root.querySelector(".trace-data");
+      try {
+        this.states = JSON.parse(source ? source.textContent : "[]");
+      } catch (error) {
+        this.states = [];
+        console.error("Invalid trace data", error, root);
+      }
+      this.step = 0;
+      this.status = root.querySelector(".trace-status");
+      this.counter = root.querySelector("[data-trace-counter]");
+      root.querySelector(".trace-reset")?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this.setStep(0);
+      });
+      this.render();
+    }
+
+    canNext() { return this.step < this.states.length - 1; }
+    canPrevious() { return this.step > 0; }
+    next() { if (this.canNext()) this.setStep(this.step + 1); }
+    previous() { if (this.canPrevious()) this.setStep(this.step - 1); }
+    setStep(step) {
+      if (!this.states.length) return;
+      this.step = Math.max(0, Math.min(step, this.states.length - 1));
+      this.render();
+      updateControls();
+    }
+
+    renderVariables(state) {
+      const values = state.vars || {};
+      this.root.querySelectorAll("[data-var]").forEach((element) => {
+        element.textContent = values[element.dataset.var] || "";
+      });
+    }
+
+    renderTranscript() {
+      const slide = this.root.closest(".slide");
+      const rows = [...slide.querySelectorAll(".trace-transcript tr[data-step]")];
+      if (!rows.length) return;
+      let active = rows[0];
+      for (const row of rows) {
+        if (Number(row.dataset.step) <= this.step) active = row;
+      }
+      rows.forEach((row) => row.classList.toggle("is-active", row === active));
+    }
+
+    renderArray(state) {
+      const cells = [...this.root.querySelectorAll(".array-cell")];
+      cells.forEach((cell, index) => {
+        if (Array.isArray(state.values) && index < state.values.length) {
+          cell.textContent = state.values[index];
+        }
+        const outsideRange = Array.isArray(state.range) && (index < state.range[0] || index > state.range[1]);
+        const foundIndex = typeof state.found === "number" ? state.found : (state.found === true ? state.current : null);
+        cell.classList.toggle("is-current", state.current === index);
+        cell.classList.toggle("is-best", state.best === index);
+        cell.classList.toggle("is-min", state.min === index);
+        cell.classList.toggle("is-checked", Number.isInteger(state.processedThrough) && index <= state.processedThrough);
+        cell.classList.toggle("is-sorted", Number.isInteger(state.sortedUntil) && index < state.sortedUntil);
+        cell.classList.toggle("is-discarded", outsideRange || (Array.isArray(state.discarded) && state.discarded.includes(index)));
+        cell.classList.toggle("is-found", foundIndex === index);
+      });
+
+      const pointer = this.root.querySelector(".trace-pointer");
+      if (pointer) {
+        if (state.current == null || !cells[state.current]) {
+          pointer.style.visibility = "hidden";
+        } else {
+          pointer.style.visibility = "visible";
+          const first = cells[0];
+          pointer.style.transform = `translateX(${cells[state.current].offsetLeft - first.offsetLeft}px)`;
+          pointer.style.left = `${first.offsetLeft}px`;
+        }
+      }
+      this.renderVariables(state);
+      this.renderTranscript();
+    }
+
+    renderFlow(state) {
+      this.root.querySelectorAll("[data-node]").forEach((node) => {
+        node.classList.toggle("is-active", node.dataset.node === state.activeNode);
+      });
+      this.root.querySelectorAll("[data-edge]").forEach((edge) => {
+        edge.classList.toggle("is-active", edge.dataset.edge === state.activeEdge);
+      });
+      this.renderVariables(state);
+    }
+
+    renderStack(state) {
+      this.root.querySelectorAll(".token[data-index]").forEach((token) => {
+        token.classList.toggle("is-current", Number(token.dataset.index) === state.token);
+      });
+      const values = state.stack || [];
+      this.root.querySelectorAll(".stack-slot[data-slot]").forEach((slot) => {
+        const index = Number(slot.dataset.slot);
+        slot.textContent = index < values.length ? values[index] : "";
+      });
+      this.renderVariables(state);
+    }
+
+    render() {
+      if (!this.states.length) return;
+      const state = this.states[this.step];
+      if (this.status) this.status.textContent = state.status || "";
+      if (this.counter) this.counter.textContent = `${this.step + 1} / ${this.states.length}`;
+      if (this.type === "array") this.renderArray(state);
+      if (this.type === "flow") this.renderFlow(state);
+      if (this.type === "stack") this.renderStack(state);
+    }
+  }
+
+  const traces = new Map();
+  document.querySelectorAll(".trace[data-trace-type]").forEach((root) => {
+    traces.set(root, new TraceController(root));
+  });
+
+  function traceOnActiveSlide() {
+    const root = slides[currentSlide]?.querySelector(".trace[data-trace-type]");
+    return root ? traces.get(root) : null;
+  }
+
+  function fragmentsOnActiveSlide() {
+    return [...slides[currentSlide].querySelectorAll(".fragment")];
+  }
+
+  function nextHiddenFragment() {
+    return fragmentsOnActiveSlide().find((fragment) => !fragment.classList.contains("visible"));
+  }
+
+  function lastVisibleFragment() {
+    return fragmentsOnActiveSlide().filter((fragment) => fragment.classList.contains("visible")).at(-1);
+  }
+
+  function updateControls() {
+    const trace = traceOnActiveSlide();
+    const hasBackwardStep = (trace && trace.canPrevious()) || Boolean(lastVisibleFragment());
+    const hasForwardStep = (trace && trace.canNext()) || Boolean(nextHiddenFragment());
+    prevButton.disabled = currentSlide === 0 && !hasBackwardStep;
+    nextButton.disabled = currentSlide === slides.length - 1 && !hasForwardStep;
+  }
+
+  function showSlide(index, options = {}) {
+    currentSlide = Math.max(0, Math.min(index, slides.length - 1));
+    slides.forEach((slide, slideIndex) => {
+      const active = slideIndex === currentSlide;
+      slide.classList.toggle("active", active);
+      slide.setAttribute("aria-hidden", active ? "false" : "true");
+      slide.inert = !active;
+    });
+    const activeSlide = slides[currentSlide];
+    const section = activeSlide.dataset.section;
+    const color = getComputedStyle(activeSlide).getPropertyValue("--section-color").trim();
+    stage.style.setProperty("--active-section-color", color);
+    sectionItems.forEach((item) => item.classList.toggle("on", item.dataset.sectionName === section));
+    slideNumber.value = currentSlide + 1;
+    slideTotal.textContent = slides.length;
+    activeSlide.querySelectorAll(".trace[data-trace-type]").forEach((root) => traces.get(root)?.render());
+    if (!options.skipHash) history.replaceState(null, "", `#slide-${currentSlide + 1}`);
+    updateControls();
+  }
+
+  function forward() {
+    const trace = traceOnActiveSlide();
+    if (trace?.canNext()) {
+      trace.next();
+      return;
+    }
+    const fragment = nextHiddenFragment();
+    if (fragment) {
+      fragment.classList.add("visible");
+      updateControls();
+      return;
+    }
+    if (currentSlide < slides.length - 1) showSlide(currentSlide + 1);
+  }
+
+  function backward() {
+    const trace = traceOnActiveSlide();
+    if (trace?.canPrevious()) {
+      trace.previous();
+      return;
+    }
+    const fragment = lastVisibleFragment();
+    if (fragment) {
+      fragment.classList.remove("visible");
+      updateControls();
+      return;
+    }
+    if (currentSlide > 0) showSlide(currentSlide - 1);
+  }
+
+  function jumpToRequestedSlide() {
+    const requested = Number.parseInt(slideNumber.value, 10);
+    if (Number.isNaN(requested)) {
+      slideNumber.value = currentSlide + 1;
+      return;
+    }
+    showSlide(requested - 1);
+  }
+
+  prevButton.addEventListener("click", backward);
+  nextButton.addEventListener("click", forward);
+  slideNumber.addEventListener("change", jumpToRequestedSlide);
+  slideNumber.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      jumpToRequestedSlide();
+      slideNumber.blur();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    const target = event.target;
+    const editing = target instanceof HTMLElement && target.closest("input, textarea, select, [contenteditable='true']");
+    const activatingControl = target instanceof HTMLElement && target.closest("a, button") && event.key === " ";
+    if (editing || activatingControl) return;
+    if (event.repeat) return;
+    if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(event.key)) {
+      event.preventDefault();
+      forward();
+    } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(event.key)) {
+      event.preventDefault();
+      backward();
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      showSlide(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      showSlide(slides.length - 1);
+    } else if (event.key.toLowerCase() === "f") {
+      event.preventDefault();
+      if (document.fullscreenElement) document.exitFullscreen();
+      else stage.requestFullscreen?.();
+    }
+  });
+
+  window.addEventListener("resize", fitStage);
+  window.visualViewport?.addEventListener("resize", fitStage);
+  window.addEventListener("hashchange", () => {
+    const match = location.hash.match(/^#slide-(\d+)$/);
+    if (match) showSlide(Number(match[1]) - 1, { skipHash: true });
+  });
+
+  window.addEventListener("beforeprint", () => {
+    printSnapshot = [...traces.values()].map((trace) => trace.step);
+    [...traces.values()].forEach((trace) => trace.setStep(trace.states.length - 1));
+  });
+  window.addEventListener("afterprint", () => {
+    if (!printSnapshot) return;
+    [...traces.values()].forEach((trace, index) => trace.setStep(printSnapshot[index] || 0));
+    printSnapshot = null;
+    showSlide(currentSlide, { skipHash: true });
+  });
+
+  const initialMatch = location.hash.match(/^#slide-(\d+)$/);
+  const initialSlide = initialMatch ? Number(initialMatch[1]) - 1 : 0;
+  fitStage();
+  showSlide(initialSlide, { skipHash: true });
+})();
+</script>
+</body>
+</html>

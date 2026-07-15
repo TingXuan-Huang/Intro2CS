@@ -1,0 +1,2394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 6 · APIs and HTTP</title>
+<style>
+  :root {
+    --paper: #f8fafc;
+    --surface: #ffffff;
+    --surface-2: #edf2f7;
+    --ink: #172033;
+    --muted: #536178;
+    --line: #c9d4e2;
+    --navy: #1e3a5f;
+    --blue: #1e5a89;
+    --teal: #0f766e;
+    --purple: #6d4c7d;
+    --amber: #986018;
+    --cyan: #176b80;
+    --green: #176b43;
+    --maroon: #8a3f5f;
+    --slate: #475569;
+    --red: #b42318;
+    --red-bg: #fff1f0;
+    --green-bg: #edf8f2;
+    --yellow-bg: #fff7df;
+    --font-sans: "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif;
+    --font-mono: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; }
+  body {
+    overflow: hidden;
+    background: #111827;
+    color: var(--ink);
+    font-family: var(--font-sans);
+  }
+  a { color: var(--blue); }
+  code, pre, .mono { font-family: var(--font-mono); }
+
+  #stage {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 1280px;
+    height: 720px;
+    transform-origin: center center;
+    overflow: hidden;
+    background: var(--paper);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .48);
+  }
+
+  .slide {
+    --section-color: var(--navy);
+    position: absolute;
+    inset: 0;
+    display: none;
+    background: var(--paper);
+  }
+  .slide.active { display: block; }
+  .slide[data-section="intro"] { --section-color: var(--navy); }
+  .slide[data-section="http"] { --section-color: var(--teal); }
+  .slide[data-section="fetch"] { --section-color: var(--blue); }
+  .slide[data-section="edges"] { --section-color: var(--amber); }
+  .slide[data-section="docs"] { --section-color: var(--purple); }
+  .slide[data-section="finish"] { --section-color: var(--slate); }
+  .slide::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 7px;
+    background: var(--section-color);
+  }
+
+  .slide-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 46px 72px 78px;
+  }
+  .slide-header { margin-bottom: 20px; }
+  .section-label {
+    margin-bottom: 8px;
+    color: var(--section-color);
+    font-size: 15px;
+    font-weight: 760;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  h1 {
+    max-width: 1080px;
+    font-size: 58px;
+    line-height: 1.08;
+    letter-spacing: -.025em;
+    font-weight: 740;
+  }
+  h2 {
+    max-width: 1120px;
+    font-size: 39px;
+    line-height: 1.13;
+    letter-spacing: -.018em;
+    font-weight: 730;
+  }
+  h3 {
+    font-size: 23px;
+    line-height: 1.23;
+    font-weight: 730;
+  }
+  p, li { font-size: 20px; line-height: 1.4; }
+  .lead {
+    max-width: 930px;
+    color: var(--muted);
+    font-size: 27px;
+    line-height: 1.42;
+  }
+  .small { font-size: 17px; line-height: 1.4; }
+  .tiny { font-size: 14px; line-height: 1.35; }
+  .muted { color: var(--muted); }
+  .strong { color: var(--ink); font-weight: 730; }
+  code.inline {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #e8eef5;
+    color: #1d3654;
+    font-size: .9em;
+  }
+
+  .content {
+    min-height: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .centered {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  .cols-2, .cols-3, .cols-4 {
+    min-height: 0;
+    display: grid;
+    gap: 20px;
+    align-items: stretch;
+  }
+  .cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ratio-3-2 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+  .ratio-2-3 { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+  .ratio-5-4 { grid-template-columns: minmax(0, 5fr) minmax(0, 4fr); }
+  .align-center { align-items: center; }
+
+  .panel {
+    min-width: 0;
+    padding: 18px 21px;
+    border: 1px solid var(--line);
+    border-top: 4px solid var(--section-color);
+    background: var(--surface);
+  }
+  .panel h3 { margin-bottom: 9px; }
+  .panel p + p, .panel ul, .panel ol { margin-top: 8px; }
+  .panel ul, .panel ol { padding-left: 23px; }
+  .panel li + li { margin-top: 5px; }
+  .panel.compact { padding: 13px 16px; }
+  .panel.compact p, .panel.compact li { font-size: 17px; }
+  .panel.warning { border-top-color: var(--red); background: var(--red-bg); }
+  .panel.good { border-top-color: var(--green); background: var(--green-bg); }
+
+  .takeaway {
+    margin-top: auto;
+    padding: 12px 16px;
+    border-left: 5px solid var(--section-color);
+    background: #e9f0f6;
+    color: #24364d;
+    font-size: 19px;
+    line-height: 1.4;
+  }
+  .question {
+    padding: 17px 21px;
+    border: 2px solid var(--blue);
+    background: #edf5fb;
+    color: #173b5d;
+    font-size: 23px;
+    line-height: 1.36;
+    font-weight: 680;
+  }
+  .answer {
+    padding: 15px 19px;
+    border-left: 5px solid var(--green);
+    background: var(--green-bg);
+    font-size: 19px;
+    line-height: 1.4;
+  }
+  .fragment { visibility: hidden; opacity: 0; }
+  .fragment.visible { visibility: visible; opacity: 1; }
+
+  .code-title {
+    margin-bottom: 7px;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 740;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .code-block, .output-block, .pseudo-block {
+    min-width: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    border: 1px solid var(--line);
+    background: #0f172a;
+    color: #e7edf5;
+    padding: 15px 18px;
+    font-family: var(--font-mono);
+    font-size: 17px;
+    line-height: 1.45;
+  }
+  .output-block, .pseudo-block { background: var(--surface); color: #203047; }
+  .pseudo-block { border-left: 4px solid var(--section-color); }
+  .comment { color: #9fb0c5; }
+  .string { color: #8dd3c7; }
+  .number { color: #f4c27a; }
+  .keyword { color: #c6a7e2; }
+  .error { color: #ef6b62; font-weight: 730; }
+  .ok { color: #7ad3a2; font-weight: 730; }
+  .output-block .comment { color: #8494a9; }
+  .output-block .error { color: var(--red); }
+  .output-block .ok { color: var(--green); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    font-size: 18px;
+    line-height: 1.3;
+  }
+  th {
+    padding: 10px 12px;
+    border-top: 2px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+    color: #34445a;
+    background: #e8eef4;
+    text-align: left;
+    font-size: 15px;
+    line-height: 1.24;
+    letter-spacing: .052em;
+    text-transform: uppercase;
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: 2px solid var(--ink); }
+  td:first-child { font-weight: 700; }
+  table.compact { font-size: 16px; }
+  table.compact th { font-size: 14px; }
+  table.compact td { padding-top: 7px; padding-bottom: 7px; }
+
+  .flow {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .flow-node {
+    min-width: 0;
+    flex: 1;
+    padding: 13px;
+    border: 1px solid #a9b6c6;
+    background: var(--surface);
+  }
+  .flow-node b {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--section-color);
+    font-size: 17px;
+  }
+  .flow-node span { font-size: 16px; line-height: 1.3; }
+  .flow-arrow {
+    align-self: center;
+    color: #66758a;
+    font-size: 25px;
+    font-weight: 700;
+  }
+
+  .rule-list { display: grid; gap: 12px; }
+  .rule {
+    display: grid;
+    grid-template-columns: 205px minmax(0, 1fr);
+    gap: 19px;
+    align-items: baseline;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .rule b { color: var(--section-color); font-size: 21px; }
+  .rule span { font-size: 19px; line-height: 1.35; }
+
+  .big-claim {
+    max-width: 1010px;
+    font-size: 45px;
+    line-height: 1.24;
+    font-weight: 730;
+    letter-spacing: -.018em;
+  }
+
+  .number-strip {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+  }
+  .number-box {
+    min-width: 120px;
+    padding: 18px 15px;
+    border: 2px solid #9bacc0;
+    background: var(--surface);
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 25px;
+    font-weight: 720;
+  }
+  .number-box small {
+    display: block;
+    margin-top: 5px;
+    color: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .trace {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+  }
+  .trace-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 38px;
+  }
+  .trace-status {
+    min-width: 0;
+    flex: 1;
+    color: #26384f;
+    font-size: 18px;
+    line-height: 1.32;
+    font-weight: 650;
+  }
+  .trace-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  .trace-reset {
+    min-width: 76px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .trace-reset:focus-visible { outline: 3px solid #4e8fc1; outline-offset: 2px; }
+  .trace-board {
+    position: relative;
+    min-height: 160px;
+    padding: 28px 18px 16px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .array-strip {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding-top: 28px;
+  }
+  .array-cell {
+    position: relative;
+    width: 92px;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #9bacbf;
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 720;
+    transition: transform .2s ease, background-color .2s ease, border-color .2s ease, opacity .2s ease;
+  }
+  .array-cell::after {
+    content: attr(data-index);
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -22px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+  }
+  .array-cell.is-current { border-color: var(--blue); box-shadow: inset 0 0 0 2px var(--blue); }
+  .array-cell.is-best { border-color: var(--green); background: var(--green-bg); }
+  .array-cell.is-min { border-color: var(--amber); background: var(--yellow-bg); }
+  .array-cell.is-sorted { border-color: var(--teal); background: #e9f7f5; }
+  .array-cell.is-checked { background: #eef2f7; }
+  .array-cell.is-discarded { opacity: .28; }
+  .array-cell.is-found { border-color: var(--green); background: var(--green-bg); }
+  .array-cell.is-found::before {
+    content: "OK";
+    position: absolute;
+    top: -27px;
+    color: var(--green);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 760;
+    letter-spacing: .08em;
+  }
+  .trace-pointer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 92px;
+    color: var(--blue);
+    text-align: center;
+    font-size: 14px;
+    font-weight: 740;
+    transition: transform .22s ease;
+  }
+  .trace-pointer::after { content: "↓"; display: block; font-size: 22px; line-height: 1; }
+  .trace-variables {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 27px;
+  }
+  .trace-variable {
+    min-width: 140px;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    font-family: var(--font-mono);
+    font-size: 15px;
+    text-align: center;
+  }
+  .trace-transcript { font-size: 14px; }
+  .trace-transcript th { padding: 6px 8px; font-size: 12px; }
+  .trace-transcript td { padding: 5px 8px; }
+  .trace-transcript tr.is-active td { background: #e9f0f6; }
+
+  .flowchart-wrap {
+    position: relative;
+    min-height: 360px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .flowchart-svg { width: 100%; height: 360px; display: block; }
+  .flowchart-svg .fc-edge {
+    fill: none;
+    stroke: #94a3b8;
+    stroke-width: 2;
+    transition: stroke .2s ease, stroke-width .2s ease, opacity .2s ease;
+  }
+  .flowchart-svg .fc-node rect,
+  .flowchart-svg .fc-node path {
+    fill: #ffffff;
+    stroke: #8294aa;
+    stroke-width: 2;
+    transition: fill .2s ease, stroke .2s ease, stroke-width .2s ease;
+  }
+  .flowchart-svg .fc-node text {
+    fill: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 650;
+    text-anchor: middle;
+    dominant-baseline: middle;
+  }
+  .flowchart-svg .fc-node.is-active rect,
+  .flowchart-svg .fc-node.is-active path {
+    fill: #e8f2fa;
+    stroke: var(--blue);
+    stroke-width: 4;
+  }
+  .flowchart-svg .fc-edge.is-active { stroke: var(--blue); stroke-width: 4; }
+
+  #hud {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    height: 54px;
+    display: grid;
+    grid-template-columns: 190px 1fr 168px;
+    align-items: center;
+    padding: 0 25px;
+    border-top: 1px solid #b8c4d2;
+    background: #edf1f5;
+    color: #4a596d;
+  }
+  #hud .course {
+    font-size: 13px;
+    font-weight: 730;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  #section-map {
+    display: flex;
+    justify-content: center;
+    gap: 13px;
+  }
+  #section-map span {
+    padding: 5px 0 4px;
+    border-bottom: 3px solid transparent;
+    font-size: 10.5px;
+    font-weight: 730;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+    opacity: .38;
+  }
+  #section-map span.on {
+    border-bottom-color: var(--active-section-color, var(--navy));
+    color: var(--ink);
+    opacity: 1;
+  }
+  .nav-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .nav-controls button {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .nav-controls button:disabled { opacity: .35; cursor: default; }
+  .nav-controls button:focus-visible { outline: 3px solid #4e8fc1; outline-offset: 2px; }
+  #count {
+    min-width: 62px;
+    text-align: right;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  #slide-number {
+    width: 34px;
+    padding: 2px 3px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  #slide-number:focus-visible {
+    outline: 3px solid #4e8fc1;
+    outline-offset: 2px;
+  }
+  #rotate-note {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    padding: 28px;
+    background: #111827;
+    color: white;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 22px;
+    line-height: 1.4;
+  }
+
+  @media (max-width: 900px) and (orientation: portrait) {
+    #rotate-note { display: flex; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .array-cell, .trace-pointer,
+    .flowchart-svg .fc-edge, .flowchart-svg .fc-node rect,
+    .flowchart-svg .fc-node path { transition-duration: 0s !important; }
+  }
+  @media print {
+    @page { size: 13.333in 7.5in; margin: 0; }
+    html, body {
+      width: auto;
+      height: auto;
+      overflow: visible;
+      background: white;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    #stage {
+      position: relative;
+      left: auto;
+      top: auto;
+      width: auto;
+      height: auto;
+      transform: none !important;
+      box-shadow: none;
+      overflow: visible;
+    }
+    .slide {
+      position: relative;
+      display: block !important;
+      width: 13.333in;
+      height: 7.5in;
+      break-after: page;
+      page-break-after: always;
+    }
+    .slide:last-of-type { break-after: auto; page-break-after: auto; }
+    .fragment { visibility: visible !important; opacity: 1 !important; }
+    .trace-reset { display: none !important; }
+    #hud, #rotate-note { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="rotate-note">Rotate your device to landscape for presentation view.</div>
+<div id="stage">
+
+<!-- 1 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Intro to CS · Lesson 6</div>
+      <h1>APIs and HTTP: go to the source</h1>
+    </header>
+    <main class="content centered">
+      <p class="lead">Client and server, URLs, status codes, <code>requests</code>, JSON to DataFrame, and the rough edges of real networks</p>
+      <div class="question" style="max-width:990px">Assignment 1 handed you snapshots — a FRED CSV of Treasury yields, a macro workbook — and asked you to trust them. Today your program asks the source directly, and the snapshots stop being a mystery.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · The bridge from Assignment 1</div>
+      <h2>Those snapshots came from somewhere</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>What you were given</h3>
+          <p>A pinned <code class="inline">DGS10.csv</code> and an Excel workbook — dated files you loaded and trusted, with no account of where they came from.</p>
+        </div>
+        <div class="panel good">
+          <h3>What you'll build today</h3>
+          <p>The program that <em>produces</em> such a file: it asks a server for a series and gets it back — so you can regenerate your own inputs on demand.</p>
+        </div>
+      </div>
+      <div class="question">By the end of this lesson, the sentence "a snapshot of the 10-year Treasury yield" should read as "one GET request, saved to a file."</div>
+      <div class="takeaway">Every prior lesson trusted data that already existed. This one is about where data <em>comes from</em>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · Two definitions</div>
+      <h2>An API is a doorway; HTTP is the language spoken through it</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>API — Application Programming Interface</h3>
+          <p>A doorway a server opens so that <strong>other programs</strong> — not humans clicking a website — can ask it for data in a predictable shape.</p>
+          <p class="muted">A website is for people. An API is for code.</p>
+        </div>
+        <div class="panel">
+          <h3>HTTP — HyperText Transfer Protocol</h3>
+          <p>The <strong>language</strong> spoken through that doorway: a fixed grammar for what a request looks like, what a response looks like, and what the status numbers mean.</p>
+          <p class="muted">A <em>protocol</em> is a contract two machines agree on in advance.</p>
+        </div>
+      </div>
+      <div class="pseudo-block">your code (client)  ──GET series DGS10──▶  FRED's server
+your code (client)  ◀──200 + JSON body───  FRED's server</div>
+      <div class="takeaway">A question and an answer, both written as text, in a shape both sides agreed on before either spoke.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · The lesson arc</div>
+      <h2>One conversation, then everything that can go wrong with it</h2>
+    </header>
+    <main class="content">
+      <div class="flow" style="width:100%">
+        <div class="flow-node"><b>1 · GET</b><span>ask for series DGS10</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Status + JSON</b><span>200 and a body</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>2 · DataFrame</b><span>types restored</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>3 · Rough edges</b><span>retry · paginate · time out · cache</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>4 · Docs</b><span>fetch any series</span></div>
+      </div>
+      <div class="cols-4">
+        <div class="panel compact"><h3>Unit 1 · HTTP</h3><p>client, server, request, response, status codes</p></div>
+        <div class="panel compact"><h3>Unit 2 · Fetch</h3><p><code class="inline">requests</code>, keys, JSON → typed DataFrame</p></div>
+        <div class="panel compact"><h3>Unit 3 · Edges</h3><p>rate limits, pagination, timeouts, caching</p></div>
+        <div class="panel compact"><h3>Unit 4 · Docs</h3><p>read any API's docs; SDK vs raw HTTP</p></div>
+      </div>
+      <div class="takeaway">The happy path is one slide. The other three units are everything real networks do to it.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · This whole lesson runs offline</div>
+      <h2>A real HTTP server, living on your own laptop</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div>
+          <p class="lead" style="font-size:20px">A tiny FRED stand-in runs on <code class="inline">127.0.0.1</code> (your own machine), answering the same routes the real FRED does. Every call is a genuine HTTP round trip with genuine status codes — no internet, no API key.</p>
+          <table class="compact" style="margin-top:14px">
+            <thead><tr><th>Route</th><th>What it does</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">/fred/series/observations</td><td>the pinned series (<strong>200</strong>), or <strong>404</strong> for an unknown id</td></tr>
+              <tr><td class="mono">/flaky</td><td><strong>429</strong> twice, then <strong>200</strong> — to practise retries (Unit 3)</td></tr>
+              <tr><td class="mono">/slow</td><td>sleeps, so we can trigger a <strong>timeout</strong> (Unit 3)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="panel good">
+          <h3>Offline vs live: one switch</h3>
+          <p>Setting <code class="inline">FRED_API_KEY</code> in your shell switches every call to the live FRED — <strong>with no other change to the code</strong>.</p>
+          <p class="muted">Only <code class="inline">BASE_URL</code> and <code class="inline">API_KEY</code> differ between the two worlds. The request logic is identical.</p>
+        </div>
+      </div>
+      <div class="takeaway">"Offline" here does not mean "faked." It means a real server that happens to live on <code class="inline">127.0.0.1</code>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · Materials</div>
+      <h2>Two sessions, one notebook, one exercise folder</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel compact"><h3>Session ①</h3><p>Units 1–2: the HTTP conversation, then fetching FRED and turning JSON into a typed DataFrame.</p></div>
+        <div class="panel compact"><h3>Session ②</h3><p>Units 3–4: the rough edges (retry, paginate, time out, cache), reading docs, and the wrap-up.</p></div>
+      </div>
+      <div class="cols-2">
+        <div class="panel compact"><h3>Practice · <span class="mono">lesson6_exercise/</span></h3><p>Build a caching FRED client — <code class="inline">get_series</code> and <code class="inline">tidy_monthly</code> — graded by a pytest checker (the kind you learned to read in Lesson 5), entirely offline.</p></div>
+        <div class="panel compact"><h3>House rule</h3><p>The notebook writes only under <code class="inline">../data/</code> (gitignored) — Lesson 2's rule: never commit run-time artifacts. Run top to bottom; later cells depend on earlier ones.</p></div>
+      </div>
+      <div class="takeaway">No internet, no API key, no setup beyond the course environment (<code class="inline">requests</code> is already installed).</div>
+    </main>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide" data-section="http">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Client, server, request, response</div>
+      <h2>Two programs, two roles</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>The client</h3>
+          <p>Starts the conversation by sending a <strong>request</strong>. Your browser is a client — and so is <code class="inline">requests.get</code>.</p>
+          <p class="muted">The client always speaks first.</p>
+        </div>
+        <div class="panel">
+          <h3>The server</h3>
+          <p>Listens, does the work, and sends back a <strong>response</strong>: a status code and, usually, a body.</p>
+          <p class="muted">The server never calls you; it only answers.</p>
+        </div>
+      </div>
+      <div class="question">Nothing more mystical than a question and an answer — both written as text, in a shape both sides agreed on in advance. That agreed shape is HTTP.</div>
+      <div class="takeaway">HTTP is Lesson 1's idea at the level of two machines: <strong>the contract is a set of properties both sides promise to honour</strong>, so neither has to guess.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide" data-section="http">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Anatomy of a URL</div>
+      <h2>An address where every piece answers one question</h2>
+    </header>
+    <main class="content centered">
+      <pre class="output-block" style="font-size:16px;width:100%">http://127.0.0.1:8000 /fred/series/observations ? series_id=DGS10 &amp; file_type=json
+└─scheme─┘└───host────┘└────────path───────────┘  └──────────query string────────┘
+ protocol   which machine   which resource on it     parameters that refine the ask</pre>
+      <div class="cols-4" style="width:100%">
+        <div class="panel compact"><h3>Scheme</h3><p><code class="inline">http</code> vs <code class="inline">https</code> — the protocol, and whether it's encrypted.</p></div>
+        <div class="panel compact"><h3>Host</h3><p>Which machine to ask — here, your own laptop.</p></div>
+        <div class="panel compact"><h3>Path</h3><p>Which resource on that machine: <em>observations</em>.</p></div>
+        <div class="panel compact"><h3>Query</h3><p><code class="inline">key=value</code> pairs joined by <code class="inline">&amp;</code> that narrow the ask.</p></div>
+      </div>
+      <div class="takeaway">The path names a resource; the query string after <code class="inline">?</code> carries the parameters that refine which slice of it you want.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="slide" data-section="http">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Take a URL apart</div>
+      <h2>Python reads a URL the same way you just did</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="keyword">from</span> urllib.parse <span class="keyword">import</span> urlparse, parse_qs
+
+example = f<span class="string">"{LOCAL_FRED}/fred/series/observations?series_id=DGS10&file_type=json"</span>
+parts = urlparse(example)
+
+print(<span class="string">"scheme:"</span>, parts.scheme)   <span class="comment"># http</span>
+print(<span class="string">"host  :"</span>, parts.netloc)   <span class="comment"># 127.0.0.1:8000</span>
+print(<span class="string">"path  :"</span>, parts.path)     <span class="comment"># /fred/series/observations</span>
+print(parse_qs(parts.query))</pre>
+        <div>
+          <pre class="output-block">scheme: http
+host  : 127.0.0.1:8000
+path  : /fred/series/observations
+{'series_id': ['DGS10'],
+ 'file_type': ['json']}</pre>
+          <div class="panel compact" style="margin-top:14px"><p><code class="inline">parse_qs</code> returns <em>lists</em> because a key may legally repeat in a query string. This is the reverse of what you'll do next: <strong>build</strong> a query from a dict.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">A URL is structured data, not a magic string — and Python has a parser for it, like every other format.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="slide" data-section="http">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · GET vs POST</div>
+      <h2>Two verbs cover almost everything you'll do</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Verb</th><th>Means</th><th>Parameters go in</th><th>Think</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">GET</td><td><em>read</em> — fetch data, change nothing</td><td>the URL's query string</td><td>"show me DGS10"</td></tr>
+          <tr><td class="mono">POST</td><td><em>send</em> — submit data to be stored or processed</td><td>a request <strong>body</strong></td><td>"here is a new record"</td></tr>
+        </tbody>
+      </table>
+      <div class="cols-2">
+        <div class="panel compact"><h3>Fetching FRED is always GET</h3><p>You are reading published data. Every call in this lesson is a GET; its parameters ride visibly in the URL.</p></div>
+        <div class="panel compact"><h3>Why the distinction matters</h3><p>A GET can be repeated, cached, and bookmarked safely — it changes nothing. A POST may have consequences, so it is treated with more care.</p></div>
+      </div>
+      <div class="takeaway">GET reads and puts its parameters in the URL; POST sends and puts them in a body. That is 90% of what you need.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="slide" data-section="http">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Headers</div>
+      <h2>Metadata rides alongside the message</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel"><h3><span class="mono" style="font-size:18px">Content-Type</span></h3><p>What format the body is — e.g. <code class="inline">application/json</code>. Tells the client how to read the bytes.</p></div>
+        <div class="panel"><h3><span class="mono" style="font-size:18px">User-Agent</span></h3><p>Who is asking — a browser, a script, your client. Some servers use it to decide how to answer.</p></div>
+        <div class="panel"><h3><span class="mono" style="font-size:18px">Retry-After</span></h3><p>How long to wait after a rate limit. The server telling you, politely, to slow down (Unit 3).</p></div>
+      </div>
+      <div class="question">Headers describe the message; the body <em>is</em> the message. Same distinction as a letter's envelope versus its contents.</div>
+      <div class="takeaway">Metadata <em>about</em> the message, not the data itself — the envelope, not the letter.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="slide" data-section="http">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Status codes</div>
+      <h2>Four numbers you will actually meet</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Code</th><th>Name</th><th>Meaning</th><th>Your move</th></tr></thead>
+        <tbody>
+          <tr><td>200</td><td>OK</td><td>it worked; the body has your data</td><td>use it</td></tr>
+          <tr><td>404</td><td>Not Found</td><td>that resource does not exist</td><td>fix the URL or the id</td></tr>
+          <tr><td>429</td><td>Too Many Requests</td><td>you hit a rate limit</td><td>wait, then retry (Unit 3)</td></tr>
+          <tr><td>500</td><td>Server Error</td><td>the server broke, not you</td><td>retry later, then report</td></tr>
+        </tbody>
+      </table>
+      <div class="cols-3">
+        <div class="panel compact good"><h3>2xx · worked</h3><p>The request succeeded.</p></div>
+        <div class="panel compact warning"><h3>4xx · you asked wrong</h3><p>Bad id, bad URL, too many calls.</p></div>
+        <div class="panel compact warning"><h3>5xx · the server failed</h3><p>Not your fault; retry later.</p></div>
+      </div>
+      <div class="takeaway">The families generalise. A 404 is not a crash — it is a well-formed answer that says <em>no</em>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 13 -->
+<section class="slide" data-section="http">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · A real 200</div>
+      <h2>Inspect a genuine round trip against the stand-in</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">response = requests.get(
+    f<span class="string">"{LOCAL_FRED}/fred/series/observations"</span>,
+    params={<span class="string">"series_id"</span>: <span class="string">"DGS10"</span>, <span class="string">"file_type"</span>: <span class="string">"json"</span>},
+    timeout=<span class="number">10</span>,
+)
+print(response.status_code, response.reason)
+print(response.headers.get(<span class="string">"Content-Type"</span>))
+print(list(response.json())[:<span class="number">4</span>])
+print(response.json()[<span class="string">"count"</span>])</pre>
+        <div>
+          <pre class="output-block">200 OK
+application/json
+['realtime_start', 'realtime_end',
+ 'observation_start', 'count']
+1439</pre>
+          <div class="panel compact" style="margin-top:14px"><p><code class="inline">params={...}</code> lets <code class="inline">requests</code> build the query string for you — no manual <code class="inline">?</code> and <code class="inline">&amp;</code>. The response knows its own status, headers, and body.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">One function call, a real network round trip, a structured answer — this is the entire happy path in six lines.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 14 -->
+<section class="slide" data-section="http">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Animated round trip</div>
+      <h2>Follow one request out and one response back</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="flow">
+        <div class="trace-toolbar"><div class="trace-status" aria-live="polite"></div><div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div></div>
+        <div class="flowchart-wrap" style="min-height:350px">
+          <svg class="flowchart-svg" viewBox="0 0 1040 350" style="height:350px" role="img" aria-label="HTTP request and response round trip">
+            <defs><marker id="arrow-trip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0l10 5-10 5z" fill="#94a3b8"/></marker></defs>
+            <path class="fc-edge" data-edge="req" d="M214 175H296" marker-end="url(#arrow-trip)"/>
+            <path class="fc-edge" data-edge="lookup" d="M462 175H505" marker-end="url(#arrow-trip)"/>
+            <path class="fc-edge" data-edge="to-ok" d="M648 150 L812 126" marker-end="url(#arrow-trip)"/>
+            <path class="fc-edge" data-edge="to-404" d="M648 200 L812 232" marker-end="url(#arrow-trip)"/>
+            <path class="fc-edge" data-edge="ret-ok" d="M905 108 V60 H120 V150" marker-end="url(#arrow-trip)"/>
+            <path class="fc-edge" data-edge="ret-404" d="M905 254 V300 H120 V202" marker-end="url(#arrow-trip)"/>
+            <g class="fc-node" data-node="client"><rect x="44" y="146" width="170" height="58" rx="29"/><text x="129" y="175">client: requests.get</text></g>
+            <g class="fc-node" data-node="server"><rect x="296" y="146" width="166" height="58"/><text x="379" y="175">FRED server</text></g>
+            <g class="fc-node" data-node="lookup"><path d="M576 113l72 62-72 62-72-62z"/><text x="576" y="169">series_id</text><text x="576" y="187">known?</text></g>
+            <g class="fc-node" data-node="ok"><path d="M812 100h196l-16 46H796z"/><text x="902" y="125">200 · JSON body</text></g>
+            <g class="fc-node" data-node="notfound"><path d="M812 208h196l-16 46H796z"/><text x="902" y="233">404 · error JSON</text></g>
+            <text x="726" y="118" font-size="13" fill="#536178">yes</text>
+            <text x="726" y="238" font-size="13" fill="#536178">no</text>
+            <text x="470" y="48" font-size="13" fill="#536178">200 response travels back</text>
+            <text x="470" y="322" font-size="13" fill="#536178">404 response travels back</text>
+          </svg>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"activeNode":"client","status":"The client builds a GET: params={'series_id': 'DGS10'}. Nothing has left your laptop yet."},
+          {"activeEdge":"req","activeNode":"server","status":"The request travels to the server as text: method GET, a path, and a query string."},
+          {"activeEdge":"lookup","activeNode":"lookup","status":"The server checks the one thing it needs: is 'DGS10' a series it knows?"},
+          {"activeEdge":"to-ok","activeNode":"ok","status":"DGS10 is known -> the server responds 200 with a JSON body: a count and an observations list."},
+          {"activeEdge":"ret-ok","activeNode":"client","status":"The response travels back. response.json() turns the bytes into a Python dict -- the round trip is complete."},
+          {"activeNode":"lookup","status":"Second call, same endpoint: params={'series_id': 'NOT_A_SERIES'}."},
+          {"activeEdge":"to-404","activeNode":"notfound","status":"The id is unknown -> the server responds 404 with an error JSON. A well-formed 'no', not a crash."},
+          {"activeEdge":"ret-404","activeNode":"client","status":"That 404 also travels back. The client reads response.status_code and KNOWS, without parsing prose."}
+        ]</script>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 15 -->
+<section class="slide" data-section="http">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · A 404 in code</div>
+      <h2>Ask for a series that doesn't exist</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">missing = requests.get(
+    f<span class="string">"{LOCAL_FRED}/fred/series/observations"</span>,
+    params={<span class="string">"series_id"</span>: <span class="string">"NOT_A_SERIES"</span>},
+    timeout=<span class="number">10</span>,
+)
+print(missing.status_code, missing.reason)
+print(missing.json()[<span class="string">"error_message"</span>])</pre>
+        <div>
+          <pre class="output-block">404 Not Found
+series_id 'NOT_A_SERIES' does not exist</pre>
+          <div class="panel compact" style="margin-top:14px"><p>The request <em>succeeded</em> — a message went out and a well-formed message came back. The <strong>status code</strong> is how the client knows the answer is "no", without reading the prose.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">A 404 is data, not a disaster. The code is the machine-readable verdict; the message is the human-readable why.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 16 -->
+<section class="slide" data-section="http">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Checkpoint</div>
+      <h2>What made all of that work?</h2>
+    </header>
+    <main class="content">
+      <div class="question">Neither side negotiated anything at run time — the client already knew what a 200 would contain, and the server already knew what a request would name. What is the name for that pre-agreement, and where have you met it before?</div>
+      <div class="answer fragment">
+        It is a <strong>contract</strong> — HTTP itself. The client knew a response carries a numeric status and (for a 200) a JSON body with <code class="inline">count</code> and <code class="inline">observations</code>; the server knew a request names a path and query parameters. That is Lesson 1's idea — <em>agree on the properties in advance so nobody guesses</em> — now spanning two computers that have never met.
+      </div>
+      <div class="takeaway">Unit 1 taught the vocabulary. Unit 2 puts it to work: fetch a real series and turn the answer into a DataFrame.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 17 -->
+<section class="slide" data-section="fetch">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · requests and FRED</div>
+      <h2>Now fetch a real economic series</h2>
+    </header>
+    <main class="content">
+      <div class="flow" style="width:100%">
+        <div class="flow-node"><b>The secret</b><span>API key from the environment</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>The request</b><span>docs table → <span class="mono">params</span> dict</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>The check</b><span><span class="mono">raise_for_status()</span></span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>The frame</b><span>JSON → typed DataFrame</span></div>
+      </div>
+      <div class="question">The goal of Unit 2: turn one FRED series into a DataFrame you can trust — and discover it is the same series Assignment 1 handed you.</div>
+      <div class="takeaway">Four moves. The first is where the key comes from — and Lesson 3 already told you.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 18 -->
+<section class="slide" data-section="fetch">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · API keys</div>
+      <h2>The key lives in the environment, never in the code</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div>
+          <div class="code-title">Once, in your shell — outside the code</div>
+          <pre class="code-block"><span class="keyword">export</span> FRED_API_KEY=your_key_here</pre>
+          <div class="code-title" style="margin-top:14px">Read it at run time</div>
+          <pre class="code-block">API_KEY = os.environ.get(<span class="string">"FRED_API_KEY"</span>)
+<span class="comment"># absent (as offline)? fall back to the stand-in</span></pre>
+        </div>
+        <div class="panel">
+          <h3>Why the environment</h3>
+          <p>An API key is a <strong>per-user password</strong> so the server can enforce rate limits. It is a secret — and Lesson 3 said where secrets go.</p>
+          <ul>
+            <li>Kept out of the notebook</li>
+            <li>Kept out of git</li>
+            <li>Never committed or shared by accident</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">Typing a key into a cell puts it in your git history forever. An environment variable is read at run time and leaves no trace in the code.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 19 -->
+<section class="slide" data-section="fetch">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · One switch, two worlds</div>
+      <h2>Only <code>BASE_URL</code> and <code>API_KEY</code> differ between offline and live</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">FRED_API_KEY = os.environ.get(<span class="string">"FRED_API_KEY"</span>)
+
+<span class="keyword">if</span> FRED_API_KEY:
+    BASE_URL = <span class="string">"https://api.stlouisfed.org"</span>   <span class="comment"># real FRED</span>
+    API_KEY  = FRED_API_KEY
+<span class="keyword">else</span>:
+    BASE_URL = LOCAL_FRED                       <span class="comment"># stand-in</span>
+    API_KEY  = <span class="string">"OFFLINE_DEMO_KEY"</span>
+
+<span class="comment"># EVERY request below uses BASE_URL and API_KEY.</span>
+<span class="comment"># Only those two values change. The logic does not.</span></pre>
+        <div class="panel good">
+          <h3>The design that makes it work</h3>
+          <p>Pull the two things that differ into named variables at the top; write the rest of the program against those names.</p>
+          <p class="muted">Set the key → the same code hits the live API. Unset it → the same code hits your laptop. This is why the whole lesson runs offline without a special "demo mode."</p>
+        </div>
+      </div>
+      <div class="takeaway">Isolate what varies; write everything else once. The offline/live seam is two variables wide.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 20 -->
+<section class="slide" data-section="fetch">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Reading the docs</div>
+      <h2>A docs table becomes a <code>params</code> dict — that translation is the skill</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 align-center">
+        <table class="compact">
+          <thead><tr><th>Parameter</th><th>Req?</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">series_id</td><td>yes</td><td>which series, e.g. DGS10</td></tr>
+            <tr><td class="mono">api_key</td><td>yes</td><td>your key</td></tr>
+            <tr><td class="mono">file_type</td><td>no</td><td><code class="inline">json</code> (default is XML)</td></tr>
+            <tr><td class="mono">observation_start</td><td>no</td><td>earliest date, YYYY-MM-DD</td></tr>
+          </tbody>
+        </table>
+        <div>
+          <pre class="code-block">params = {
+    <span class="string">"series_id"</span>: <span class="string">"DGS10"</span>,
+    <span class="string">"api_key"</span>: API_KEY,
+    <span class="string">"file_type"</span>: <span class="string">"json"</span>,
+}</pre>
+          <p class="small muted" style="margin-top:10px">Each row of the table is one key in the dict. Required rows must be present; optional rows refine the ask.</p>
+        </div>
+      </div>
+      <div class="takeaway">You are not memorising FRED. You are learning to turn <em>any</em> API's parameter table into a request — the transferable skill of Unit 4.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 21 -->
+<section class="slide" data-section="fetch">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Send it, check it</div>
+      <h2>The GET, then <code>raise_for_status()</code> before touching the body</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">response = requests.get(
+    f<span class="string">"{BASE_URL}/fred/series/observations"</span>,
+    params=params, timeout=<span class="number">10</span>,
+)
+response.<span class="ok">raise_for_status</span>()  <span class="comment"># 4xx/5xx → loud error</span>
+payload = response.json()   <span class="comment"># bytes → Python dict</span>
+
+print(response.status_code)
+print(payload[<span class="string">"count"</span>])
+print(payload[<span class="string">"observations"</span>][<span class="number">0</span>])</pre>
+        <div>
+          <pre class="output-block">200
+1439
+{'date': '2021-01-04',
+ 'value': '0.93', ...}</pre>
+          <div class="panel compact" style="margin-top:14px"><p><code class="inline">timeout=10</code> bounds the wait (Unit 3). <code class="inline">.json()</code> parses the body into a dict. <code class="inline">payload["count"]</code> is a property the contract promised would be there.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Check the status <em>before</em> reading the body: a 404's body is an error message, not your data.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 22 -->
+<section class="slide" data-section="fetch">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Fail loudly</div>
+      <h2><code>raise_for_status()</code> is Lesson 5's "validate at the door"</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel warning">
+          <h3>Without the check</h3>
+          <p>A 404's body might be <code class="inline">{"error_message": ...}</code>. Call <code class="inline">.json()["observations"]</code> on it and you get a confusing <code class="inline">KeyError</code> far downstream — or worse, silently wrong data.</p>
+        </div>
+        <div class="panel good">
+          <h3>With the check</h3>
+          <p><code class="inline">raise_for_status()</code> turns any 4xx/5xx into a loud, immediate exception — named at the door, before a single bad value enters your pipeline.</p>
+        </div>
+      </div>
+      <div class="question">Same move as Lesson 5's <code class="inline">load_validated</code>: refuse to continue the instant the contract is broken, rather than limping on with bad input.</div>
+      <div class="takeaway">A response object is guilty until proven 200. Check first; parse second.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 23 -->
+<section class="slide" data-section="fetch">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · JSON carries no types</div>
+      <h2>What is wrong with the first observation?</h2>
+    </header>
+    <main class="content">
+      <div class="question">The first observation arrives as <code>{'date': '2021-01-04', 'value': '0.93'}</code>. Two things in it are not what a DataFrame needs. What are they?</div>
+      <div class="answer fragment">
+        The <code class="inline">value</code> is a <strong>string</strong>, not a number — <code class="inline">'0.93'</code>, with quotes. And missing days arrive as the string <code class="inline">"."</code>, not as a blank or a NaN. JSON, exactly like a CSV, carries no types: everything is text until you say otherwise. This is Lesson 2's situation, arriving over a wire instead of from a file.
+      </div>
+      <div class="takeaway">The wire drops the same property a file drops: <em>type</em>. Loading a response is Lesson 2's job, again.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 24 -->
+<section class="slide" data-section="fetch">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Restore the types</div>
+      <h2>Parse the dates, coerce the numbers, make missing visible</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">raw = pd.DataFrame(payload[<span class="string">"observations"</span>])[[<span class="string">"date"</span>, <span class="string">"value"</span>]]
+<span class="comment"># straight off the wire: every column is text</span>
+
+dgs10 = raw.copy()
+dgs10[<span class="string">"date"</span>]  = pd.to_datetime(dgs10[<span class="string">"date"</span>])
+dgs10[<span class="string">"value"</span>] = pd.to_numeric(dgs10[<span class="string">"value"</span>],
+                              errors=<span class="string">"coerce"</span>)  <span class="comment"># "." → NaN</span></pre>
+        <div>
+          <pre class="output-block">before: {'date': object, 'value': object}
+after : {'date': datetime64, 'value': float64}
+rows: 1439 | missing flagged: 60</pre>
+          <div class="panel compact" style="margin-top:14px"><p><code class="inline">errors="coerce"</code> is the key: instead of crashing on <code class="inline">"."</code>, it turns unparseable values into a <strong>visible</strong> <code class="inline">NaN</code> you can count and drop.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Lesson 2's two-step, on a response: restore the properties the wire dropped, before trusting a single number.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 25 -->
+<section class="slide" data-section="fetch">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Animated trace</div>
+      <h2>Watch one text column become a numeric one</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div class="trace" data-trace-type="array">
+          <div class="trace-toolbar">
+            <div class="trace-status" aria-live="polite" aria-atomic="true"></div>
+            <div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div>
+          </div>
+          <div class="trace-board">
+            <div class="array-strip">
+              <div class="trace-pointer" style="width:96px">coerce</div>
+              <div class="array-cell" data-index="0" style="width:96px;font-size:19px">"0.93"</div>
+              <div class="array-cell" data-index="1" style="width:96px;font-size:19px">"0.97"</div>
+              <div class="array-cell" data-index="2" style="width:96px;font-size:19px">"."</div>
+              <div class="array-cell" data-index="3" style="width:96px;font-size:19px">"0.95"</div>
+              <div class="array-cell" data-index="4" style="width:96px;font-size:19px">"0.99"</div>
+            </div>
+            <div class="trace-variables">
+              <div class="trace-variable" data-var="dtype" style="min-width:220px"></div>
+            </div>
+          </div>
+          <script type="application/json" class="trace-data">[
+            {"current":null,"vars":{"dtype":"value.dtype = object"},"status":"Off the wire, the whole value column is text — including the missing day, which is the string '.'."},
+            {"current":0,"processedThrough":0,"vars":{"dtype":"'0.93' → 0.93"},"status":"pd.to_numeric scans each value. '0.93' parses cleanly to a float."},
+            {"current":1,"processedThrough":1,"vars":{"dtype":"'0.97' → 0.97"},"status":"So does '0.97'."},
+            {"current":2,"processedThrough":2,"vars":{"dtype":"'.' → NaN"},"status":"'.' is not a number. errors='coerce' turns it into a visible NaN instead of crashing."},
+            {"current":4,"processedThrough":4,"vars":{"dtype":"'0.95', '0.99' → floats"},"status":"The rest parse cleanly."},
+            {"current":null,"values":["0.93","0.97","NaN","0.95","0.99"],"discarded":[2],"vars":{"dtype":"value.dtype = float64"},"status":"The column is now numeric. The missing reading is a findable NaN — not a string hiding in your data."}
+          ]</script>
+        </div>
+        <table class="trace-transcript compact">
+          <thead><tr><th>Stage</th><th>value column</th></tr></thead>
+          <tbody>
+            <tr data-step="0"><td>off the wire</td><td>object (text)</td></tr>
+            <tr data-step="2"><td>"." met</td><td>coerced to NaN</td></tr>
+            <tr data-step="5"><td>after</td><td>float64</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 26 -->
+<section class="slide" data-section="fetch">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Full circle</div>
+      <h2>Assignment 1's snapshot was one GET, saved to a file</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2 align-center">
+        <pre class="code-block">snapshot = pd.read_csv(<span class="string">"…/data_offline/DGS10.csv"</span>)  <span class="comment"># A1's pinned file</span>
+snap_2021 = snapshot[snapshot[<span class="string">"DATE"</span>] &gt;= <span class="string">"2021-01-01"</span>]
+
+same_dates  = raw[<span class="string">"date"</span>].tolist()  == snap_2021[<span class="string">"DATE"</span>].tolist()
+same_values = raw[<span class="string">"value"</span>].tolist() == snap_2021[<span class="string">"DGS10"</span>].astype(<span class="keyword">str</span>).tolist()</pre>
+        <pre class="output-block">Assignment 1 snapshot rows: 261
+freshly fetched rows      : 261
+fetched series == snapshot,
+exactly: <span class="ok">True</span></pre>
+      </div>
+      <p class="lead">The CSV you were told to trust came from this very endpoint — the offline fixture was reshaped, value for value, from that file.</p>
+      <div class="takeaway">The snapshot was never magic. It was one GET request, saved to a file — and now you can regenerate your own inputs.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 27 -->
+<section class="slide" data-section="fetch">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Checkpoint</div>
+      <h2>JSON from a wire, CSV from a file — same problem?</h2>
+    </header>
+    <main class="content">
+      <div class="question">You already knew how to load a messy CSV in Lesson 2. What, if anything, is genuinely new about loading a JSON API response — and what is exactly the same?</div>
+      <div class="answer fragment">
+        <strong>New:</strong> the bytes arrive over a network you must check first (status codes, <code class="inline">raise_for_status</code>), and the shape is nested (<code class="inline">payload["observations"]</code>) rather than a flat table. <strong>Same:</strong> once you have the raw values, they are untyped text — so you <code class="inline">to_datetime</code>, <code class="inline">to_numeric(errors="coerce")</code>, and handle missing exactly as with a file. The transport changed; the "restore the lost properties" step did not.
+      </div>
+      <div class="takeaway">Unit 2 is Lesson 2 with a network in front of it. Unit 3 is about that network misbehaving.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 28 -->
+<section class="slide" data-section="edges">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Session 2 warm-up</div>
+      <h2>Five questions from last time — answer from memory first</h2>
+    </header>
+    <main class="content">
+      <div class="rule-list">
+        <div class="rule"><b>Q1</b><span>In a request/response exchange, which side is the client, which is the server — and which one starts?</span></div>
+        <div class="rule"><b>Q2</b><span>What does each of 200, 404, and 429 tell you?</span></div>
+        <div class="rule"><b>Q3</b><span><span class="mono">GET</span> vs <span class="mono">POST</span>: which reads, and where do its parameters travel?</span></div>
+        <div class="rule"><b>Q4</b><span>Why does an API key belong in an environment variable instead of the notebook?</span></div>
+        <div class="rule"><b>Q5</b><span>A FRED response arrives with every value a string and <span class="mono">"."</span> for missing. Which two Lesson-2 steps fix it?</span></div>
+      </div>
+      <div class="takeaway">Say your answers out loud before turning the page. Retrieval, not recognition, is what sticks.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 29 -->
+<section class="slide" data-section="edges">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Session 2 warm-up · answers</div>
+      <h2>Check yourself</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Q</th><th>Answer</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>The client (your code, <code class="inline">requests.get</code>) sends a request; the server listens and answers. The client always begins.</td></tr>
+          <tr><td>2</td><td>200 = it worked, use the body. 404 = that id/resource does not exist. 429 = you hit the rate limit; wait and retry.</td></tr>
+          <tr><td>3</td><td><code class="inline">GET</code> reads; its parameters ride in the URL's query string. (<code class="inline">POST</code> sends a body.)</td></tr>
+          <tr><td>4</td><td>A key is a secret; the environment keeps it out of the code and out of git, so it is never committed or shared by accident.</td></tr>
+          <tr><td>5</td><td>Parse dates (<code class="inline">to_datetime</code>) and coerce numbers (<code class="inline">to_numeric, errors="coerce"</code>), so <code class="inline">"."</code> becomes a visible <code class="inline">NaN</code>.</td></tr>
+        </tbody>
+      </table>
+    </main>
+  </div>
+</section>
+
+<!-- 30 -->
+<section class="slide" data-section="edges">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · The rough edges</div>
+      <h2>The happy path is the exception on real networks</h2>
+    </header>
+    <main class="content">
+      <div class="cols-4">
+        <div class="panel compact"><h3>Rate limits</h3><p>The server caps how often you may call. Cross it → <strong>429</strong>. Wait and retry.</p></div>
+        <div class="panel compact"><h3>Pagination</h3><p>A huge result arrives one <strong>page</strong> at a time. Loop until you have them all.</p></div>
+        <div class="panel compact"><h3>Timeouts</h3><p>A hung server can freeze you. Bound every call with <code class="inline">timeout=</code>.</p></div>
+        <div class="panel compact"><h3>Caching</h3><p>Fetch once, save the response, read the copy next time. Offline forever.</p></div>
+      </div>
+      <div class="question">One request, a 200, clean JSON — that was Unit 2's demo. Four rough edges separate a toy script from a client you can rely on.</div>
+      <div class="takeaway">None of these is exotic. Each is a small, standard habit that turns a fragile fetch into a durable one.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 31 -->
+<section class="slide" data-section="edges">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Rate limits</div>
+      <h2>429 means slow down — don't give up, don't hammer</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>Why servers rate-limit</h3>
+          <p>A server protects itself by capping how often any one caller may hit it — FRED allows roughly <strong>120 requests per minute</strong>. Cross the line and it answers <strong>429 Too Many Requests</strong>.</p>
+        </div>
+        <div class="panel">
+          <h3>The polite response</h3>
+          <p>Not giving up, and not retrying instantly in a tight loop (which makes it worse). Instead: <strong>wait, then retry — backing off a little longer each time.</strong></p>
+          <p class="muted">Our <code class="inline">/flaky</code> route returns 429 twice, then 200, so we can watch it.</p>
+        </div>
+      </div>
+      <div class="takeaway">A 429 is not a failure to swallow — it is the server asking you, in the status vocabulary, to come back in a moment.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 32 -->
+<section class="slide" data-section="edges">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Exponential backoff</div>
+      <h2>Wait 0.1s, then 0.2s, then 0.4s — each retry a little longer</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="keyword">def</span> get_with_retries(url, max_attempts=<span class="number">5</span>, base_delay=<span class="number">0.1</span>):
+    <span class="keyword">for</span> attempt <span class="keyword">in</span> range(max_attempts):
+        reply = requests.get(url, timeout=<span class="number">10</span>)
+        <span class="keyword">if</span> reply.status_code != <span class="number">429</span>:
+            <span class="keyword">return</span> reply             <span class="comment"># success (or real error) → stop</span>
+        wait = base_delay * (<span class="number">2</span> ** attempt)  <span class="comment"># 0.1, 0.2, 0.4 …</span>
+        time.sleep(wait)              <span class="comment"># exponential backoff</span>
+    <span class="keyword">return</span> reply</pre>
+        <div>
+          <pre class="output-block">attempt 1: got 429, backing off 0.10s
+attempt 2: got 429, backing off 0.20s
+final status: 200 →
+  {'ok': True, 'served_on_attempt': 3}</pre>
+          <div class="panel compact" style="margin-top:14px"><p><code class="inline">2 ** attempt</code> doubles the wait each round. Only a 429 retries; a 200 or a real error (say 404) returns immediately.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Backoff spreads your retries out so a busy server can recover — instead of a thundering herd of instant re-requests.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 33 -->
+<section class="slide" data-section="edges">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Animated trace</div>
+      <h2>Two 429s, backing off, then a 200</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="flow">
+        <div class="trace-toolbar"><div class="trace-status" aria-live="polite"></div><div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div></div>
+        <div class="flowchart-wrap" style="min-height:320px">
+          <svg class="flowchart-svg" viewBox="0 0 920 300" style="height:300px" role="img" aria-label="Retry with exponential backoff">
+            <defs><marker id="arrow-retry" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0l10 5-10 5z" fill="#94a3b8"/></marker></defs>
+            <path class="fc-edge" data-edge="get-check" d="M230 209H380" marker-end="url(#arrow-retry)"/>
+            <path class="fc-edge" data-edge="check-wait" d="M470 151V116" marker-end="url(#arrow-retry)"/>
+            <path class="fc-edge" data-edge="wait-get" d="M380 89H140V180" marker-end="url(#arrow-retry)"/>
+            <path class="fc-edge" data-edge="check-done" d="M560 209H660" marker-end="url(#arrow-retry)"/>
+            <g class="fc-node" data-node="get"><rect x="50" y="181" width="180" height="56" rx="28"/><text x="140" y="209">GET /flaky</text></g>
+            <g class="fc-node" data-node="check"><path d="M470 151l90 58-90 58-90-58z"/><text x="470" y="209">status 429?</text></g>
+            <g class="fc-node" data-node="wait"><rect x="380" y="62" width="180" height="54"/><text x="470" y="89">sleep 0.1 × 2^n</text></g>
+            <g class="fc-node" data-node="done"><path d="M660 182h190l-16 54h-190z"/><text x="748" y="209">return reply</text></g>
+            <text x="485" y="140" font-size="13" fill="#536178">yes</text>
+            <text x="600" y="199" font-size="13" fill="#536178">no</text>
+          </svg>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"activeNode":"get","status":"Attempt 1: send GET /flaky."},
+          {"activeEdge":"get-check","activeNode":"check","status":"The server is rate-limiting: status is 429."},
+          {"activeEdge":"check-wait","activeNode":"wait","status":"429 → back off. wait = 0.1 × 2^0 = 0.10s, then retry."},
+          {"activeEdge":"wait-get","activeNode":"get","status":"Attempt 2: send GET /flaky again."},
+          {"activeEdge":"get-check","activeNode":"check","status":"Still 429."},
+          {"activeEdge":"check-wait","activeNode":"wait","status":"Back off longer: wait = 0.1 × 2^1 = 0.20s, then retry."},
+          {"activeEdge":"wait-get","activeNode":"get","status":"Attempt 3: send GET /flaky."},
+          {"activeEdge":"get-check","activeNode":"check","status":"This time the status is 200 — not 429."},
+          {"activeEdge":"check-done","activeNode":"done","status":"Not a 429 → stop retrying and return the reply. Served on attempt 3."}
+        ]</script>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 34 -->
+<section class="slide" data-section="edges">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Pagination</div>
+      <h2>Ask for pages, not floods</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>Why pages exist</h3>
+          <p>A server will not hand you a million rows in one response — it would be slow and fragile. It returns a <strong>page</strong> at a time.</p>
+        </div>
+        <div class="panel">
+          <h3>The two knobs</h3>
+          <p><code class="inline">offset</code> — where to start. <code class="inline">limit</code> — how many rows. Ask for a window, then advance the offset until you've collected all <code class="inline">count</code> rows.</p>
+        </div>
+      </div>
+      <div class="number-strip">
+        <div class="number-box" style="min-width:150px">0–499<small>page 1</small></div>
+        <div class="number-box" style="min-width:150px">500–999<small>page 2</small></div>
+        <div class="number-box" style="min-width:150px">1000–1438<small>page 3</small></div>
+      </div>
+      <div class="takeaway">It is Lesson 4's <strong>linear scan</strong>, one page per step — the same shape of work, chunked to fit the wire.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 35 -->
+<section class="slide" data-section="edges">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Pagination in code</div>
+      <h2>A loop that advances the offset until <code>count</code> is reached</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="keyword">def</span> fetch_all_pages(series_id, page_size=<span class="number">500</span>):
+    collected, offset = [], <span class="number">0</span>
+    <span class="keyword">while</span> <span class="keyword">True</span>:
+        body = requests.get(url, params={
+            <span class="string">"series_id"</span>: series_id,
+            <span class="string">"offset"</span>: offset, <span class="string">"limit"</span>: page_size},
+            timeout=<span class="number">10</span>).json()
+        collected.extend(body[<span class="string">"observations"</span>])
+        offset += page_size
+        <span class="keyword">if</span> offset &gt;= body[<span class="string">"count"</span>]: <span class="keyword">break</span>
+    <span class="keyword">return</span> collected</pre>
+        <div>
+          <pre class="output-block">page at offset    0: 500 rows (total 500)
+page at offset  500: 500 rows (total 1000)
+page at offset 1000: 439 rows (total 1439)
+reassembled 1439 rows from pages</pre>
+          <div class="panel compact" style="margin-top:14px"><p>The last page returns fewer than <code class="inline">page_size</code> rows — that, plus <code class="inline">offset &gt;= count</code>, is how the loop knows it's done.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">The stopping condition is the whole game: advance until the offset passes the total the server reported.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 36 -->
+<section class="slide" data-section="edges">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Animated trace</div>
+      <h2>Pages accumulate into the full series</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div class="trace" data-trace-type="array">
+          <div class="trace-toolbar">
+            <div class="trace-status" aria-live="polite" aria-atomic="true"></div>
+            <div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div>
+          </div>
+          <div class="trace-board">
+            <div class="array-strip">
+              <div class="trace-pointer" style="width:150px">fetch</div>
+              <div class="array-cell" data-index="0" style="width:150px;font-size:18px">500 rows</div>
+              <div class="array-cell" data-index="1" style="width:150px;font-size:18px">500 rows</div>
+              <div class="array-cell" data-index="2" style="width:150px;font-size:18px">439 rows</div>
+            </div>
+            <div class="trace-variables">
+              <div class="trace-variable" data-var="offset" style="min-width:150px"></div>
+              <div class="trace-variable" data-var="collected" style="min-width:170px"></div>
+            </div>
+          </div>
+          <script type="application/json" class="trace-data">[
+            {"current":null,"vars":{"offset":"offset = 0","collected":"collected = 0"},"status":"count = 1439, page_size = 500. Start at offset 0."},
+            {"current":0,"processedThrough":0,"vars":{"offset":"offset → 500","collected":"collected = 500"},"status":"Page at offset 0 returns 500 rows. 500 < 1439, so continue."},
+            {"current":1,"processedThrough":1,"vars":{"offset":"offset → 1000","collected":"collected = 1000"},"status":"Page at offset 500 returns 500 more. 1000 < 1439, continue."},
+            {"current":2,"processedThrough":2,"vars":{"offset":"offset → 1500","collected":"collected = 1439"},"status":"Page at offset 1000 returns only 439 — the last page. offset 1500 >= 1439, so stop."},
+            {"current":null,"processedThrough":2,"vars":{"offset":"1500 >= count","collected":"collected = 1439"},"status":"All pages reassembled: 1439 rows, in three linear steps."}
+          ]</script>
+        </div>
+        <table class="trace-transcript compact">
+          <thead><tr><th>Offset</th><th>Rows</th><th>Total</th></tr></thead>
+          <tbody>
+            <tr data-step="1"><td>0</td><td>500</td><td>500</td></tr>
+            <tr data-step="2"><td>500</td><td>500</td><td>1000</td></tr>
+            <tr data-step="3"><td>1000</td><td>439</td><td>1439</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 37 -->
+<section class="slide" data-section="edges">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Timeouts</div>
+      <h2>Never wait forever</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="keyword">try</span>:
+    requests.get(
+        f<span class="string">"{LOCAL_FRED}/slow"</span>,   <span class="comment"># the route sleeps 0.5s</span>
+        timeout=<span class="number">0.2</span>,
+    )
+<span class="keyword">except</span> requests.exceptions.<span class="error">Timeout</span>:
+    print(<span class="string">"caught — pipeline stays responsive"</span>)</pre>
+        <div class="panel">
+          <h3>Why every call needs a bound</h3>
+          <p>A request with no time limit can freeze your <strong>whole program</strong> on a hung server — waiting forever, doing nothing.</p>
+          <p><code class="inline">timeout=</code> turns "hang forever" into a <code class="inline">Timeout</code> exception you can <strong>catch</strong> and handle — a decision, not a lockup.</p>
+        </div>
+      </div>
+      <div class="takeaway">Always pass <code class="inline">timeout=</code>. A raise is something you can recover from; a hang is not.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 38 -->
+<section class="slide" data-section="edges">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Caching to disk</div>
+      <h2>Fetch once; depend on the copy</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>The move every later lesson reuses</h3>
+          <p>Fetch once, save the response, and next time read the saved copy instead of hitting the network. It is what keeps this whole course runnable offline.</p>
+        </div>
+        <div class="panel good">
+          <h3>Which format? Lesson 2 answered</h3>
+          <p>Store the <strong>raw JSON the server sent</strong>. It preserves the response's exact nested shape and re-parses to an identical dict — a cached hit is <em>indistinguishable</em> from a live fetch.</p>
+          <p class="muted">Parquet wins for a big tidied table; a raw API response is a nested document, and JSON is what it already is.</p>
+        </div>
+      </div>
+      <div class="takeaway">The cache stores the response, not your interpretation of it — so tomorrow's re-read is faithful to what the server actually said.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 39 -->
+<section class="slide" data-section="edges">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Caching in code</div>
+      <h2>Try the cache; else fetch, save, and return</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="keyword">def</span> fetch_with_cache(series_id):
+    cache_path = CACHE / f<span class="string">"{series_id}.json"</span>
+    <span class="keyword">if</span> cache_path.exists():
+        <span class="keyword">return</span> json.loads(cache_path.read_text()), <span class="string">"cache"</span>
+    reply = requests.get(url, params={…}, timeout=<span class="number">10</span>)
+    reply.raise_for_status()
+    cache_path.write_text(reply.text)   <span class="comment"># store the EXACT bytes</span>
+    <span class="keyword">return</span> reply.json(), <span class="string">"network"</span></pre>
+        <div>
+          <pre class="output-block">first call served from : network
+second call served from: cache
+times the server was contacted
+  for two calls: 1</pre>
+          <div class="panel compact" style="margin-top:14px"><p><code class="inline">write_text(reply.text)</code> saves the exact bytes; the next call's <code class="inline">cache_path.exists()</code> is true, so it never touches the network.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Cache-<em>first</em>-with-fallback: the network is the slow path, taken only when the fast path (disk) has nothing.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 40 -->
+<section class="slide" data-section="edges">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Animated trace</div>
+      <h2>Same call twice: a miss, then a hit</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="flow">
+        <div class="trace-toolbar"><div class="trace-status" aria-live="polite"></div><div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div></div>
+        <div class="flowchart-wrap" style="min-height:330px">
+          <svg class="flowchart-svg" viewBox="0 0 1000 330" style="height:330px" role="img" aria-label="Cache miss then hit">
+            <defs><marker id="arrow-cache" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0l10 5-10 5z" fill="#94a3b8"/></marker></defs>
+            <path class="fc-edge" data-edge="call-check" d="M212 173H336" marker-end="url(#arrow-cache)"/>
+            <path class="fc-edge" data-edge="check-hit" d="M462 173H520" marker-end="url(#arrow-cache)"/>
+            <path class="fc-edge" data-edge="hit-ret" d="M700 173H760" marker-end="url(#arrow-cache)"/>
+            <path class="fc-edge" data-edge="check-net" d="M400 233V258" marker-end="url(#arrow-cache)"/>
+            <path class="fc-edge" data-edge="net-ret" d="M510 285H845V201" marker-end="url(#arrow-cache)"/>
+            <g class="fc-node" data-node="call"><rect x="42" y="145" width="170" height="56" rx="28"/><text x="127" y="173">fetch_with_cache</text></g>
+            <g class="fc-node" data-node="check"><path d="M400 111l72 62-72 62-72-62z"/><text x="400" y="167">cache</text><text x="400" y="185">exists?</text></g>
+            <g class="fc-node" data-node="hit"><rect x="520" y="146" width="180" height="54"/><text x="610" y="173">read cached file</text></g>
+            <g class="fc-node" data-node="ret"><path d="M760 147h180l-15 52h-180z"/><text x="843" y="173">return payload</text></g>
+            <g class="fc-node" data-node="net"><rect x="310" y="258" width="200" height="54"/><text x="410" y="285">GET server · write file</text></g>
+            <text x="474" y="160" font-size="13" fill="#536178">hit</text>
+            <text x="408" y="250" font-size="13" fill="#536178">miss</text>
+          </svg>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"activeNode":"call","status":"First call: fetch_with_cache('UNRATE'). The cache directory is empty."},
+          {"activeEdge":"call-check","activeNode":"check","status":"Does UNRATE.json exist on disk? No — nothing has been fetched yet."},
+          {"activeEdge":"check-net","activeNode":"net","status":"Miss → GET the server, then write the exact bytes to UNRATE.json."},
+          {"activeEdge":"net-ret","activeNode":"ret","status":"Return the parsed dict. Source: network. The server has now been contacted once."},
+          {"activeNode":"call","status":"Second call, same series — fetch_with_cache('UNRATE') again."},
+          {"activeEdge":"call-check","activeNode":"check","status":"Does UNRATE.json exist now? Yes — we wrote it a moment ago."},
+          {"activeEdge":"check-hit","activeNode":"hit","status":"Hit → read the cached bytes straight from disk. No network at all."},
+          {"activeEdge":"hit-ret","activeNode":"ret","status":"Return the identical dict. Source: cache. Two calls, the server contacted exactly once."}
+        ]</script>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 41 -->
+<section class="slide" data-section="edges">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Checkpoint</div>
+      <h2>Four habits, one reliable client</h2>
+    </header>
+    <main class="content">
+      <div class="question">You call an API 10,000 times in a loop and it starts returning 429s halfway through. Which of the four rough-edge habits saves the run — and which one keeps the <em>next</em> run fast?</div>
+      <div class="answer fragment">
+        <strong>Retry with backoff</strong> saves this run: on each 429, wait (a little longer each time) and try again instead of crashing or hammering. <strong>Caching</strong> keeps the next run fast: every response already fetched is on disk, so a re-run skips the network — and the parts you never reached are the only ones that hit the API. (Pagination bounds how much each call returns; timeouts stop any single call from hanging the whole loop.)
+      </div>
+      <div class="takeaway">Retry, paginate, time out, cache — together they turn "it worked on my laptop once" into "it runs anywhere, repeatedly."</div>
+    </main>
+  </div>
+</section>
+
+<!-- 42 -->
+<section class="slide" data-section="docs">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Reading API documentation</div>
+      <h2>The real skill: any API, docs in hand</h2>
+    </header>
+    <main class="content">
+      <div class="question">You will rarely use FRED specifically. The transferable skill is being handed <em>any</em> API's documentation and constructing the request yourself.</div>
+      <div class="cols-3">
+        <div class="panel compact"><h3>Find the endpoint</h3><p>Which path answers your question? (For a new series: the same <code class="inline">series/observations</code>.)</p></div>
+        <div class="panel compact"><h3>Read the parameters</h3><p>Which are required, which optional? Build the <code class="inline">params</code> dict from the table.</p></div>
+        <div class="panel compact"><h3>Know the shape back</h3><p>What does a 200 body contain? What's a string, what's missing?</p></div>
+      </div>
+      <div class="takeaway">FRED was the worked example. The method — endpoint, parameters, response shape — is the same for every HTTP API on earth.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 43 -->
+<section class="slide" data-section="docs">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · A second series, from its docs</div>
+      <h2>UNRATE — the Unemployment Rate</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2 align-center">
+        <div>
+          <div class="code-title">A documentation excerpt — all you're given</div>
+          <pre class="output-block">Series UNRATE — Unemployment Rate
+Percent of the labour force without a job,
+MONTHLY, seasonally adjusted. Retrieved from
+the same fred/series/observations endpoint;
+only series_id changes. Values are strings;
+one observation per month.</pre>
+          <pre class="code-block" style="margin-top:12px">payload, served = fetch_with_cache(<span class="string">"UNRATE"</span>)</pre>
+        </div>
+        <div class="panel">
+          <h3>What the excerpt tells you</h3>
+          <ul>
+            <li>Same endpoint — only <code class="inline">series_id</code> differs.</li>
+            <li>Monthly cadence, so tidy to one row per month.</li>
+            <li>Values are strings — coerce them, like DGS10.</li>
+          </ul>
+          <p class="muted">That is enough to build the request without ever seeing UNRATE before.</p>
+        </div>
+      </div>
+      <div class="takeaway">Reading docs <em>is</em> the skill: three sentences of prose become a correct, cached fetch.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 44 -->
+<section class="slide" data-section="docs">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Tidy to monthly</div>
+      <h2>Restore types, then collapse to one row per month</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="keyword">def</span> tidy_monthly(payload):
+    frame = pd.DataFrame(payload[<span class="string">"observations"</span>])[[<span class="string">"date"</span>, <span class="string">"value"</span>]]
+    frame[<span class="string">"date"</span>]  = pd.to_datetime(frame[<span class="string">"date"</span>])
+    frame[<span class="string">"value"</span>] = pd.to_numeric(frame[<span class="string">"value"</span>], errors=<span class="string">"coerce"</span>)
+    frame = frame.dropna(subset=[<span class="string">"value"</span>])
+    monthly = (frame.set_index(<span class="string">"date"</span>)[<span class="string">"value"</span>]
+                    .resample(<span class="string">"MS"</span>).mean()   <span class="comment"># one row per month</span>
+                    .dropna().reset_index())
+    monthly.columns = [<span class="string">"month"</span>, <span class="string">"value"</span>]
+    <span class="keyword">return</span> monthly</pre>
+        <div>
+          <pre class="output-block">      month  value
+ 2020-01-01    3.6
+ 2020-02-01    3.5
+ 2020-03-01    4.4
+        ...
+monthly rows: 65</pre>
+          <div class="panel compact" style="margin-top:14px"><p><code class="inline">resample("MS")</code> groups by month-start; <code class="inline">.mean()</code> is Lesson 4's reduce. The functional-pipeline shape of Lesson 5, on fetched data.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Restore types, drop missing, resample — the same tidy chain works for any observations payload.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 45 -->
+<section class="slide" data-section="docs">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · One tidy, two cadences</div>
+      <h2>Daily and monthly series, the same pipeline</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Series</th><th>Raw cadence</th><th>Raw rows</th><th>After <code class="inline">tidy_monthly</code></th><th>What resample did</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">DGS10</td><td>daily</td><td>1439 (60 are ".")</td><td>67 monthly rows</td><td>averaged each month's days</td></tr>
+          <tr><td class="mono">UNRATE</td><td>monthly</td><td>65</td><td>65 monthly rows</td><td>one-to-one; nothing to collapse</td></tr>
+          <tr><td class="mono">CPIAUCSL</td><td>monthly</td><td>64</td><td>64 monthly rows</td><td>one-to-one</td></tr>
+        </tbody>
+      </table>
+      <div class="question">Why does DGS10 shrink from 1439 rows to 67, while UNRATE stays at 65? Because <code class="inline">resample("MS").mean()</code> averages a daily series down to months — and a series already monthly has nothing to average.</div>
+      <div class="takeaway">The same function adapts to the data's cadence — you write it once and it handles both.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 46 -->
+<section class="slide" data-section="docs">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · SDK vs raw HTTP</div>
+      <h2>One honest paragraph about the convenience layer</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel good">
+          <h3>What an SDK gives you</h3>
+          <pre class="code-block" style="font-size:15px">fred.get_series(<span class="string">"UNRATE"</span>)</pre>
+          <p>One line, no URL to build. For FRED there's <code class="inline">fredapi</code> and <code class="inline">pandas-datareader</code>. Genuinely lovely when it fits.</p>
+        </div>
+        <div class="panel">
+          <h3>What it costs</h3>
+          <ul>
+            <li>It can <strong>lag</strong> the API's newest features.</li>
+            <li>It <strong>hides</strong> which parameters exist.</li>
+            <li>It's a <strong>dependency</strong> you must trust and update.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="question">Same Lesson 4 lesson as <code class="inline">max()</code> over the hand-written loop: the convenience <strong>runs the procedure for you; it never removes it.</strong> An SDK is a wrapper over the exact GET you just wrote.</div>
+      <div class="takeaway">Learn the request first. Reach for the SDK once you know what it's doing on your behalf — then you can debug it when it lags.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 47 -->
+<section class="slide" data-section="docs">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Checkpoint</div>
+      <h2>A brand-new series, docs alone</h2>
+    </header>
+    <main class="content">
+      <div class="question">A colleague sends you one line: "Series <code class="inline">GDP</code> — quarterly, same <code class="inline">series/observations</code> endpoint, values are strings." With no other help, list the steps to land it as a tidy, typed, cached frame.</div>
+      <div class="answer fragment">
+        Build <code class="inline">params = {"series_id": "GDP", "api_key": API_KEY, "file_type": "json"}</code>; call <code class="inline">fetch_with_cache("GDP")</code> so the first fetch is saved and re-runs hit disk; then <code class="inline">tidy_monthly</code>-style: <code class="inline">to_datetime</code> the dates, <code class="inline">to_numeric(errors="coerce")</code> the values, drop the NaNs, and resample to the cadence you want. Nothing about GDP was special — you reused the whole Unit-2-through-4 machine on three sentences of docs.
+      </div>
+      <div class="takeaway">If you can do that, you have the lesson. The exercise makes you prove it.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 48 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Practice · your turn</div>
+      <h2>Build a caching FRED client</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Function</th><th>Returns</th><th>The contract</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">get_series(series_id, …)</td><td>raw DataFrame</td><td>a <code class="inline">["date","value"]</code> frame; resolve <strong>cache hit → live (only if <code class="inline">FRED_API_KEY</code>) → fixture</strong>; write the response so the <em>second</em> call is served from disk</td></tr>
+          <tr><td class="mono">tidy_monthly(observations)</td><td>tidy DataFrame</td><td>a <code class="inline">["month","value"]</code> monthly frame: coerce numbers (<code class="inline">"."</code> dropped), one row per month, ascending, no invented gaps</td></tr>
+        </tbody>
+      </table>
+      <div class="cols-2">
+        <div class="panel compact"><h3>Start</h3><p><code class="inline">cd lesson6_exercise/</code>, then <code class="inline">python3 -m pytest test_lesson6.py -v</code>. Every test fails with <code class="inline">NotImplementedError</code> — the intended starting line.</p></div>
+        <div class="panel compact"><h3>The full spec</h3><p>Lives in the <code class="inline">fred_client.py</code> module docstring — types, column order, edge cases. Read it first; it is the specification.</p></div>
+      </div>
+      <div class="takeaway">You write two functions; the checker proves the pipeline behaves — entirely offline, no key, no network.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 49 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Practice · what "done" looks like</div>
+      <h2>Green means the pipeline assembled itself</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div class="panel">
+          <h3>The checker proves</h3>
+          <ul>
+            <li><code class="inline">get_series</code> returns the raw two-column frame and <strong>writes a JSON cache</strong>.</li>
+            <li>The second call is served from that cache — proven by pointing the fallback at an <em>empty</em> directory, so only the cache could answer.</li>
+            <li><code class="inline">tidy_monthly</code> produces a <code class="inline">datetime64</code> month, a <code class="inline">float64</code> value, ascending, missing dropped.</li>
+          </ul>
+        </div>
+        <div>
+          <div class="code-title">the pinned fixtures</div>
+          <pre class="output-block" style="font-size:14px;line-height:1.55">DGS10     1439 daily (60 ".")  → 67 monthly
+UNRATE      65 monthly         → 65 monthly
+CPIAUCSL    64 monthly         → 64 monthly</pre>
+          <p class="small muted" style="margin-top:10px">The checker scrubs any real <code class="inline">FRED_API_KEY</code> from the environment, so it can never leak into a test.</p>
+        </div>
+      </div>
+      <div class="takeaway">It is the Lesson 5 machinery again: <code class="inline">assert</code> on known inputs, edge cases pinned, messages that point at the problem.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 50 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Wrap-up · connections</div>
+      <h2>Where the earlier lessons went</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Earlier idea</th><th>Its Lesson 6 form</th></tr></thead>
+        <tbody>
+          <tr><td>L1 · properties agreed in advance are a contract</td><td>HTTP itself: request shape, response shape, status vocabulary</td></tr>
+          <tr><td>L2 · storage is not neutral; restore lost properties</td><td>JSON drops types → <code class="inline">to_datetime</code> + <code class="inline">to_numeric</code>, <code class="inline">"."</code> → NaN</td></tr>
+          <tr><td>L2 · choose the format that keeps the shape</td><td>cache the raw JSON — the exact bytes, faithful on re-read</td></tr>
+          <tr><td>L3 · secrets live outside the code</td><td><code class="inline">FRED_API_KEY</code> in an environment variable, never in git</td></tr>
+          <tr><td>L4 · cost has a shape; convenience hides, never removes</td><td>pagination as a linear scan; the SDK over the raw GET</td></tr>
+          <tr><td>L5 · validate at the door, fail loudly</td><td><code class="inline">raise_for_status()</code> before touching the body</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">Every unit was an old idea wearing a network costume. The network changed the setting, not the principles.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 51 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Wrap-up · inventory</div>
+      <h2>What you can do now</h2>
+    </header>
+    <main class="content">
+      <div class="rule-list" style="max-width:1050px">
+        <div class="rule"><b>Read a URL</b><span>as scheme · host · path · query — and build a request from a docs table.</span></div>
+        <div class="rule"><b>Send a GET</b><span>with <code class="inline">requests</code>, check the status, and <code class="inline">raise_for_status()</code> before the body.</span></div>
+        <div class="rule"><b>Restore types</b><span>turn a JSON response into a typed DataFrame, missing values made visible.</span></div>
+        <div class="rule"><b>Survive the edges</b><span>retry a 429 with backoff, paginate a large result, guard with a timeout, cache to disk.</span></div>
+        <div class="rule"><b>Read any docs</b><span>fetch an unfamiliar series unaided — and know what an SDK does on your behalf.</span></div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 52 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">The lesson, one sentence</div>
+    </header>
+    <main class="content centered">
+      <p class="big-claim">An API is a doorway and HTTP is the contract: send the GET, check the status, restore the types — and because the network is unreliable, <span style="border-bottom:6px solid var(--amber)">retry, paginate, time out, and cache</span>.</p>
+      <p class="lead">The data you fetched once is yours to keep. The same move as every earlier lesson: make the properties explicit.</p>
+    </main>
+  </div>
+</section>
+
+<!-- 53 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Reference desk</div>
+      <h2>Where to go deeper</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel compact"><h3>Documentation</h3><ul>
+          <li><a href="https://fred.stlouisfed.org/docs/api/fred/series_observations.html">FRED · series/observations</a> — the endpoint used all lesson</li>
+          <li><a href="https://fred.stlouisfed.org/docs/api/fred/">FRED API overview</a> — every endpoint and parameter</li>
+          <li><a href="https://requests.readthedocs.io/en/latest/">requests documentation</a> — the library you called</li>
+          <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP">MDN · HTTP overview</a> — methods, status codes, headers in depth</li>
+        </ul></div>
+        <div class="panel compact"><h3>Local practice</h3><ul>
+          <li>Lesson 6 notebook — runs top to bottom, offline</li>
+          <li><code class="inline">lesson6_exercise/</code> — the caching FRED client</li>
+          <li><code class="inline">pandas-finance-assignment/</code> — the snapshots you can now regenerate</li>
+        </ul></div>
+      </div>
+      <div class="takeaway">Documentation defines behavior; a cache makes it repeatable; a test pins down the behavior you rely on.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 54 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Final checklist</div>
+      <h2>Ask it. Check it. Restore it. Bound it. Keep it.</h2>
+    </header>
+    <main class="content centered">
+      <div class="rule-list" style="width:920px;text-align:left">
+        <div class="rule"><b>Ask</b><span>build the request from the docs: endpoint, params, GET</span></div>
+        <div class="rule"><b>Check</b><span>read the status code; <code class="inline">raise_for_status()</code> before the body</span></div>
+        <div class="rule"><b>Restore</b><span>parse dates, coerce numbers, make missing a visible NaN</span></div>
+        <div class="rule"><b>Bound</b><span>timeout every call; retry a 429 with backoff; paginate large results</span></div>
+        <div class="rule"><b>Keep</b><span>cache the raw response — fetch once, depend on the copy</span></div>
+      </div>
+      <div class="question" style="width:920px">Exit ticket: fetch a series you've never seen, from its docs alone, and land it as a tidy, typed, cached DataFrame. That is the whole lesson.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 55 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">What's next</div>
+      <h2>Where the course goes from here</h2>
+    </header>
+    <main class="content centered">
+      <p class="big-claim" style="font-size:38px">Next: Lesson 7 — <em>why databases exist</em>. Your tidy frames flow into a schema, constraints, and durable SQLite storage, where the properties you've been restoring by hand get <em>enforced by the engine</em>.</p>
+      <p class="lead">Assignment 1's snapshots are no longer a mystery — you can regenerate them. Now you'll learn where they should <em>live</em>.</p>
+    </main>
+  </div>
+</section>
+
+<div id="hud">
+  <div class="course">Intro to CS · Lesson 6</div>
+  <div id="section-map" aria-hidden="true">
+    <span data-section-name="intro">Setup</span><span data-section-name="http">HTTP</span><span data-section-name="fetch">Fetch</span><span data-section-name="edges">Edges</span><span data-section-name="docs">Docs</span><span data-section-name="finish">Finish</span>
+  </div>
+  <div class="nav-controls">
+    <button id="prev" type="button" aria-label="Previous step">‹</button>
+    <button id="next" type="button" aria-label="Next step">›</button>
+    <label id="count" for="slide-number">
+      <input id="slide-number" type="text" value="1" inputmode="numeric" pattern="[0-9]*" aria-label="Jump to slide"> / <span id="slide-total"></span>
+    </label>
+  </div>
+</div>
+
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const stage = document.getElementById("stage");
+  const slides = [...document.querySelectorAll(".slide")];
+  const prevButton = document.getElementById("prev");
+  const nextButton = document.getElementById("next");
+  const slideNumber = document.getElementById("slide-number");
+  const slideTotal = document.getElementById("slide-total");
+  const sectionItems = [...document.querySelectorAll("#section-map [data-section-name]")];
+  let currentSlide = 0;
+  let printSnapshot = null;
+
+  function fitStage() {
+    const viewport = window.visualViewport;
+    const width = viewport ? viewport.width : window.innerWidth;
+    const height = viewport ? viewport.height : window.innerHeight;
+    const scale = Math.min(width / 1280, height / 720);
+    stage.style.transform = `translate(-50%, -50%) scale(${scale})`;
+  }
+
+  class TraceController {
+    constructor(root) {
+      this.root = root;
+      this.type = root.dataset.traceType;
+      const source = root.querySelector(".trace-data");
+      try {
+        this.states = JSON.parse(source ? source.textContent : "[]");
+      } catch (error) {
+        this.states = [];
+        console.error("Invalid trace data", error, root);
+      }
+      this.step = 0;
+      this.status = root.querySelector(".trace-status");
+      this.counter = root.querySelector("[data-trace-counter]");
+      root.querySelector(".trace-reset")?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this.setStep(0);
+      });
+      this.render();
+    }
+
+    canNext() { return this.step < this.states.length - 1; }
+    canPrevious() { return this.step > 0; }
+    next() { if (this.canNext()) this.setStep(this.step + 1); }
+    previous() { if (this.canPrevious()) this.setStep(this.step - 1); }
+    setStep(step) {
+      if (!this.states.length) return;
+      this.step = Math.max(0, Math.min(step, this.states.length - 1));
+      this.render();
+      updateControls();
+    }
+
+    renderVariables(state) {
+      const values = state.vars || {};
+      this.root.querySelectorAll("[data-var]").forEach((element) => {
+        element.textContent = values[element.dataset.var] || "";
+      });
+    }
+
+    renderTranscript() {
+      const slide = this.root.closest(".slide");
+      const rows = [...slide.querySelectorAll(".trace-transcript tr[data-step]")];
+      if (!rows.length) return;
+      let active = rows[0];
+      for (const row of rows) {
+        if (Number(row.dataset.step) <= this.step) active = row;
+      }
+      rows.forEach((row) => row.classList.toggle("is-active", row === active));
+    }
+
+    renderArray(state) {
+      const cells = [...this.root.querySelectorAll(".array-cell")];
+      cells.forEach((cell, index) => {
+        if (Array.isArray(state.values) && index < state.values.length) {
+          cell.textContent = state.values[index];
+        }
+        const outsideRange = Array.isArray(state.range) && (index < state.range[0] || index > state.range[1]);
+        const foundIndex = typeof state.found === "number" ? state.found : (state.found === true ? state.current : null);
+        cell.classList.toggle("is-current", state.current === index);
+        cell.classList.toggle("is-best", state.best === index);
+        cell.classList.toggle("is-min", state.min === index);
+        cell.classList.toggle("is-checked", Number.isInteger(state.processedThrough) && index <= state.processedThrough);
+        cell.classList.toggle("is-sorted", Number.isInteger(state.sortedUntil) && index < state.sortedUntil);
+        cell.classList.toggle("is-discarded", outsideRange || (Array.isArray(state.discarded) && state.discarded.includes(index)));
+        cell.classList.toggle("is-found", foundIndex === index);
+      });
+
+      const pointer = this.root.querySelector(".trace-pointer");
+      if (pointer) {
+        if (state.current == null || !cells[state.current]) {
+          pointer.style.visibility = "hidden";
+        } else {
+          pointer.style.visibility = "visible";
+          const first = cells[0];
+          pointer.style.transform = `translateX(${cells[state.current].offsetLeft - first.offsetLeft}px)`;
+          pointer.style.left = `${first.offsetLeft}px`;
+        }
+      }
+      this.renderVariables(state);
+      this.renderTranscript();
+    }
+
+    renderFlow(state) {
+      this.root.querySelectorAll("[data-node]").forEach((node) => {
+        node.classList.toggle("is-active", node.dataset.node === state.activeNode);
+      });
+      this.root.querySelectorAll("[data-edge]").forEach((edge) => {
+        edge.classList.toggle("is-active", edge.dataset.edge === state.activeEdge);
+      });
+      this.renderVariables(state);
+    }
+
+    renderStack(state) {
+      this.root.querySelectorAll(".token[data-index]").forEach((token) => {
+        token.classList.toggle("is-current", Number(token.dataset.index) === state.token);
+      });
+      const values = state.stack || [];
+      this.root.querySelectorAll(".stack-slot[data-slot]").forEach((slot) => {
+        const index = Number(slot.dataset.slot);
+        slot.textContent = index < values.length ? values[index] : "";
+      });
+      this.renderVariables(state);
+    }
+
+    render() {
+      if (!this.states.length) return;
+      const state = this.states[this.step];
+      if (this.status) this.status.textContent = state.status || "";
+      if (this.counter) this.counter.textContent = `${this.step + 1} / ${this.states.length}`;
+      if (this.type === "array") this.renderArray(state);
+      if (this.type === "flow") this.renderFlow(state);
+      if (this.type === "stack") this.renderStack(state);
+    }
+  }
+
+  const traces = new Map();
+  document.querySelectorAll(".trace[data-trace-type]").forEach((root) => {
+    traces.set(root, new TraceController(root));
+  });
+
+  function traceOnActiveSlide() {
+    const root = slides[currentSlide]?.querySelector(".trace[data-trace-type]");
+    return root ? traces.get(root) : null;
+  }
+
+  function fragmentsOnActiveSlide() {
+    return [...slides[currentSlide].querySelectorAll(".fragment")];
+  }
+
+  function nextHiddenFragment() {
+    return fragmentsOnActiveSlide().find((fragment) => !fragment.classList.contains("visible"));
+  }
+
+  function lastVisibleFragment() {
+    return fragmentsOnActiveSlide().filter((fragment) => fragment.classList.contains("visible")).at(-1);
+  }
+
+  function updateControls() {
+    const trace = traceOnActiveSlide();
+    const hasBackwardStep = (trace && trace.canPrevious()) || Boolean(lastVisibleFragment());
+    const hasForwardStep = (trace && trace.canNext()) || Boolean(nextHiddenFragment());
+    prevButton.disabled = currentSlide === 0 && !hasBackwardStep;
+    nextButton.disabled = currentSlide === slides.length - 1 && !hasForwardStep;
+  }
+
+  function showSlide(index, options = {}) {
+    currentSlide = Math.max(0, Math.min(index, slides.length - 1));
+    slides.forEach((slide, slideIndex) => {
+      const active = slideIndex === currentSlide;
+      slide.classList.toggle("active", active);
+      slide.setAttribute("aria-hidden", active ? "false" : "true");
+      slide.inert = !active;
+    });
+    const activeSlide = slides[currentSlide];
+    const section = activeSlide.dataset.section;
+    const color = getComputedStyle(activeSlide).getPropertyValue("--section-color").trim();
+    stage.style.setProperty("--active-section-color", color);
+    sectionItems.forEach((item) => item.classList.toggle("on", item.dataset.sectionName === section));
+    slideNumber.value = currentSlide + 1;
+    slideTotal.textContent = slides.length;
+    activeSlide.querySelectorAll(".trace[data-trace-type]").forEach((root) => traces.get(root)?.render());
+    if (!options.skipHash) history.replaceState(null, "", `#slide-${currentSlide + 1}`);
+    updateControls();
+  }
+
+  function forward() {
+    const trace = traceOnActiveSlide();
+    if (trace?.canNext()) {
+      trace.next();
+      return;
+    }
+    const fragment = nextHiddenFragment();
+    if (fragment) {
+      fragment.classList.add("visible");
+      updateControls();
+      return;
+    }
+    if (currentSlide < slides.length - 1) showSlide(currentSlide + 1);
+  }
+
+  function backward() {
+    const trace = traceOnActiveSlide();
+    if (trace?.canPrevious()) {
+      trace.previous();
+      return;
+    }
+    const fragment = lastVisibleFragment();
+    if (fragment) {
+      fragment.classList.remove("visible");
+      updateControls();
+      return;
+    }
+    if (currentSlide > 0) showSlide(currentSlide - 1);
+  }
+
+  function jumpToRequestedSlide() {
+    const requested = Number.parseInt(slideNumber.value, 10);
+    if (Number.isNaN(requested)) {
+      slideNumber.value = currentSlide + 1;
+      return;
+    }
+    showSlide(requested - 1);
+  }
+
+  prevButton.addEventListener("click", backward);
+  nextButton.addEventListener("click", forward);
+  slideNumber.addEventListener("change", jumpToRequestedSlide);
+  slideNumber.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      jumpToRequestedSlide();
+      slideNumber.blur();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    const target = event.target;
+    const editing = target instanceof HTMLElement && target.closest("input, textarea, select, [contenteditable='true']");
+    const activatingControl = target instanceof HTMLElement && target.closest("a, button") && event.key === " ";
+    if (editing || activatingControl) return;
+    if (event.repeat) return;
+    if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(event.key)) {
+      event.preventDefault();
+      forward();
+    } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(event.key)) {
+      event.preventDefault();
+      backward();
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      showSlide(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      showSlide(slides.length - 1);
+    } else if (event.key.toLowerCase() === "f") {
+      event.preventDefault();
+      if (document.fullscreenElement) document.exitFullscreen();
+      else stage.requestFullscreen?.();
+    }
+  });
+
+  window.addEventListener("resize", fitStage);
+  window.visualViewport?.addEventListener("resize", fitStage);
+  window.addEventListener("hashchange", () => {
+    const match = location.hash.match(/^#slide-(\d+)$/);
+    if (match) showSlide(Number(match[1]) - 1, { skipHash: true });
+  });
+
+  window.addEventListener("beforeprint", () => {
+    printSnapshot = [...traces.values()].map((trace) => trace.step);
+    [...traces.values()].forEach((trace) => trace.setStep(trace.states.length - 1));
+  });
+  window.addEventListener("afterprint", () => {
+    if (!printSnapshot) return;
+    [...traces.values()].forEach((trace, index) => trace.setStep(printSnapshot[index] || 0));
+    printSnapshot = null;
+    showSlide(currentSlide, { skipHash: true });
+  });
+
+  const initialMatch = location.hash.match(/^#slide-(\d+)$/);
+  const initialSlide = initialMatch ? Number(initialMatch[1]) - 1 : 0;
+  fitStage();
+  showSlide(initialSlide, { skipHash: true });
+})();
+</script>
+</body>
+</html>

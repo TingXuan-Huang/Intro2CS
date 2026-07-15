@@ -1,0 +1,2376 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 1 · How Programs Represent Data</title>
+<style>
+  :root {
+    --slide-w: 1280;
+    --slide-h: 720;
+    --paper: #f8fafc;
+    --surface: #ffffff;
+    --surface-2: #eef2f7;
+    --ink: #172033;
+    --muted: #526078;
+    --line: #cbd5e1;
+    --navy: #1e3a5f;
+    --blue: #1e5a89;
+    --teal: #0f766e;
+    --purple: #6d4c7d;
+    --amber: #9a5b13;
+    --cyan: #1d6f8a;
+    --slate: #475569;
+    --red: #b42318;
+    --red-bg: #fff1f0;
+    --green: #176b43;
+    --green-bg: #edf8f2;
+    --yellow-bg: #fff7df;
+    --font-sans: "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif;
+    --font-mono: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; }
+  body {
+    overflow: hidden;
+    background: #111827;
+    color: var(--ink);
+    font-family: var(--font-sans);
+  }
+
+  #stage {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 1280px;
+    height: 720px;
+    transform-origin: center center;
+    background: var(--paper);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .48);
+    overflow: hidden;
+  }
+
+  .slide {
+    --section-color: var(--navy);
+    position: absolute;
+    inset: 0;
+    display: none;
+    background: var(--paper);
+  }
+  .slide.active { display: block; }
+  .slide[data-section="intro"] { --section-color: var(--navy); }
+  .slide[data-section="types"] { --section-color: var(--teal); }
+  .slide[data-section="runtime"] { --section-color: var(--purple); }
+  .slide[data-section="structures"] { --section-color: var(--amber); }
+  .slide[data-section="data"] { --section-color: var(--cyan); }
+  .slide[data-section="storage"] { --section-color: var(--slate); }
+  .slide::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 7px;
+    background: var(--section-color);
+  }
+
+  .slide-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 46px 72px 78px;
+  }
+
+  .slide-header { margin-bottom: 22px; }
+  .section-label {
+    margin-bottom: 9px;
+    color: var(--section-color);
+    font-size: 15px;
+    font-weight: 750;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  h1 {
+    max-width: 1050px;
+    font-size: 58px;
+    line-height: 1.08;
+    letter-spacing: -.025em;
+    font-weight: 730;
+  }
+  h2 {
+    max-width: 1110px;
+    font-size: 40px;
+    line-height: 1.12;
+    letter-spacing: -.018em;
+    font-weight: 720;
+  }
+  h3 {
+    font-size: 24px;
+    line-height: 1.22;
+    font-weight: 720;
+  }
+  p, li { font-size: 21px; line-height: 1.42; }
+  .lead {
+    max-width: 900px;
+    color: var(--muted);
+    font-size: 27px;
+    line-height: 1.42;
+  }
+  .small { font-size: 17px; line-height: 1.42; }
+  .muted { color: var(--muted); }
+  .strong { color: var(--ink); font-weight: 720; }
+  code, pre, .mono { font-family: var(--font-mono); }
+  code.inline {
+    padding: 2px 6px;
+    border-radius: 5px;
+    background: #e9eef4;
+    color: #1f3653;
+    font-size: .9em;
+  }
+
+  .content {
+    min-height: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .centered {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  .cols-2, .cols-3, .cols-4 {
+    min-height: 0;
+    display: grid;
+    gap: 22px;
+    align-items: stretch;
+  }
+  .cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ratio-3-2 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+  .ratio-2-3 { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+  .align-center { align-items: center; }
+
+  .panel {
+    min-width: 0;
+    padding: 20px 22px;
+    border: 1px solid var(--line);
+    border-top: 4px solid var(--section-color);
+    background: var(--surface);
+  }
+  .panel h3 { margin-bottom: 10px; }
+  .panel p + p, .panel ul { margin-top: 9px; }
+  .panel ul { padding-left: 24px; }
+  .panel li + li { margin-top: 6px; }
+  .panel.compact { padding: 15px 18px; }
+  .panel.compact p, .panel.compact li { font-size: 18px; }
+  .panel.warning { border-top-color: var(--red); background: var(--red-bg); }
+  .panel.good { border-top-color: var(--green); background: var(--green-bg); }
+
+  .takeaway {
+    margin-top: auto;
+    padding: 13px 17px;
+    border-left: 5px solid var(--section-color);
+    background: #eaf0f6;
+    color: #24364d;
+    font-size: 20px;
+    line-height: 1.4;
+  }
+  .question {
+    padding: 18px 22px;
+    border: 2px solid var(--blue);
+    background: #edf5fb;
+    color: #173b5d;
+    font-size: 24px;
+    line-height: 1.36;
+    font-weight: 680;
+  }
+  .answer {
+    padding: 16px 20px;
+    border-left: 5px solid var(--green);
+    background: var(--green-bg);
+    font-size: 20px;
+    line-height: 1.42;
+  }
+  .fragment {
+    visibility: hidden;
+    opacity: 0;
+  }
+  .fragment.visible {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  .code-block, .output-block {
+    min-width: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    border: 1px solid var(--line);
+    background: #0f172a;
+    color: #e6edf5;
+    padding: 17px 20px;
+    font-family: var(--font-mono);
+    font-size: 18px;
+    line-height: 1.5;
+  }
+  .output-block {
+    background: var(--surface);
+    color: #1f2d40;
+  }
+  .code-block .comment { color: #9fb0c5; }
+  .code-block .string { color: #8dd3c7; }
+  .code-block .number { color: #f4c27a; }
+  .code-block .keyword { color: #c6a7e2; }
+  .code-block .error, .output-block .error { color: #ef6b62; font-weight: 700; }
+  .output-block .good { color: var(--green); font-weight: 700; }
+  .code-title {
+    margin-bottom: 7px;
+    color: var(--muted);
+    font-size: 16px;
+    font-weight: 730;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    font-size: 18.5px;
+    line-height: 1.32;
+  }
+  th {
+    padding: 11px 13px;
+    border-top: 2px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+    color: #34445a;
+    background: #e9eef4;
+    text-align: left;
+    font-size: 16px;
+    line-height: 1.25;
+    letter-spacing: .055em;
+    text-transform: uppercase;
+  }
+  td {
+    padding: 11px 13px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: 2px solid var(--ink); }
+  td:first-child { font-weight: 700; }
+  table.compact { font-size: 17px; }
+  table.compact th { font-size: 16px; }
+  table.compact td { padding-top: 8px; padding-bottom: 8px; }
+
+  .definition-list {
+    display: grid;
+    grid-template-columns: 170px minmax(0, 1fr);
+    gap: 0;
+    border-top: 2px solid var(--ink);
+    background: var(--surface);
+  }
+  .definition-list dt, .definition-list dd {
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--line);
+    font-size: 20px;
+    line-height: 1.35;
+  }
+  .definition-list dt {
+    color: var(--section-color);
+    font-weight: 750;
+  }
+
+  .property-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+  }
+  .property {
+    padding: 7px 11px;
+    border: 1px solid #a8b6c8;
+    background: #edf1f6;
+    color: #30425a;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .property.yes { border-color: #6ca58b; background: #edf8f2; color: #145f3d; }
+  .property.no { border-color: #d39a94; background: #fff1f0; color: #8e2e25; }
+
+  .record {
+    display: grid;
+    grid-template-columns: 180px minmax(0, 1fr);
+    border-top: 2px solid var(--ink);
+    background: var(--surface);
+  }
+  .record div {
+    padding: 11px 15px;
+    border-bottom: 1px solid var(--line);
+    font-size: 20px;
+  }
+  .record .field {
+    color: #31445c;
+    background: #edf1f5;
+    font-family: var(--font-mono);
+    font-size: 17px;
+    font-weight: 700;
+  }
+
+  .flow {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .flow-node {
+    min-width: 0;
+    flex: 1;
+    padding: 14px 16px;
+    border: 1px solid #a9b6c6;
+    background: var(--surface);
+  }
+  .flow-node b {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--navy);
+    font-size: 18px;
+  }
+  .flow-node span { font-size: 17px; line-height: 1.32; }
+  .flow-arrow {
+    align-self: center;
+    color: #66758a;
+    font-size: 27px;
+    font-weight: 700;
+  }
+
+  .object-map {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    min-height: 240px;
+  }
+  .name-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 35px;
+  }
+  .name-box, .object-box {
+    border: 2px solid var(--purple);
+    background: #f4eff8;
+    padding: 14px 24px;
+    font-family: var(--font-mono);
+    font-size: 22px;
+    text-align: center;
+  }
+  .object-box {
+    min-width: 310px;
+    border-color: #526078;
+    background: var(--surface);
+  }
+  .map-arrows {
+    color: #67768a;
+    font-size: 44px;
+    line-height: 1.55;
+  }
+
+  .sequence {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .item {
+    min-width: 62px;
+    padding: 13px 12px;
+    border: 1px solid #9cacbf;
+    background: var(--surface);
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 19px;
+  }
+  .item.new { border: 2px solid var(--amber); background: var(--yellow-bg); }
+  .direction {
+    color: var(--muted);
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .array-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 34px;
+  }
+  .array-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 72px);
+    gap: 7px;
+  }
+  .array-cell {
+    padding: 17px 10px;
+    border: 1px solid #8193aa;
+    background: var(--surface);
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 22px;
+  }
+  .array-meta {
+    display: grid;
+    grid-template-columns: 105px 1fr;
+    gap: 10px 14px;
+    font-size: 20px;
+  }
+  .array-meta b { color: var(--cyan); }
+
+  .dataframe {
+    display: grid;
+    grid-template-columns: 70px 150px 170px 150px 175px;
+    border-top: 2px solid var(--ink);
+    border-left: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .dataframe div {
+    padding: 10px 11px;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    font-size: 17px;
+  }
+  .dataframe .head {
+    background: #e7edf4;
+    color: #2d4058;
+    font-weight: 740;
+  }
+  .dataframe .idx {
+    background: #f1f4f8;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+
+  .checklist {
+    display: grid;
+    gap: 11px;
+  }
+  .check-row {
+    display: grid;
+    grid-template-columns: 38px 300px minmax(0, 1fr);
+    align-items: baseline;
+    gap: 13px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .check-row .num {
+    color: var(--section-color);
+    font-size: 21px;
+    font-weight: 780;
+  }
+  .check-row b { font-size: 21px; }
+  .check-row span:last-child { color: var(--muted); font-size: 19px; }
+
+  .big-claim {
+    max-width: 980px;
+    font-size: 47px;
+    line-height: 1.24;
+    font-weight: 720;
+    letter-spacing: -.018em;
+  }
+  .rule-list {
+    display: grid;
+    gap: 17px;
+  }
+  .rule {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 22px;
+    align-items: baseline;
+    padding-bottom: 13px;
+    border-bottom: 1px solid var(--line);
+  }
+  .rule b {
+    color: var(--section-color);
+    font-size: 23px;
+  }
+  .rule span { font-size: 21px; line-height: 1.36; }
+
+  #hud {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    height: 54px;
+    display: grid;
+    grid-template-columns: 230px 1fr 145px;
+    align-items: center;
+    padding: 0 28px;
+    border-top: 1px solid #b8c4d2;
+    background: #edf1f5;
+    color: #4a596d;
+  }
+  #hud .course {
+    font-size: 13px;
+    font-weight: 720;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  #section-map {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+  }
+  #section-map span {
+    padding: 5px 0 4px;
+    border-bottom: 3px solid transparent;
+    font-size: 11px;
+    font-weight: 720;
+    letter-spacing: .055em;
+    text-transform: uppercase;
+    opacity: .4;
+  }
+  #section-map span.on {
+    border-bottom-color: var(--active-section-color, var(--navy));
+    color: var(--ink);
+    opacity: 1;
+  }
+  .nav-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .nav-controls button {
+    width: 30px;
+    height: 30px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 19px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .nav-controls button:focus-visible {
+    outline: 3px solid #4e8fc1;
+    outline-offset: 2px;
+  }
+  #count {
+    min-width: 58px;
+    text-align: right;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  #slide-number {
+    width: 34px;
+    padding: 2px 3px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  #slide-number:focus-visible {
+    outline: 3px solid #4e8fc1;
+    outline-offset: 2px;
+  }
+  #rotate-note {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    padding: 28px;
+    background: #111827;
+    color: white;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 22px;
+    line-height: 1.4;
+  }
+
+  @media (max-width: 700px) and (orientation: portrait) {
+    #rotate-note { display: flex; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fragment { transition: none; }
+  }
+  @media print {
+    @page { size: 13.333in 7.5in; margin: 0; }
+    html, body {
+      width: auto;
+      height: auto;
+      overflow: visible;
+      background: white;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    #stage {
+      position: relative;
+      left: auto;
+      top: auto;
+      width: auto;
+      height: auto;
+      transform: none !important;
+      box-shadow: none;
+      overflow: visible;
+    }
+    .slide {
+      position: relative;
+      display: block !important;
+      width: 13.333in;
+      height: 7.5in;
+      break-after: page;
+      page-break-after: always;
+    }
+    .slide:last-of-type {
+      break-after: auto;
+      page-break-after: auto;
+    }
+    .fragment {
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+    #hud, #rotate-note { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="rotate-note">Rotate your device to landscape for presentation view.</div>
+<div id="stage">
+
+<!-- 1 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Intro to CS · Lesson 1</div>
+      <h1>How should a program represent data?</h1>
+    </header>
+    <main class="content centered">
+      <p class="lead">Data types, objects, structures, and storage</p>
+      <div class="question" style="max-width:960px">Choose representations that make the required operations clear and preserve the meaning of the data.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · The problem</div>
+      <h2>A computer stores recorded facts, not the real-world object</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-2-3">
+        <div class="panel">
+          <h3>Real-world concept</h3>
+          <p class="lead" style="font-size:30px;color:var(--ink)">A customer</p>
+          <p class="muted">The person is not inside the computer. We choose which facts to record.</p>
+        </div>
+        <div>
+          <div class="code-title">One possible Python representation</div>
+          <pre class="code-block">customer = {
+    <span class="string">"customer_id"</span>: <span class="string">"C01"</span>,
+    <span class="string">"name"</span>: <span class="string">"Alice"</span>,
+    <span class="string">"revenue"</span>: <span class="number">1200.50</span>,
+    <span class="string">"active"</span>: <span class="keyword">True</span>,
+    <span class="string">"cancellation_date"</span>: <span class="keyword">None</span>
+}</pre>
+        </div>
+      </div>
+      <div class="takeaway">Representation begins when we decide which facts matter and how each fact will be encoded.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · The problem</div>
+      <h2>The same data supports different questions in different structures</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Question we need to answer</th><th>Useful representation</th><th>Property we need</th></tr></thead>
+        <tbody>
+          <tr><td>What is one customer’s revenue?</td><td><code class="inline">dict</code></td><td>Named fields</td></tr>
+          <tr><td>Process many customers in order</td><td><code class="inline">list[dict]</code></td><td>Ordered sequence</td></tr>
+          <tr><td>Analyze labeled customer columns</td><td>DataFrame</td><td>Labeled two-dimensional table</td></tr>
+          <tr><td>Which distinct customer IDs are present?</td><td><code class="inline">set</code></td><td>Uniqueness and membership</td></tr>
+          <tr><td>Find a customer efficiently by ID</td><td><code class="inline">dict[id] → record</code></td><td>Key-based lookup</td></tr>
+          <tr><td>Apply math to every revenue value</td><td>NumPy array or DataFrame column</td><td>Homogeneous numerical operations</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">The best representation is the simplest one that supports the operations we actually need.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · Learning path</div>
+      <h2>We will build the high-level idea from concrete Python behavior</h2>
+    </header>
+    <main class="content">
+      <div class="flow">
+        <div class="flow-node"><b>1 · Values and types</b><span>What one value means and which operations are valid</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>2 · Python runtime</b><span>Dynamic typing, objects, errors, and rebinding</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>3 · Structures</b><span>Order, mutation, uniqueness, access, and references</span></div>
+      </div>
+      <div class="flow">
+        <div class="flow-node"><b>4 · ADTs and data tools</b><span>Stacks, queues, arrays, and DataFrames</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>5 · Storage and I/O</b><span>What survives when data is written and loaded again</span></div>
+      </div>
+      <div class="question">Guiding question: What must this representation let us do, and what information must it preserve?</div>
+    </main>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="slide" data-section="types">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Python values and types</div>
+      <h2>Value, object, variable, type, and structure are different ideas</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-2-3 align-center">
+        <pre class="code-block">price = <span class="number">19.95</span>
+items = [<span class="string">"book"</span>, <span class="string">"pen"</span>]</pre>
+        <dl class="definition-list">
+          <dt>Value</dt><dd>The information represented: <code class="inline">19.95</code></dd>
+          <dt>Object</dt><dd>The Python runtime entity representing that value</dd>
+          <dt>Variable</dt><dd>A name bound to an object: <code class="inline">price</code></dd>
+          <dt>Type</dt><dd>The object’s category and supported operations: <code class="inline">float</code></dd>
+          <dt>Structure</dt><dd>An organization of multiple values: <code class="inline">list</code></dd>
+        </dl>
+      </div>
+      <div class="takeaway">In Python, values are represented by objects; variable names let us refer to those objects.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide" data-section="types">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Python values and types</div>
+      <h2>Inspect a value before assuming what it is</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">Code</div>
+          <pre class="code-block">value = <span class="string">"12"</span>
+
+print(value)
+print(repr(value))
+print(type(value))
+print(isinstance(value, str))</pre>
+        </div>
+        <div>
+          <div class="code-title">Output</div>
+          <pre class="output-block">12
+'12'
+&lt;class 'str'&gt;
+<span class="good">True</span></pre>
+        </div>
+      </div>
+      <div class="takeaway"><code class="inline">repr()</code> exposes details such as quotation marks that normal printing may hide.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide" data-section="types">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Python values and types</div>
+      <h2>Five common built-in value types cover many everyday cases</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Type</th><th>Example</th><th>Represents</th><th>Typical operations</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">int</code></td><td><code class="inline">42</code></td><td>Whole-number quantity</td><td>Arithmetic, comparisons</td></tr>
+          <tr><td><code class="inline">float</code></td><td><code class="inline">3.14</code></td><td>Approximate decimal quantity</td><td>Arithmetic, comparisons</td></tr>
+          <tr><td><code class="inline">str</code></td><td><code class="inline">"hello"</code></td><td>Text or identifier</td><td>Index, slice, search, combine</td></tr>
+          <tr><td><code class="inline">bool</code></td><td><code class="inline">True</code></td><td>Yes/no condition</td><td>Logical operations</td></tr>
+          <tr><td><code class="inline">NoneType</code></td><td><code class="inline">None</code></td><td>No known value</td><td>Identity checks</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">A type is useful because it tells Python which operations make sense for the value.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide" data-section="types">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Python values and types</div>
+      <h2>Choose a type from meaning, not appearance</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>Digits used as quantities</h3>
+          <div class="record">
+            <div class="field">quantity</div><div><code class="inline">12</code> → arithmetic is meaningful</div>
+            <div class="field">revenue</div><div><code class="inline">1200.50</code> → arithmetic is meaningful</div>
+          </div>
+        </div>
+        <div class="panel warning">
+          <h3>Digits used as labels</h3>
+          <div class="record">
+            <div class="field">zip_code</div><div><code class="inline">"00123"</code> → leading zeros matter</div>
+            <div class="field">customer_id</div><div><code class="inline">"101"</code> → averaging IDs is meaningless</div>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">If addition and averaging do not make sense, the value may be an identifier rather than a number.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="slide" data-section="types">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Python values and types</div>
+      <h2>Numeric operations also determine result types</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block">7 + 3       <span class="comment"># 10</span>
+7 - 3       <span class="comment"># 4</span>
+7 * 3       <span class="comment"># 21</span>
+7 / 2       <span class="comment"># 3.5</span></pre>
+        <pre class="code-block">7 // 2      <span class="comment"># 3</span>
+7 % 2       <span class="comment"># 1</span>
+2 ** 10     <span class="comment"># 1024</span>
+round(3.14159, 2)  <span class="comment"># 3.14</span></pre>
+      </div>
+      <div class="question"><code class="inline">10 / 2</code> produces <code class="inline">5.0</code>, not <code class="inline">5</code>. The operator and operand types determine the result type.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="slide" data-section="types">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Python values and types</div>
+      <h2>Floating-point numbers approximate many decimal fractions</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">0.1 + 0.2
+<span class="comment"># 0.30000000000000004</span>
+
+0.1 + 0.2 == 0.3
+<span class="comment"># False</span>
+
+import math
+math.isclose(0.1 + 0.2, 0.3)
+<span class="comment"># True</span></pre>
+        <div class="panel">
+          <h3>Useful conclusion</h3>
+          <p>Many decimal fractions cannot be stored exactly as finite binary fractions.</p>
+          <p>For approximate results, compare with a tolerance rather than exact equality.</p>
+          <p class="small muted">Exact financial bookkeeping often uses integer cents or <code class="inline">Decimal</code>.</p>
+        </div>
+      </div>
+      <div class="takeaway">Floats are not “wrong”; they follow a finite binary representation with predictable limits.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="slide" data-section="types">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Python values and types</div>
+      <h2>Strings are ordered sequences that cannot be changed in place</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block">word = <span class="string">"revenue"</span>
+
+word[0]       <span class="comment"># 'r'</span>
+word[0:3]     <span class="comment"># 'rev'</span>
+word[-1]      <span class="comment"># 'e'</span>
+len(word)     <span class="comment"># 7</span>
+<span class="string">"ven"</span> in word  <span class="comment"># True</span></pre>
+        <pre class="code-block">name = <span class="string">"alice"</span>
+name[0] = <span class="string">"A"</span>
+<span class="error"># TypeError: 'str' object does not
+# support item assignment</span>
+
+name.upper()  <span class="comment"># returns "ALICE"</span>
+name          <span class="comment"># still "alice"</span></pre>
+      </div>
+      <div class="takeaway">String methods such as <code class="inline">upper()</code>, <code class="inline">strip()</code>, and <code class="inline">split()</code> return new values.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="slide" data-section="types">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Python values and types</div>
+      <h2>Identifiers often belong in strings even when they contain digits</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Value</th><th>Good type</th><th>Why</th><th>Operation that matters</th></tr></thead>
+        <tbody>
+          <tr><td>ZIP code <code class="inline">"00123"</code></td><td><code class="inline">str</code></td><td>Leading zeros carry meaning</td><td>Equality, lookup</td></tr>
+          <tr><td>Phone <code class="inline">"555-1234"</code></td><td><code class="inline">str</code></td><td>Punctuation is part of the label</td><td>Display, search</td></tr>
+          <tr><td>Customer ID <code class="inline">"101"</code></td><td><code class="inline">str</code></td><td>It identifies; it does not measure</td><td>Equality, membership</td></tr>
+          <tr><td>Item count <code class="inline">101</code></td><td><code class="inline">int</code></td><td>It is a quantity</td><td>Addition, comparison</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">The same characters can represent either a quantity or a label. Meaning decides the type.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 13 -->
+<section class="slide" data-section="types">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Python values and types</div>
+      <h2>Booleans represent answers to questions</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block">revenue = <span class="number">1200</span>
+
+revenue &gt; 1000
+revenue == 1200
+0 &lt; revenue &lt; 2000</pre>
+        <pre class="output-block">True
+True
+True</pre>
+      </div>
+      <div class="cols-3">
+        <div class="panel compact"><h3><code class="inline">and</code></h3><p>For Boolean conditions, both must be true.</p></div>
+        <div class="panel compact"><h3><code class="inline">or</code></h3><p>For Boolean conditions, at least one must be true.</p></div>
+        <div class="panel compact"><h3><code class="inline">not</code></h3><p>Reverse a Boolean result.</p></div>
+      </div>
+      <div class="takeaway">Comparisons produce Boolean values that control filtering and decisions.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 14 -->
+<section class="slide" data-section="types">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Python values and types</div>
+      <h2><code>None</code> commonly represents an absent or unknown value</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">missing = <span class="keyword">None</span>
+
+missing is None       <span class="comment"># True</span>
+missing is not None   <span class="comment"># False</span>
+
+missing + 1
+<span class="error"># TypeError</span></pre>
+        <div class="panel">
+          <h3>These are not interchangeable</h3>
+          <ul>
+            <li><code class="inline">0</code>: known quantity of zero</li>
+            <li><code class="inline">""</code>: known empty text</li>
+            <li><code class="inline">False</code>: known negative condition</li>
+            <li><code class="inline">None</code>: no known value</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">Check missingness explicitly with <code class="inline">is None</code> or <code class="inline">is not None</code>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 15 -->
+<section class="slide" data-section="types">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Python values and types</div>
+      <h2>Falsy is a control-flow rule, not a data type</h2>
+    </header>
+    <main class="content">
+      <div class="cols-4">
+        <div class="panel compact"><h3>Boolean false and missing</h3><p><code class="inline">False</code><br><code class="inline">None</code></p></div>
+        <div class="panel compact"><h3>Zero values</h3><p><code class="inline">0</code><br><code class="inline">0.0</code></p></div>
+        <div class="panel compact"><h3>Empty sequences</h3><p><code class="inline">""</code><br><code class="inline">[]</code><br><code class="inline">()</code></p></div>
+        <div class="panel compact"><h3>Empty collections</h3><p><code class="inline">{}</code><br><code class="inline">set()</code></p></div>
+      </div>
+      <div class="question">Python treats all of these as false inside <code class="inline">if</code>, but their meanings remain different.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 16 -->
+<section class="slide" data-section="types">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Python values and types · Predict</div>
+      <h2>Will a valid revenue of zero be processed?</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block">for revenue in [<span class="number">1200</span>, <span class="number">0</span>, <span class="keyword">None</span>]:
+    if revenue:
+        print(<span class="string">"process"</span>, revenue)</pre>
+        <div class="question">Which values reach <code class="inline">print()</code>?</div>
+      </div>
+      <div class="fragment answer">
+        Only <code class="inline">1200</code>. Both <code class="inline">0</code> and <code class="inline">None</code> are falsy. If zero is valid, test the intended meaning:
+        <code class="inline">if revenue is not None:</code>
+      </div>
+      <div class="takeaway">A convenient truth test can silently combine “zero,” “empty,” and “missing” into one case.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 17 -->
+<section class="slide" data-section="types">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Python values and types</div>
+      <h2>Type conversion is an explicit boundary decision</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block">int(<span class="string">"12"</span>)       <span class="comment"># 12</span>
+float(<span class="string">"19.95"</span>) <span class="comment"># 19.95</span>
+str(<span class="number">101</span>)        <span class="comment"># "101"</span>
+
+int(<span class="string">"twelve"</span>)
+<span class="error"># ValueError</span></pre>
+        <div class="panel warning">
+          <h3>A common trap</h3>
+          <pre class="output-block">bool("")        → False
+bool("False")   → True</pre>
+          <p class="small">Any non-empty string is truthy. Parse semantic text such as “False” explicitly.</p>
+        </div>
+      </div>
+      <div class="takeaway">Convert and validate once when data enters the program, rather than repeatedly guessing later.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 18 -->
+<section class="slide" data-section="types">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Python values and types · Check</div>
+      <h2>Choose a type and justify it by meaning</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Field</th><th>Example</th><th>Your choice</th><th>Reason</th></tr></thead>
+        <tbody>
+          <tr><td>item_count</td><td><code class="inline">12</code></td><td>?</td><td>Which operations matter?</td></tr>
+          <tr><td>zip_code</td><td><code class="inline">"00123"</code></td><td>?</td><td>What must be preserved?</td></tr>
+          <tr><td>active</td><td>yes/no</td><td>?</td><td>What question does it answer?</td></tr>
+          <tr><td>cancellation_date</td><td>not yet known</td><td>?</td><td>How is absence represented?</td></tr>
+        </tbody>
+      </table>
+      <div class="fragment answer"><strong>One defensible answer:</strong> <code class="inline">int</code>, <code class="inline">str</code>, <code class="inline">bool</code>, and <code class="inline">str | None</code> (or <code class="inline">date | None</code>). <code class="inline">None</code> is the value used when the date is absent.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 19 -->
+<section class="slide" data-section="runtime">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Python runtime behavior</div>
+      <h2>Python is dynamically typed, not untyped</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">value = <span class="number">10</span>
+print(type(value))
+
+value = <span class="string">"ten"</span>
+print(type(value))</pre>
+        <pre class="output-block">&lt;class 'int'&gt;
+
+&lt;class 'str'&gt;</pre>
+      </div>
+      <div class="rule-list">
+        <div class="rule"><b>The object has a type</b><span><code class="inline">10</code> is an integer object; <code class="inline">"ten"</code> is a string object.</span></div>
+        <div class="rule"><b>The name can be rebound</b><span><code class="inline">value</code> may later refer to an object of another type.</span></div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 20 -->
+<section class="slide" data-section="runtime">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Python runtime behavior</div>
+      <h2>In Java, a variable’s declared type is checked before running</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">Python · incompatible operations fail at runtime</div>
+          <pre class="code-block">value = <span class="number">10</span>
+value = <span class="string">"ten"</span>  <span class="comment"># allowed</span></pre>
+        </div>
+        <div>
+          <div class="code-title">Java · assignments checked before running</div>
+          <pre class="code-block">int value = <span class="number">10</span>;
+value = <span class="string">"ten"</span>;
+<span class="error">// compile-time error</span></pre>
+        </div>
+      </div>
+      <div class="takeaway">Static typing catches some incompatible assignments earlier. Dynamic typing provides flexibility, but invalid operations still fail.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 21 -->
+<section class="slide" data-section="runtime">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Python runtime behavior</div>
+      <h2>The operands determine what an operator means</h2>
+    </header>
+    <main class="content">
+      <div class="cols-4">
+        <div class="panel compact"><h3>Numbers</h3><pre class="output-block">7 + 3
+→ 10</pre></div>
+        <div class="panel compact"><h3>Strings</h3><pre class="output-block">"Q" + "3"
+→ 'Q3'</pre></div>
+        <div class="panel compact"><h3>Lists</h3><pre class="output-block">[1] + [2]
+→ [1, 2]</pre></div>
+        <div class="panel compact warning"><h3>Mixed types</h3><pre class="output-block">"3" + 4
+→ TypeError</pre></div>
+      </div>
+      <div class="takeaway">The symbol <code class="inline">+</code> does not have one universal meaning. Each type defines which operations it supports.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 22 -->
+<section class="slide" data-section="runtime">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Python runtime behavior</div>
+      <h2>Errors reveal an assumption that the data did not satisfy</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Example</th><th>Error</th><th>Assumption that failed</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">"3" + 4</code></td><td>TypeError</td><td>The operands support the same addition</td></tr>
+          <tr><td><code class="inline">name[0] = "A"</code></td><td>TypeError</td><td>A string is mutable</td></tr>
+          <tr><td><code class="inline">coordinate.append(0)</code></td><td>AttributeError</td><td>A tuple has a mutating method</td></tr>
+          <tr><td><code class="inline">ids[0]</code></td><td>TypeError</td><td>A set has positional order</td></tr>
+          <tr><td><code class="inline">customer["email"]</code></td><td>KeyError</td><td>The key is present</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">Treat the exception as evidence: inspect the value, then identify the property your code assumed.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 23 -->
+<section class="slide" data-section="runtime">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Python runtime behavior</div>
+      <h2>A practical routine for debugging type problems</h2>
+    </header>
+    <main class="content">
+      <div class="checklist">
+        <div class="check-row"><span class="num">1</span><b>Inspect</b><span>Use <code class="inline">repr(value)</code> and <code class="inline">type(value)</code>.</span></div>
+        <div class="check-row"><span class="num">2</span><b>State the meaning</b><span>Is this a quantity, identifier, category, flag, or missing value?</span></div>
+        <div class="check-row"><span class="num">3</span><b>Name the operation</b><span>Arithmetic, position, membership, lookup, mutation, or comparison?</span></div>
+        <div class="check-row"><span class="num">4</span><b>Repair the boundary</b><span>Convert or validate where the data enters the program.</span></div>
+      </div>
+      <div class="takeaway">Do not patch the symptom repeatedly. Correct the representation at the boundary where it became wrong.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 24 -->
+<section class="slide" data-section="runtime">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Python runtime behavior</div>
+      <h2>Many data bugs are representation bugs</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel warning"><h3>Revenue imported as text</h3><p><code class="inline">"1200.50"</code> cannot be used in numeric arithmetic until parsed.</p></div>
+        <div class="panel warning"><h3>ID parsed as a number</h3><p><code class="inline">"00123"</code> becomes <code class="inline">123</code> if converted to an integer.</p></div>
+        <div class="panel warning"><h3>Missing stored as text</h3><p><code class="inline">"N/A"</code> is not the same as <code class="inline">None</code>.</p></div>
+        <div class="panel warning"><h3>Boolean stored as text</h3><p><code class="inline">bool("False")</code> is <code class="inline">True</code>.</p></div>
+      </div>
+      <div class="takeaway">A calculation cannot be correct if the program misunderstands what the values mean.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 25 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Data structures and references</div>
+      <h2>Six properties guide the choice of a data structure</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel compact"><h3>Order</h3><p>Does position carry meaning?</p></div>
+        <div class="panel compact"><h3>Mutability</h3><p>Can the container change in place?</p></div>
+        <div class="panel compact"><h3>Uniqueness</h3><p>Are repeated values allowed?</p></div>
+        <div class="panel compact"><h3>Access</h3><p>By position, key, membership, or path?</p></div>
+        <div class="panel compact"><h3>Shape</h3><p>Scalar, sequence, table, or n-dimensional grid?</p></div>
+        <div class="panel compact"><h3>Homogeneity</h3><p>Must values share one type?</p></div>
+      </div>
+      <div class="takeaway">A structure is not “better” in general. It is better for a particular set of required properties.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 26 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Native Python structures</div>
+      <h2>List: an ordered, mutable sequence that permits duplicates</h2>
+    </header>
+    <main class="content">
+      <div class="property-strip">
+        <span class="property yes">Ordered</span><span class="property yes">Mutable</span><span class="property yes">Duplicates allowed</span><span class="property">Access by position</span>
+      </div>
+      <div class="cols-2">
+        <pre class="code-block">sales = [<span class="number">120</span>, <span class="number">150</span>, <span class="number">150</span>, <span class="number">180</span>]
+
+sales[0]         <span class="comment"># 120</span>
+sales[1:3]       <span class="comment"># [150, 150]</span>
+sales.append(200)
+sales[1] = 160</pre>
+        <pre class="code-block">prices = [<span class="number">30</span>, <span class="number">10</span>, <span class="number">20</span>]
+
+sorted(prices)
+<span class="comment"># new list; original unchanged</span>
+
+prices.sort()
+<span class="comment"># changes list; returns None</span></pre>
+      </div>
+      <div class="takeaway">Use a list for an ordered collection that may grow, shrink, or change.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 27 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Native Python structures</div>
+      <h2>Tuple: an ordered group whose outer structure is immutable</h2>
+    </header>
+    <main class="content">
+      <div class="property-strip">
+        <span class="property yes">Ordered</span><span class="property no">Outer container immutable</span><span class="property yes">Duplicates allowed</span><span class="property">Access by position</span>
+      </div>
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">coordinate = (<span class="number">47.6062</span>, <span class="number">-122.3321</span>)
+
+coordinate[0]   <span class="comment"># 47.6062</span>
+lat, lon = coordinate
+
+coordinate.append(0)
+<span class="error"># AttributeError</span></pre>
+        <div class="panel">
+          <h3>Intent matters</h3>
+          <p>A coordinate or reporting period is a fixed group of related values.</p>
+          <p class="small muted">A tuple can still contain a mutable object; only the tuple’s own slots are fixed.</p>
+        </div>
+      </div>
+      <div class="takeaway">A tuple communicates that the grouped positions belong together and should not normally change.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 28 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Native Python structures</div>
+      <h2>Set: unique values with membership-based access</h2>
+    </header>
+    <main class="content">
+      <div class="property-strip">
+        <span class="property no">Not positional</span><span class="property yes">Mutable</span><span class="property no">No duplicates</span><span class="property">Membership access</span><span class="property">Elements hashable</span>
+      </div>
+      <div class="cols-2">
+        <pre class="code-block">ids = {<span class="number">101</span>, <span class="number">102</span>, <span class="number">102</span>}
+len(ids)        <span class="comment"># 2</span>
+
+102 in ids      <span class="comment"># True</span>
+ids[0]
+<span class="error"># TypeError: no positions</span></pre>
+        <pre class="code-block">email = {<span class="number">101</span>, <span class="number">102</span>, <span class="number">103</span>}
+social = {<span class="number">102</span>, <span class="number">103</span>, <span class="number">104</span>}
+
+email &amp; social  <span class="comment"># both</span>
+email | social  <span class="comment"># either</span>
+email - social  <span class="comment"># email only</span></pre>
+      </div>
+      <div class="takeaway">Reach for a set when the question is “is it present?”, “what is unique?”, or “what is shared?”</div>
+    </main>
+  </div>
+</section>
+
+<!-- 29 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Native Python structures</div>
+      <h2>Dictionary: map unique keys to values</h2>
+    </header>
+    <main class="content">
+      <div class="property-strip">
+        <span class="property">Insertion-ordered</span><span class="property yes">Mutable</span><span class="property no">Keys unique</span><span class="property">Access by key</span><span class="property">Keys hashable</span>
+      </div>
+      <div class="cols-2">
+        <pre class="code-block">customer = {
+    <span class="string">"customer_id"</span>: <span class="string">"C01"</span>,
+    <span class="string">"name"</span>: <span class="string">"Alice"</span>,
+    <span class="string">"revenue"</span>: <span class="number">1200.50</span>
+}
+
+customer[<span class="string">"name"</span>]  <span class="comment"># "Alice"</span></pre>
+        <pre class="code-block">customer.get(<span class="string">"email"</span>, <span class="string">"unknown"</span>)
+<span class="comment"># "unknown"</span>
+
+<span class="string">"name"</span> in customer
+<span class="comment"># True: membership checks keys</span>
+
+customer[<span class="string">"email"</span>] = <span class="string">"a@example.com"</span></pre>
+      </div>
+      <div class="takeaway">Use a dictionary when fields are reached by name or records are reached by identifier rather than numeric position.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 30 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Compare native structures</div>
+      <h2>Each built-in structure makes a different promise</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Structure</th><th>Order</th><th>Mutable</th><th>Duplicates</th><th>Primary access</th><th>Typical use</th></tr></thead>
+        <tbody>
+          <tr><td>List</td><td>Positional</td><td>Yes</td><td>Yes</td><td>Position</td><td>Ordered observations</td></tr>
+          <tr><td>Tuple</td><td>Positional</td><td>No, outer level</td><td>Yes</td><td>Position</td><td>Fixed grouped values</td></tr>
+          <tr><td>Set</td><td>Not positional</td><td>Yes</td><td>No</td><td>Membership</td><td>Unique values</td></tr>
+          <tr><td>Dictionary</td><td>Insertion order</td><td>Yes</td><td>Keys unique; values may repeat</td><td>Key</td><td>Records and lookups</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">Modern dictionaries preserve insertion order, but their purpose is key lookup, not positional access.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 31 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Compare native structures · Predict</div>
+      <h2>The same operation exposes different structural properties</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Operation</th><th>List</th><th>Tuple</th><th>Set</th><th>Dictionary</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">x[0]</code></td><td>Position 0</td><td>Position 0</td><td>?</td><td>Key 0</td></tr>
+          <tr><td><code class="inline">10 in x</code></td><td>Values</td><td>Values</td><td>Values</td><td>?</td></tr>
+          <tr><td><code class="inline">x + y</code></td><td>Concatenate</td><td>Concatenate</td><td>?</td><td>?</td></tr>
+          <tr><td><code class="inline">x[0] = 9</code></td><td>Allowed</td><td>?</td><td>Not positional</td><td>Update key 0</td></tr>
+        </tbody>
+      </table>
+      <div class="fragment answer"><strong>Answers:</strong> sets have no positional indexing; <code class="inline">in</code> checks dictionary keys; tuples reject item assignment. Sets and dictionaries reject <code class="inline">+</code>; <code class="inline">|</code> performs set union and, in Python 3.9+, dictionary merge.</div>
+      <div class="takeaway">When an operation fails, ask which property the operation required.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 32 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Choose by operation</div>
+      <h2>A short decision rule covers most beginner cases</h2>
+    </header>
+    <main class="content">
+      <div class="rule-list">
+        <div class="rule"><b>Need an ordered sequence?</b><span>Use a <strong>list</strong>.</span></div>
+        <div class="rule"><b>Need a fixed group?</b><span>Use a <strong>tuple</strong>.</span></div>
+        <div class="rule"><b>Need uniqueness or membership?</b><span>Use a <strong>set</strong>.</span></div>
+        <div class="rule"><b>Need lookup by name or ID?</b><span>Use a <strong>dictionary</strong>.</span></div>
+      </div>
+      <div class="takeaway">Choose the simplest structure that clearly supports the required operation.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 33 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Apply the decision rule</div>
+      <h2>A practical customer model combines several structures</h2>
+    </header>
+    <main class="content">
+      <div class="cols-4">
+        <div class="panel compact"><h3>One customer</h3><p><code class="inline">dict</code><br>named fields</p></div>
+        <div class="panel compact"><h3>Many customers</h3><p><code class="inline">list[dict]</code><br>ordered records</p></div>
+        <div class="panel compact"><h3>Unique IDs</h3><p><code class="inline">set</code><br>membership</p></div>
+        <div class="panel compact"><h3>Lookup by ID</h3><p><code class="inline">dict[id]</code><br>key access</p></div>
+      </div>
+      <pre class="code-block">customers_by_id = {customer[<span class="string">"customer_id"</span>]: customer
+                   for customer in customers}</pre>
+      <div class="takeaway">One dataset can use several representations because each one serves a different operation.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 34 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Mutability</div>
+      <h2>Mutability determines whether an object can change in place</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel good">
+          <h3>Mutable objects</h3>
+          <p><code class="inline">list</code>, <code class="inline">dict</code>, <code class="inline">set</code></p>
+          <p class="small">The same object can gain, lose, or replace content.</p>
+        </div>
+        <div class="panel">
+          <h3>Immutable objects</h3>
+          <p><code class="inline">int</code>, <code class="inline">float</code>, <code class="inline">str</code>, <code class="inline">bool</code>, <code class="inline">None</code>, <code class="inline">tuple</code></p>
+          <p class="small">An apparent “change” creates or binds to another object.</p>
+        </div>
+      </div>
+      <pre class="code-block">name = <span class="string">"Alice"</span>
+name = name + <span class="string">" Smith"</span>  <span class="comment"># a new string is created</span></pre>
+      <div class="takeaway">Mutability matters most when more than one name refers to the same object.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 35 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · References</div>
+      <h2>Assignment binds a name to an object</h2>
+    </header>
+    <main class="content">
+      <div class="object-map">
+        <div class="name-stack">
+          <div class="name-box">original</div>
+          <div class="name-box">alias</div>
+        </div>
+        <div class="map-arrows">↘<br>↗</div>
+        <div class="object-box">list object<br><span class="sequence" style="justify-content:center;margin-top:13px"><span class="item">100</span><span class="item">200</span></span></div>
+      </div>
+      <pre class="code-block">original = [<span class="number">100</span>, <span class="number">200</span>]
+alias = original</pre>
+      <div class="takeaway"><code class="inline">alias = original</code> creates a second reference to the same list; it does not create another list.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 36 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · References · Predict</div>
+      <h2>What does <code>original</code> contain after this mutation?</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">original = [<span class="number">100</span>, <span class="number">200</span>]
+alias = original
+
+alias.append(<span class="number">300</span>)
+
+print(original)</pre>
+        <div class="question">Predict the exact output before revealing the answer.</div>
+      </div>
+      <div class="fragment answer"><code class="inline">[100, 200, 300]</code>. Both names refer to the same mutable list object.</div>
+      <div class="takeaway">Simple name assignment can bind another name to the same object. Mutation is visible through every reference to that object.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 37 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Copying</div>
+      <h2>A copy creates a new outer container</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block">original = [<span class="number">100</span>, <span class="number">200</span>]
+copied = original.copy()
+
+copied.append(<span class="number">300</span>)
+
+print(original)  <span class="comment"># [100, 200]</span>
+print(copied)    <span class="comment"># [100, 200, 300]</span></pre>
+        <div class="panel warning">
+          <h3><code class="inline">copy()</code> is shallow</h3>
+          <p>It creates a new outer list or dictionary, but nested mutable objects may still be shared.</p>
+          <p class="small"><code class="inline">copy.deepcopy()</code> recursively copies nested content when that behavior is truly needed.</p>
+        </div>
+      </div>
+      <div class="takeaway">Ask whether you need another name, another outer container, or a recursively copied structure.</div>
+    </main>
+  </div>
+</section>
+
+<!-- Shallow-copy prediction -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Copying · Predict</div>
+      <h2>Does a shallow copy protect nested data?</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">original = {
+    <span class="string">"tags"</span>: [<span class="string">"new"</span>, <span class="string">"email"</span>]
+}
+copied = original.copy()
+
+copied[<span class="string">"tags"</span>].append(<span class="string">"vip"</span>)
+print(original[<span class="string">"tags"</span>])</pre>
+        <div class="question">The dictionaries are different objects. What happens to the list stored inside them?</div>
+      </div>
+      <div class="fragment answer"><code class="inline">["new", "email", "vip"]</code>. The outer dictionaries are separate, but both still refer to the same nested list.</div>
+      <div class="takeaway">Copy nested objects explicitly—or use <code class="inline">copy.deepcopy()</code> when supported nested contents should be recursively copied.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 38 -->
+<section class="slide" data-section="structures">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Representation check</div>
+      <h2>Choose a structure and justify it with one property</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel"><h3>Transaction history</h3><p>Keep observations in arrival order; repeats are real.</p></div>
+        <div class="panel"><h3>Latitude and longitude</h3><p>Two positions form one fixed pair.</p></div>
+        <div class="panel"><h3>Customers reached by email</h3><p>Ask whether an ID is present and compare groups.</p></div>
+        <div class="panel"><h3>Customer profile</h3><p>Read fields by names such as <code class="inline">"revenue"</code>.</p></div>
+      </div>
+      <div class="fragment answer"><strong>Recommended:</strong> list, tuple, set, and dictionary. Other answers require a property-based justification.</div>
+    </main>
+  </div>
+</section>
+
+<!-- Session boundary -->
+<section class="slide" data-section="data">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Session A checkpoint</div>
+      <h2>Concrete Python behavior gives us the vocabulary for abstraction</h2>
+    </header>
+    <main class="content centered">
+      <div class="cols-3" style="width:100%;text-align:left">
+        <div class="panel"><h3>Types and operations</h3><p>Meaning determines which operations are legitimate.</p></div>
+        <div class="panel"><h3>Structure properties</h3><p>Order, mutation, uniqueness, and access guide container choice.</p></div>
+        <div class="panel"><h3>Objects and references</h3><p>Assignment, mutation, and copying determine what is shared.</p></div>
+      </div>
+      <p class="lead">Session B extends the same reasoning to abstract data types, NumPy, pandas, and file storage.</p>
+    </main>
+  </div>
+</section>
+
+<!-- 39 -->
+<section class="slide" data-section="data">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Abstract structures and data tools</div>
+      <h2>An abstract data type specifies behavior, not one implementation</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Abstract idea</th><th>Behavioral contract</th><th>Possible Python implementation</th></tr></thead>
+        <tbody>
+          <tr><td>Stack</td><td>Last in, first out</td><td>List using <code class="inline">append</code> and <code class="inline">pop</code></td></tr>
+          <tr><td>Queue</td><td>First in, first out</td><td><code class="inline">collections.deque</code></td></tr>
+          <tr><td>Mapping</td><td>Retrieve values by unique keys</td><td>Python <code class="inline">dict</code>, implemented with a hash table</td></tr>
+          <tr><td>Tree</td><td>Parent–child hierarchy</td><td>Nested dictionaries and lists</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">The abstract type describes what users may do; the implementation decides how those operations are carried out.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 40 -->
+<section class="slide" data-section="data">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Abstract data types</div>
+      <h2>Stack: last in, first out</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 align-center">
+        <div>
+          <div class="sequence"><span class="item">Open page</span><span class="item">Filter</span><span class="item new">Delete row</span></div>
+          <p class="direction" style="margin-top:14px">push → newest item enters at the right</p>
+          <p class="direction">pop ← newest item leaves first</p>
+        </div>
+        <pre class="code-block">history = []
+history.append(<span class="string">"Open page"</span>)
+history.append(<span class="string">"Filter"</span>)
+history.append(<span class="string">"Delete row"</span>)
+
+history.pop()
+<span class="comment"># "Delete row"</span></pre>
+      </div>
+      <div class="takeaway">Undo history is a stack because the most recent action must be reversed first.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 41 -->
+<section class="slide" data-section="data">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Abstract data types</div>
+      <h2>Queue: first in, first out</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 align-center">
+        <div>
+          <div class="sequence"><span class="item new">Request A</span><span class="item">Request B</span><span class="item">Request C</span></div>
+          <p class="direction" style="margin-top:14px">serve ← oldest request leaves from the left</p>
+          <p class="direction">new requests enter at the right →</p>
+        </div>
+        <pre class="code-block">from collections import deque
+
+requests = deque([
+    <span class="string">"Request A"</span>,
+    <span class="string">"Request B"</span>
+])
+requests.append(<span class="string">"Request C"</span>)
+requests.popleft()
+<span class="comment"># "Request A"</span></pre>
+      </div>
+      <div class="takeaway"><code class="inline">deque</code> is designed for efficient operations at both ends; <code class="inline">list.pop(0)</code> shifts remaining items.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 42 -->
+<section class="slide" data-section="data">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Mental models</div>
+      <h2>Hash maps support keyed lookup; trees support hierarchy</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>Hash map</h3>
+          <pre class="code-block">price_by_product = {
+    <span class="string">"P01"</span>: <span class="number">9.95</span>,
+    <span class="string">"P02"</span>: <span class="number">14.50</span>
+}
+
+price_by_product[<span class="string">"P02"</span>]</pre>
+          <p class="small">Python’s dictionary is a hash-map implementation.</p>
+        </div>
+        <div class="panel">
+          <h3>Tree</h3>
+          <pre class="code-block">course = {
+  <span class="string">"name"</span>: <span class="string">"Intro to CS"</span>,
+  <span class="string">"children"</span>: [
+    {<span class="string">"name"</span>: <span class="string">"Data"</span>},
+    {<span class="string">"name"</span>: <span class="string">"Algorithms"</span>}
+  ]
+}</pre>
+          <p class="small">Nested dictionaries and lists can represent parent–child paths.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 43 -->
+<section class="slide" data-section="data">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Records and datasets</div>
+      <h2>One record scales into a dataset</h2>
+    </header>
+    <main class="content">
+      <div class="flow">
+        <div class="flow-node"><b>One dictionary</b><span>One named record</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>List of dictionaries</b><span>Many records in sequence</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>DataFrame</b><span>Labeled rows and typed columns</span></div>
+      </div>
+      <pre class="code-block">customers = [
+    {<span class="string">"customer_id"</span>: <span class="string">"C01"</span>, <span class="string">"country"</span>: <span class="string">"US"</span>, <span class="string">"revenue"</span>: <span class="number">1200.50</span>},
+    {<span class="string">"customer_id"</span>: <span class="string">"C02"</span>, <span class="string">"country"</span>: <span class="string">"UK"</span>, <span class="string">"revenue"</span>: <span class="number">850.00</span>}
+]</pre>
+      <div class="takeaway">A DataFrame organizes records into labeled axes and inferred or declared column dtypes; conversion may also coerce values.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 44 -->
+<section class="slide" data-section="data">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · NumPy · Predict</div>
+      <h2>What does multiplication mean for a list and an array?</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block">[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>] * <span class="number">2</span></pre>
+        <pre class="code-block">np.array([<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]) * <span class="number">2</span></pre>
+      </div>
+      <div class="question">Predict both outputs. The syntax looks similar, but the structures define different operations.</div>
+      <div class="fragment answer"><code class="inline">[1, 2, 3, 1, 2, 3]</code> versus <code class="inline">array([2, 4, 6])</code>: sequence repetition versus elementwise numerical multiplication.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 45 -->
+<section class="slide" data-section="data">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · NumPy arrays</div>
+      <h2>An array carries values, a dtype, and a shape</h2>
+    </header>
+    <main class="content">
+      <div class="array-wrap">
+        <div class="array-grid">
+          <div class="array-cell">1</div><div class="array-cell">2</div><div class="array-cell">3</div>
+          <div class="array-cell">4</div><div class="array-cell">5</div><div class="array-cell">6</div>
+        </div>
+        <div class="array-meta">
+          <b>shape</b><span><code class="inline">(2, 3)</code> · two rows, three columns</span>
+          <b>dtype</b><span><code class="inline">int64</code> · explicit in this example</span>
+          <b>ndim</b><span><code class="inline">2</code> · two axes</span>
+          <b>size</b><span><code class="inline">6</code> · six elements</span>
+        </div>
+      </div>
+      <div class="takeaway">Shape describes organization; dtype describes how elements are interpreted and which numerical operations are available.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 46 -->
+<section class="slide" data-section="data">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · NumPy arrays</div>
+      <h2>Homogeneity creates both a cost and a payoff</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">Cost · coercion to a common dtype</div>
+          <pre class="code-block">np.array([<span class="number">1</span>, <span class="string">"two"</span>, <span class="number">3.0</span>])
+<span class="comment"># array(['1', 'two', '3.0'])</span></pre>
+        </div>
+        <div>
+          <div class="code-title">Payoff · vectorized operations</div>
+          <pre class="code-block">revenue * <span class="number">1.05</span>
+revenue &gt; revenue.mean()
+revenue[revenue &gt; revenue.mean()]</pre>
+        </div>
+      </div>
+      <div class="cols-2">
+        <div class="panel compact"><h3>Unlike a list</h3><p>An ordinary array has one dtype and does not grow with <code class="inline">append()</code>.</p></div>
+        <div class="panel compact"><h3>Why accept the restriction?</h3><p>One operation can apply consistently across many values.</p></div>
+      </div>
+      <div class="takeaway">NumPy trades general-purpose flexibility for explicit shape, dtype, and whole-array numerical behavior.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 47 -->
+<section class="slide" data-section="data">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · pandas DataFrames</div>
+      <h2>A DataFrame is a labeled two-dimensional table</h2>
+    </header>
+    <main class="content">
+      <div class="dataframe">
+        <div class="head">index</div><div class="head">customer_id</div><div class="head">country</div><div class="head">revenue</div><div class="head">cancelled</div>
+        <div class="idx">0</div><div>C01</div><div>US</div><div>1200.50</div><div>NaT</div>
+        <div class="idx">1</div><div>C02</div><div>UK</div><div>850.00</div><div>2026-05-01</div>
+        <div class="idx">dtype</div><div>string</div><div>string</div><div>float64</div><div>datetime64[ns]</div>
+      </div>
+      <p class="small muted">This example explicitly uses pandas string dtypes and parses the cancellation column as dates.</p>
+      <div class="cols-3">
+        <div class="panel compact"><h3>Labels</h3><p>Access rows and columns by position or name.</p></div>
+        <div class="panel compact"><h3>Column dtypes</h3><p>Different columns may use different types.</p></div>
+        <div class="panel compact"><h3>Table operations</h3><p>Filter, align, group, and handle missing values.</p></div>
+      </div>
+      <div class="takeaway">A DataFrame adds a table model; it is not merely a larger list.</div>
+    </main>
+  </div>
+</section>
+
+<!-- DataFrame operations -->
+<section class="slide" data-section="data">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · pandas DataFrames</div>
+      <h2>Position access and label access answer different questions</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">Position-based selection</div>
+          <pre class="code-block">df.iloc[:<span class="number">3</span>, :<span class="number">2</span>]
+<span class="comment"># first 3 rows,
+# first 2 columns</span></pre>
+        </div>
+        <div>
+          <div class="code-title">Label-based filtering</div>
+          <pre class="code-block">df.loc[
+    df[<span class="string">"revenue"</span>] &gt; <span class="number">1000</span>,
+    [<span class="string">"customer_id"</span>, <span class="string">"revenue"</span>]
+]</pre>
+        </div>
+      </div>
+      <div class="cols-2">
+        <div class="panel compact"><h3><code class="inline">iloc</code></h3><p>Use integer positions when the physical location matters.</p></div>
+        <div class="panel compact"><h3><code class="inline">loc</code></h3><p>Use row conditions and column labels when meaning matters.</p></div>
+      </div>
+      <div class="takeaway">A DataFrame supports both positional structure and named table semantics.</div>
+    </main>
+  </div>
+</section>
+
+<!-- DataFrame missingness and grouping -->
+<section class="slide" data-section="data">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · pandas DataFrames</div>
+      <h2>Column meaning determines valid table operations</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">Check missing values</div>
+          <pre class="code-block">df[<span class="string">"cancelled"</span>].isna()
+<span class="comment"># True where the date is missing</span></pre>
+        </div>
+        <div>
+          <div class="code-title">Group labels; aggregate numbers</div>
+          <pre class="code-block">df.groupby(<span class="string">"country"</span>)[
+    <span class="string">"revenue"</span>
+].mean()</pre>
+        </div>
+      </div>
+      <div class="rule-list">
+        <div class="rule"><b>Categories organize</b><span>Country and species labels define groups.</span></div>
+        <div class="rule"><b>Measurements aggregate</b><span>Revenue and physical measurements support means and totals.</span></div>
+      </div>
+      <div class="takeaway">Do not average identifiers or category names. Apply an operation only to columns whose meaning supports it.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 48 -->
+<section class="slide" data-section="data">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Same data, different views</div>
+      <h2>The useful representation depends on the question</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>View of the Iris dataset</th><th>Representation</th><th>Question it supports</th></tr></thead>
+        <tbody>
+          <tr><td>One flower row</td><td>Dictionary</td><td>What are this flower’s named fields?</td></tr>
+          <tr><td>One measurement column</td><td>List</td><td>What is the ordered sequence of values?</td></tr>
+          <tr><td>Species labels</td><td>Set</td><td>Which unique species are present?</td></tr>
+          <tr><td>Four measurement columns</td><td>NumPy array</td><td>What numerical operations apply to the matrix?</td></tr>
+          <tr><td>Complete labeled dataset</td><td>DataFrame</td><td>How do we filter and group by species?</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">A set discards order and multiplicity; an ndarray made from selected columns discards column labels and per-column dtype distinctions.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 49 -->
+<section class="slide" data-section="storage">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · File storage and I/O</div>
+      <h2>Saving translates an in-memory representation into a file representation</h2>
+    </header>
+    <main class="content">
+      <div class="flow">
+        <div class="flow-node"><b>Python object</b><span>Values, types, labels, references</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Serialize</b><span>Translate according to a file format</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>File bytes</b><span>Text or binary data plus format rules</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Deserialize</b><span>Parse into new runtime objects</span></div>
+      </div>
+      <div class="cols-2">
+        <div class="panel"><h3>Text formats</h3><p>Human-readable characters interpreted with an encoding. Examples: CSV and JSON.</p></div>
+        <div class="panel"><h3>Binary formats</h3><p>Structured bytes with format-specific metadata. Examples: NPY and Parquet.</p></div>
+      </div>
+      <div class="takeaway">These formats load new runtime objects and do not reconnect names to the objects that existed before saving.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 50 -->
+<section class="slide" data-section="storage">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · CSV</div>
+      <h2>CSV represents a rectangular text table without a built-in schema</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block">customer_id,zip_code,revenue
+C01,00123,1200.50
+C02,02139,850.00</pre>
+        <pre class="code-block">df = pd.read_csv(<span class="string">"customers.csv"</span>)
+
+df.dtypes
+<span class="comment"># reader infers each column type</span></pre>
+      </div>
+      <div class="cols-3">
+        <div class="panel compact"><h3>Preserves</h3><p>Rows, columns, and text fields.</p></div>
+        <div class="panel compact warning"><h3>Does not declare</h3><p>Exact types, constraints, or indexes.</p></div>
+        <div class="panel compact"><h3>Reader decides</h3><p>Infer types or follow an explicit schema.</p></div>
+      </div>
+      <div class="takeaway">CSV does not delete the source characters; a reader may interpret those characters using an unintended type.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 51 -->
+<section class="slide" data-section="storage">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · CSV · Predict</div>
+      <h2>What happens to the leading zeros when pandas infers a type?</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">Source text</div>
+          <pre class="code-block">customer_id,zip_code
+C01,00123
+C02,02139</pre>
+        </div>
+        <div>
+          <div class="code-title">Default load</div>
+          <pre class="code-block">pd.read_csv(<span class="string">"zips.csv"</span>)</pre>
+          <div class="question">What values and dtype will pandas produce?</div>
+        </div>
+      </div>
+      <div class="fragment answer"><strong>Likely result:</strong> <code class="inline">zip_code</code> becomes integers <code class="inline">123</code> and <code class="inline">2139</code>, typically dtype <code class="inline">int64</code>; <code class="inline">customer_id</code> normally infers as <code class="inline">object</code>. Preserve both as strings explicitly:
+        <code class="inline">dtype={"customer_id": "string", "zip_code": "string"}</code>.
+      </div>
+      <div class="takeaway">The file retains <code class="inline">00123</code>; the leading zeros disappear when the reader converts the field to an integer.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 52 -->
+<section class="slide" data-section="storage">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · JSON</div>
+      <h2>JSON mirrors nested dictionaries and lists</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block">record = {
+    <span class="string">"customer_id"</span>: <span class="string">"C01"</span>,
+    <span class="string">"tags"</span>: [<span class="string">"new"</span>, <span class="string">"email"</span>],
+    <span class="string">"active"</span>: <span class="keyword">True</span>,
+    <span class="string">"cancelled"</span>: <span class="keyword">None</span>
+}
+
+text = json.dumps(record)
+restored = json.loads(text)</pre>
+        <table class="compact">
+          <thead><tr><th>Python</th><th>JSON</th></tr></thead>
+          <tbody>
+            <tr><td>dict</td><td>object</td></tr>
+            <tr><td>list</td><td>array</td></tr>
+            <tr><td>str / number</td><td>string / number</td></tr>
+            <tr><td>True / False</td><td>true / false</td></tr>
+            <tr><td>None</td><td>null</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="takeaway">JSON object keys are strings. Sets, many NumPy values, and custom objects may require conversion; tuples encode as arrays and load back as lists.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 53 -->
+<section class="slide" data-section="storage">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Match format to structure</div>
+      <h2>Storage formats and systems preserve different contracts</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Choice</th><th>Natural in-memory shape</th><th>Usually preserves</th><th>Common limitation</th></tr></thead>
+        <tbody>
+          <tr><td>CSV</td><td>Rectangular table</td><td>Rows and text fields</td><td>No built-in schema</td></tr>
+          <tr><td>JSON</td><td>Nested dicts and lists</td><td>Nesting and basic value categories</td><td>Not arbitrary Python types</td></tr>
+          <tr><td>NPY</td><td>NumPy array</td><td>Array dtype and shape</td><td>NumPy-oriented, not human-readable</td></tr>
+          <tr><td>Parquet</td><td>Typed analytical table</td><td>Supported typed columns, nulls, columnar layout</td><td>Exact pandas dtypes may vary by engine</td></tr>
+          <tr><td>Database</td><td>Shared keyed records</td><td>Schema, constraints, indexes</td><td>More infrastructure than one file</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">Choose a format by what another program must be able to reconstruct later.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 54 -->
+<section class="slide" data-section="storage">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · File I/O</div>
+      <h2>A safe I/O workflow makes encoding and lifetime explicit</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">Write JSON</div>
+          <pre class="code-block">with open(
+    <span class="string">"customer.json"</span>,
+    <span class="string">"w"</span>,
+    encoding=<span class="string">"utf-8"</span>
+) as file:
+    json.dump(record, file)</pre>
+        </div>
+        <div>
+          <div class="code-title">Read JSON</div>
+          <pre class="code-block">with open(
+    <span class="string">"customer.json"</span>,
+    <span class="string">"r"</span>,
+    encoding=<span class="string">"utf-8"</span>
+) as file:
+    restored = json.load(file)</pre>
+        </div>
+      </div>
+      <div class="flow">
+        <div class="flow-node"><b>Path</b><span>Which resource?</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Mode</b><span>Read or write?</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Format</b><span>How is it parsed?</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Close</b><span><code class="inline">with</code> handles cleanup</span></div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 55 -->
+<section class="slide" data-section="storage">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Round-trip validation</div>
+      <h2>Loading is complete only after the reconstructed data is checked</h2>
+    </header>
+    <main class="content">
+      <div class="checklist">
+        <div class="check-row"><span class="num">1</span><b>Shape</b><span>Are the expected rows, columns, and dimensions present?</span></div>
+        <div class="check-row"><span class="num">2</span><b>Types</b><span>Did identifiers stay text and measurements stay numeric?</span></div>
+        <div class="check-row"><span class="num">3</span><b>Missing values</b><span>Were null and empty values reconstructed as intended?</span></div>
+        <div class="check-row"><span class="num">4</span><b>Constraints</b><span>Are IDs unique and categories within the allowed set?</span></div>
+      </div>
+      <div class="takeaway">Serialization preserves a selected set of properties. Validate the rest after deserialization.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 56 -->
+<section class="slide" data-section="storage">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Final decision checklist</div>
+      <h2>Ask six questions before choosing a representation</h2>
+    </header>
+    <main class="content">
+      <div class="checklist">
+        <div class="check-row"><span class="num">1</span><b>Meaning and operations</b><span>What does each value mean, and which operations are legitimate?</span></div>
+        <div class="check-row"><span class="num">2</span><b>Shape</b><span>Scalar, sequence, table, or higher-dimensional array?</span></div>
+        <div class="check-row"><span class="num">3</span><b>Container properties</b><span>Do order, mutation, or uniqueness matter?</span></div>
+        <div class="check-row"><span class="num">4</span><b>Access</b><span>By position, key or label, membership, or hierarchy?</span></div>
+        <div class="check-row"><span class="num">5</span><b>Homogeneity</b><span>Must values share a dtype for numerical work?</span></div>
+        <div class="check-row"><span class="num">6</span><b>Storage</b><span>Which format preserves what must survive?</span></div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 57 -->
+<section class="slide" data-section="storage">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Capstone · Explain every choice</div>
+      <h2>Design a representation for a customer dataset</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>Requirements</h3>
+          <ul>
+            <li>IDs such as <code class="inline">C001</code></li>
+            <li>Revenue, including a valid zero</li>
+            <li>Optional cancellation date</li>
+            <li>Unique campaign tags</li>
+            <li>Fast lookup by customer ID</li>
+            <li>Column analysis and a reliable save</li>
+          </ul>
+        </div>
+        <div class="question">Choose scalar types, native structures, an analytical structure, and a storage format. Justify each choice by a required property.</div>
+      </div>
+      <div class="fragment answer"><strong>One defensible design:</strong> string ID; float revenue for approximate analysis, or integer cents/<code class="inline">Decimal</code> for exact accounting; an ISO date string/date object or <code class="inline">None</code>; a set of tags; dictionary lookup by ID; and a DataFrame. Before Parquet, convert tag sets to sorted lists or a normalized table, save supported column types, then validate after loading.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 58 -->
+<section class="slide" data-section="storage">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Lesson 1 · Conclusion</div>
+      <h2>Representation is a design decision</h2>
+    </header>
+    <main class="content centered">
+      <div class="big-claim" style="font-size:42px">
+        Meaning guides the <span style="color:var(--teal)">type</span>.<br>
+        Required operations guide the <span style="color:var(--amber)">structure</span>.<br>
+        References determine which <span style="color:var(--purple)">mutations are shared</span>.<br>
+        File formats determine which properties <span style="color:var(--slate)">survive a round trip</span>.
+      </div>
+      <p class="lead">Next: Lesson 2 applies these ideas at the file boundary with pandas.</p>
+    </main>
+  </div>
+</section>
+
+<footer id="hud">
+  <span class="course">Lesson 1 · Intro to CS</span>
+  <div id="section-map" aria-label="Lesson sections">
+    <span data-section="intro">Problem</span>
+    <span data-section="types">Values &amp; types</span>
+    <span data-section="runtime">Python runtime</span>
+    <span data-section="structures">Structures</span>
+    <span data-section="data">ADTs &amp; data</span>
+    <span data-section="storage">Storage &amp; I/O</span>
+  </div>
+  <div class="nav-controls">
+    <button id="prev" type="button" aria-label="Previous slide">‹</button>
+    <button id="next" type="button" aria-label="Next slide">›</button>
+    <label id="count" for="slide-number">
+      <input id="slide-number" type="text" value="1" inputmode="numeric" pattern="[0-9]*" aria-label="Jump to slide"> / <span id="slide-total">62</span>
+    </label>
+  </div>
+</footer>
+</div>
+
+<script>
+(function () {
+  var stage = document.getElementById("stage");
+  var slides = Array.prototype.slice.call(document.querySelectorAll(".slide"));
+  var sectionItems = Array.prototype.slice.call(document.querySelectorAll("#section-map span"));
+  var slideNumber = document.getElementById("slide-number");
+  var slideTotal = document.getElementById("slide-total");
+  var prevButton = document.getElementById("prev");
+  var nextButton = document.getElementById("next");
+  var current = 0;
+  var sectionColors = {
+    intro: "#1e3a5f",
+    types: "#0f766e",
+    runtime: "#6d4c7d",
+    structures: "#9a5b13",
+    data: "#1d6f8a",
+    storage: "#475569"
+  };
+
+  function fit() {
+    var viewportWidth = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+    var viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    var scale = Math.min(viewportWidth / 1280, viewportHeight / 720) * 0.97;
+    stage.style.transform = "translate(-50%, -50%) scale(" + scale + ")";
+  }
+
+  function slideFromHash() {
+    var match = (location.hash || "").match(/slide-(\d+)/);
+    if (!match) return 0;
+    return Math.max(0, Math.min(slides.length - 1, parseInt(match[1], 10) - 1));
+  }
+
+  function setHash(index) {
+    var hash = "#slide-" + (index + 1);
+    if (location.hash !== hash && history.replaceState) {
+      history.replaceState(null, "", hash);
+    }
+  }
+
+  function resetFragments(slide) {
+    Array.prototype.forEach.call(slide.querySelectorAll(".fragment"), function (fragment) {
+      fragment.classList.remove("visible");
+    });
+  }
+
+  function show(index, updateHash) {
+    current = Math.max(0, Math.min(slides.length - 1, index));
+    slides.forEach(function (slide, i) {
+      var active = i === current;
+      slide.classList.toggle("active", active);
+      slide.setAttribute("aria-hidden", active ? "false" : "true");
+      if ("inert" in slide) slide.inert = !active;
+      if (active) resetFragments(slide);
+    });
+
+    var activeSlide = slides[current];
+    var title = activeSlide.querySelector("h1, h2");
+    activeSlide.setAttribute("role", "group");
+    activeSlide.setAttribute("aria-roledescription", "slide");
+    activeSlide.setAttribute("aria-label", (current + 1) + " of " + slides.length + ": " + (title ? title.textContent.trim() : ""));
+
+    var section = activeSlide.getAttribute("data-section");
+    document.documentElement.style.setProperty("--active-section-color", sectionColors[section] || sectionColors.intro);
+    sectionItems.forEach(function (item) {
+      item.classList.toggle("on", item.getAttribute("data-section") === section);
+    });
+
+    slideNumber.value = current + 1;
+    slideNumber.max = slides.length;
+    slideTotal.textContent = slides.length;
+    prevButton.disabled = current === 0;
+    nextButton.disabled = current === slides.length - 1 && !activeSlide.querySelector(".fragment:not(.visible)");
+    if (updateHash !== false) setHash(current);
+  }
+
+  function jumpToRequestedSlide() {
+    var requested = parseInt(slideNumber.value, 10);
+    if (Number.isNaN(requested)) {
+      slideNumber.value = current + 1;
+      return;
+    }
+    show(requested - 1);
+  }
+
+  function revealNext() {
+    var hidden = slides[current].querySelector(".fragment:not(.visible)");
+    if (!hidden) return false;
+    hidden.classList.add("visible");
+    nextButton.disabled = current === slides.length - 1 && !slides[current].querySelector(".fragment:not(.visible)");
+    return true;
+  }
+
+  function hideLastReveal() {
+    var visible = slides[current].querySelectorAll(".fragment.visible");
+    if (!visible.length) return false;
+    visible[visible.length - 1].classList.remove("visible");
+    nextButton.disabled = false;
+    return true;
+  }
+
+  function advance() {
+    if (!revealNext()) show(current + 1);
+  }
+
+  function retreat() {
+    if (!hideLastReveal()) show(current - 1);
+  }
+
+  function isInteractiveTarget(target) {
+    return Boolean(target.closest("button, input, textarea, select, a, [contenteditable='true']"));
+  }
+
+  document.addEventListener("keydown", function (event) {
+    if (event.repeat || isInteractiveTarget(event.target)) return;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown" || event.key === "PageDown" || event.key === " ") {
+      event.preventDefault();
+      advance();
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp" || event.key === "PageUp") {
+      event.preventDefault();
+      retreat();
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      show(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      show(slides.length - 1);
+    } else if ((event.key === "f" || event.key === "F") && document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen();
+    }
+  });
+
+  prevButton.addEventListener("click", retreat);
+  nextButton.addEventListener("click", advance);
+  slideNumber.addEventListener("change", jumpToRequestedSlide);
+  slideNumber.addEventListener("keydown", function (event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      jumpToRequestedSlide();
+      slideNumber.blur();
+    }
+  });
+  window.addEventListener("resize", fit);
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", fit);
+  window.addEventListener("hashchange", function () {
+    show(slideFromHash(), false);
+  });
+
+  fit();
+  show(slideFromHash(), false);
+})();
+</script>
+</body>
+</html>

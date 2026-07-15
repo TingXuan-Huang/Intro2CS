@@ -1,0 +1,2625 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 8 · SQL Fundamentals</title>
+<style>
+  :root {
+    --paper: #f8fafc;
+    --surface: #ffffff;
+    --surface-2: #edf2f7;
+    --ink: #172033;
+    --muted: #536178;
+    --line: #c9d4e2;
+    --navy: #1e3a5f;
+    --blue: #1e5a89;
+    --teal: #0f766e;
+    --purple: #6d4c7d;
+    --amber: #986018;
+    --cyan: #176b80;
+    --green: #176b43;
+    --maroon: #8a3f5f;
+    --slate: #475569;
+    --red: #b42318;
+    --red-bg: #fff1f0;
+    --green-bg: #edf8f2;
+    --yellow-bg: #fff7df;
+    --font-sans: "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif;
+    --font-mono: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; }
+  body {
+    overflow: hidden;
+    background: #111827;
+    color: var(--ink);
+    font-family: var(--font-sans);
+  }
+  a { color: var(--blue); }
+  code, pre, .mono { font-family: var(--font-mono); }
+
+  #stage {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 1280px;
+    height: 720px;
+    transform-origin: center center;
+    overflow: hidden;
+    background: var(--paper);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .48);
+  }
+
+  .slide {
+    --section-color: var(--navy);
+    position: absolute;
+    inset: 0;
+    display: none;
+    background: var(--paper);
+  }
+  .slide.active { display: block; }
+  .slide[data-section="intro"] { --section-color: var(--navy); }
+  .slide[data-section="clauses"] { --section-color: var(--teal); }
+  .slide[data-section="groups"] { --section-color: var(--blue); }
+  .slide[data-section="nulls"] { --section-color: var(--amber); }
+  .slide[data-section="order"] { --section-color: var(--purple); }
+  .slide[data-section="finish"] { --section-color: var(--slate); }
+  .slide::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 7px;
+    background: var(--section-color);
+  }
+
+  .slide-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 46px 72px 78px;
+  }
+  .slide-header { margin-bottom: 20px; }
+  .section-label {
+    margin-bottom: 8px;
+    color: var(--section-color);
+    font-size: 15px;
+    font-weight: 760;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  h1 {
+    max-width: 1080px;
+    font-size: 58px;
+    line-height: 1.08;
+    letter-spacing: -.025em;
+    font-weight: 740;
+  }
+  h2 {
+    max-width: 1120px;
+    font-size: 39px;
+    line-height: 1.13;
+    letter-spacing: -.018em;
+    font-weight: 730;
+  }
+  h3 {
+    font-size: 23px;
+    line-height: 1.23;
+    font-weight: 730;
+  }
+  p, li { font-size: 20px; line-height: 1.4; }
+  .lead {
+    max-width: 930px;
+    color: var(--muted);
+    font-size: 27px;
+    line-height: 1.42;
+  }
+  .small { font-size: 17px; line-height: 1.4; }
+  .tiny { font-size: 14px; line-height: 1.35; }
+  .muted { color: var(--muted); }
+  .strong { color: var(--ink); font-weight: 730; }
+  code.inline {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #e8eef5;
+    color: #1d3654;
+    font-size: .9em;
+  }
+
+  .content {
+    min-height: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .centered {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  .cols-2, .cols-3, .cols-4 {
+    min-height: 0;
+    display: grid;
+    gap: 20px;
+    align-items: stretch;
+  }
+  .cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ratio-3-2 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+  .ratio-2-3 { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+  .ratio-5-4 { grid-template-columns: minmax(0, 5fr) minmax(0, 4fr); }
+  .align-center { align-items: center; }
+
+  .panel {
+    min-width: 0;
+    padding: 18px 21px;
+    border: 1px solid var(--line);
+    border-top: 4px solid var(--section-color);
+    background: var(--surface);
+  }
+  .panel h3 { margin-bottom: 9px; }
+  .panel p + p, .panel ul, .panel ol { margin-top: 8px; }
+  .panel ul, .panel ol { padding-left: 23px; }
+  .panel li + li { margin-top: 5px; }
+  .panel.compact { padding: 13px 16px; }
+  .panel.compact p, .panel.compact li { font-size: 17px; }
+  .panel.warning { border-top-color: var(--red); background: var(--red-bg); }
+  .panel.good { border-top-color: var(--green); background: var(--green-bg); }
+
+  .takeaway {
+    margin-top: auto;
+    padding: 12px 16px;
+    border-left: 5px solid var(--section-color);
+    background: #e9f0f6;
+    color: #24364d;
+    font-size: 19px;
+    line-height: 1.4;
+  }
+  .question {
+    padding: 17px 21px;
+    border: 2px solid var(--blue);
+    background: #edf5fb;
+    color: #173b5d;
+    font-size: 23px;
+    line-height: 1.36;
+    font-weight: 680;
+  }
+  .answer {
+    padding: 15px 19px;
+    border-left: 5px solid var(--green);
+    background: var(--green-bg);
+    font-size: 19px;
+    line-height: 1.4;
+  }
+  .fragment { visibility: hidden; opacity: 0; }
+  .fragment.visible { visibility: visible; opacity: 1; }
+
+  .code-title {
+    margin-bottom: 7px;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 740;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .code-block, .output-block, .pseudo-block {
+    min-width: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    border: 1px solid var(--line);
+    background: #0f172a;
+    color: #e7edf5;
+    padding: 15px 18px;
+    font-family: var(--font-mono);
+    font-size: 17px;
+    line-height: 1.45;
+  }
+  .output-block, .pseudo-block { background: var(--surface); color: #203047; }
+  .pseudo-block { border-left: 4px solid var(--section-color); }
+  .comment { color: #9fb0c5; }
+  .string { color: #8dd3c7; }
+  .number { color: #f4c27a; }
+  .keyword { color: #c6a7e2; }
+  .error { color: #ef6b62; font-weight: 730; }
+  .ok { color: #7ad3a2; font-weight: 730; }
+  .output-block .comment { color: #8494a9; }
+  .output-block .error { color: var(--red); }
+  .output-block .ok { color: var(--green); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    font-size: 18px;
+    line-height: 1.3;
+  }
+  th {
+    padding: 10px 12px;
+    border-top: 2px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+    color: #34445a;
+    background: #e8eef4;
+    text-align: left;
+    font-size: 15px;
+    line-height: 1.24;
+    letter-spacing: .052em;
+    text-transform: uppercase;
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: 2px solid var(--ink); }
+  td:first-child { font-weight: 700; }
+  table.compact { font-size: 16px; }
+  table.compact th { font-size: 14px; }
+  table.compact td { padding-top: 7px; padding-bottom: 7px; }
+
+  .flow {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .flow-node {
+    min-width: 0;
+    flex: 1;
+    padding: 13px;
+    border: 1px solid #a9b6c6;
+    background: var(--surface);
+  }
+  .flow-node b {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--section-color);
+    font-size: 17px;
+  }
+  .flow-node span { font-size: 16px; line-height: 1.3; }
+  .flow-arrow {
+    align-self: center;
+    color: #66758a;
+    font-size: 25px;
+    font-weight: 700;
+  }
+
+  .rule-list { display: grid; gap: 12px; }
+  .rule {
+    display: grid;
+    grid-template-columns: 205px minmax(0, 1fr);
+    gap: 19px;
+    align-items: baseline;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .rule b { color: var(--section-color); font-size: 21px; }
+  .rule span { font-size: 19px; line-height: 1.35; }
+
+  .big-claim {
+    max-width: 1010px;
+    font-size: 45px;
+    line-height: 1.24;
+    font-weight: 730;
+    letter-spacing: -.018em;
+  }
+
+  .number-strip {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+  }
+  .number-box {
+    min-width: 120px;
+    padding: 18px 15px;
+    border: 2px solid #9bacc0;
+    background: var(--surface);
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 25px;
+    font-weight: 720;
+  }
+  .number-box small {
+    display: block;
+    margin-top: 5px;
+    color: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .trace {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+  }
+  .trace-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 38px;
+  }
+  .trace-status {
+    min-width: 0;
+    flex: 1;
+    color: #26384f;
+    font-size: 18px;
+    line-height: 1.32;
+    font-weight: 650;
+  }
+  .trace-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  .trace-reset {
+    min-width: 76px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .trace-reset:focus-visible { outline: 3px solid #4e8fc1; outline-offset: 2px; }
+  .trace-board {
+    position: relative;
+    min-height: 160px;
+    padding: 28px 18px 16px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .array-strip {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding-top: 28px;
+  }
+  .array-cell {
+    position: relative;
+    width: 92px;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #9bacbf;
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 720;
+    transition: transform .2s ease, background-color .2s ease, border-color .2s ease, opacity .2s ease;
+  }
+  .array-cell::after {
+    content: attr(data-index);
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -22px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+  }
+  .array-cell.is-current { border-color: var(--blue); box-shadow: inset 0 0 0 2px var(--blue); }
+  .array-cell.is-best { border-color: var(--green); background: var(--green-bg); }
+  .array-cell.is-min { border-color: var(--amber); background: var(--yellow-bg); }
+  .array-cell.is-sorted { border-color: var(--teal); background: #e9f7f5; }
+  .array-cell.is-checked { background: #eef2f7; }
+  .array-cell.is-discarded { opacity: .28; }
+  .array-cell.is-found { border-color: var(--green); background: var(--green-bg); }
+  .array-cell.is-found::before {
+    content: "OK";
+    position: absolute;
+    top: -27px;
+    color: var(--green);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 760;
+    letter-spacing: .08em;
+  }
+  .trace-pointer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 92px;
+    color: var(--blue);
+    text-align: center;
+    font-size: 14px;
+    font-weight: 740;
+    transition: transform .22s ease;
+  }
+  .trace-pointer::after { content: "↓"; display: block; font-size: 22px; line-height: 1; }
+  .trace-variables {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 27px;
+  }
+  .trace-variable {
+    min-width: 140px;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    font-family: var(--font-mono);
+    font-size: 15px;
+    text-align: center;
+  }
+  .trace-transcript { font-size: 14px; }
+  .trace-transcript th { padding: 6px 8px; font-size: 12px; }
+  .trace-transcript td { padding: 5px 8px; }
+  .trace-transcript tr.is-active td { background: #e9f0f6; }
+
+  .flowchart-wrap {
+    position: relative;
+    min-height: 360px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .flowchart-svg { width: 100%; height: 360px; display: block; }
+  .flowchart-svg .fc-edge {
+    fill: none;
+    stroke: #94a3b8;
+    stroke-width: 2;
+    transition: stroke .2s ease, stroke-width .2s ease, opacity .2s ease;
+  }
+  .flowchart-svg .fc-node rect,
+  .flowchart-svg .fc-node path {
+    fill: #ffffff;
+    stroke: #8294aa;
+    stroke-width: 2;
+    transition: fill .2s ease, stroke .2s ease, stroke-width .2s ease;
+  }
+  .flowchart-svg .fc-node text {
+    fill: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 650;
+    text-anchor: middle;
+    dominant-baseline: middle;
+  }
+  .flowchart-svg .fc-node.is-active rect,
+  .flowchart-svg .fc-node.is-active path {
+    fill: #e8f2fa;
+    stroke: var(--blue);
+    stroke-width: 4;
+  }
+  .flowchart-svg .fc-edge.is-active { stroke: var(--blue); stroke-width: 4; }
+
+  #hud {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    height: 54px;
+    display: grid;
+    grid-template-columns: 190px 1fr 168px;
+    align-items: center;
+    padding: 0 25px;
+    border-top: 1px solid #b8c4d2;
+    background: #edf1f5;
+    color: #4a596d;
+  }
+  #hud .course {
+    font-size: 13px;
+    font-weight: 730;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  #section-map {
+    display: flex;
+    justify-content: center;
+    gap: 13px;
+  }
+  #section-map span {
+    padding: 5px 0 4px;
+    border-bottom: 3px solid transparent;
+    font-size: 10.5px;
+    font-weight: 730;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+    opacity: .38;
+  }
+  #section-map span.on {
+    border-bottom-color: var(--active-section-color, var(--navy));
+    color: var(--ink);
+    opacity: 1;
+  }
+  .nav-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .nav-controls button {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .nav-controls button:disabled { opacity: .35; cursor: default; }
+  .nav-controls button:focus-visible { outline: 3px solid #4e8fc1; outline-offset: 2px; }
+  #count {
+    min-width: 62px;
+    text-align: right;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  #slide-number {
+    width: 34px;
+    padding: 2px 3px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  #slide-number:focus-visible {
+    outline: 3px solid #4e8fc1;
+    outline-offset: 2px;
+  }
+  #rotate-note {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    padding: 28px;
+    background: #111827;
+    color: white;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 22px;
+    line-height: 1.4;
+  }
+
+  @media (max-width: 900px) and (orientation: portrait) {
+    #rotate-note { display: flex; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .array-cell, .trace-pointer,
+    .flowchart-svg .fc-edge, .flowchart-svg .fc-node rect,
+    .flowchart-svg .fc-node path { transition-duration: 0s !important; }
+  }
+  @media print {
+    @page { size: 13.333in 7.5in; margin: 0; }
+    html, body {
+      width: auto;
+      height: auto;
+      overflow: visible;
+      background: white;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    #stage {
+      position: relative;
+      left: auto;
+      top: auto;
+      width: auto;
+      height: auto;
+      transform: none !important;
+      box-shadow: none;
+      overflow: visible;
+    }
+    .slide {
+      position: relative;
+      display: block !important;
+      width: 13.333in;
+      height: 7.5in;
+      break-after: page;
+      page-break-after: always;
+    }
+    .slide:last-of-type { break-after: auto; page-break-after: auto; }
+    .fragment { visibility: visible !important; opacity: 1 !important; }
+    .trace-reset { display: none !important; }
+    #hud, #rotate-note { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="rotate-note">Rotate your device to landscape for presentation view.</div>
+<div id="stage">
+
+
+<!-- 1 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Intro to CS · Lesson 8</div>
+      <h1>SQL Fundamentals: declare it, don't describe it</h1>
+    </header>
+    <main class="content centered">
+      <p class="lead"><code>SELECT</code>, <code>WHERE</code>, <code>ORDER BY</code>, <code>LIMIT</code>, aggregates and <code>GROUP BY</code>, the truth about <code>NULL</code>, and the order a query <em>actually</em> runs in</p>
+      <div class="question" style="max-width:990px">Lesson 7 gave your data a durable home — tables, schemas, keys. Today you learn the language spoken at that door. And every sentence of it is a pandas line you already wrote in Lesson 2, wearing new clothes.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · The bridge from Lessons 2 and 7</div>
+      <h2>Same questions, new language</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>What you already have</h3>
+          <p><strong>Lesson 2:</strong> masks, <code class="inline">sort_values</code>, <code class="inline">head</code>, <code class="inline">groupby</code> — you answered questions about the retail data in pandas.</p>
+          <p><strong>Lesson 7:</strong> the same data now lives in a SQLite file with a schema the engine <em>enforces</em>.</p>
+        </div>
+        <div class="panel good">
+          <h3>What you build today</h3>
+          <p>The same questions — top prices, revenue by country, revenue by month — asked <strong>in SQL</strong>, the language the database itself speaks.</p>
+          <p class="muted">pandas is now the analogy source: every new keyword gets pointed at the pandas line that does the same thing.</p>
+        </div>
+      </div>
+      <div class="question">Every SQL query you write today has a pandas twin you already wrote. When a keyword looks new, find the twin and the mystery evaporates.</div>
+      <div class="takeaway">Nothing about the <em>data</em> changes today. What changes is how you <em>ask</em>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · The one genuinely new idea</div>
+      <h2>Loops describe the steps; SQL declares the result</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>Lesson 4 — describing</h3>
+          <p>"Start a running total, loop over the rows, add each one." <strong>You</strong> chose the steps; the machine obeyed them.</p>
+        </div>
+        <div class="panel good">
+          <h3>Lesson 8 — declaring</h3>
+          <p>"Give me these columns, where this condition holds, in this order, at most this many." <strong>The engine</strong> chooses the steps.</p>
+        </div>
+      </div>
+      <div class="pseudo-block">Lesson 2 (pandas)                     Lesson 8 (SQL)
+-----------------                     --------------
+df[["a", "b"]]                        SELECT a, b
+df[df["x"] > 5]                       WHERE x > 5
+df.sort_values("x")                   ORDER BY x
+df.head(10)                           LIMIT 10
+df.groupby("k")["v"].sum()            GROUP BY k  /  SUM(v)</div>
+      <div class="takeaway">The course through-line — <em>declare the properties, let the engine run the algorithm</em> — stops being a slogan today. It becomes an entire language.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · The lesson arc</div>
+      <h2>Four units: ask, summarize, survive the holes, read like the engine</h2>
+    </header>
+    <main class="content">
+      <div class="flow" style="width:100%">
+        <div class="flow-node"><b>1 · Clauses</b><span>SELECT · WHERE · ORDER BY · LIMIT</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>2 · Groups</b><span>aggregates · GROUP BY · HAVING</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>3 · NULL &amp; dates</b><span>three-valued logic · strftime</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>4 · Reading queries</b><span>the real evaluation order</span></div>
+      </div>
+      <div class="cols-4">
+        <div class="panel compact"><h3>Unit 1</h3><p>the four workhorse keywords, each beside its pandas twin</p></div>
+        <div class="panel compact"><h3>Unit 2</h3><p>collapse many rows to one; the WHERE vs HAVING trap</p></div>
+        <div class="panel compact"><h3>Unit 3</h3><p>why <code class="inline">&lt;&gt;</code> silently drops rows; revenue by month</p></div>
+        <div class="panel compact"><h3>Unit 4</h3><p>predict a query's output before running it</p></div>
+      </div>
+      <div class="takeaway">Units 1–2 are translation. Units 3–4 are the parts that decide whether your numbers are <em>right</em>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · Setup</div>
+      <h2>Everything runs offline — SQLite ships inside Python</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="keyword">import</span> sqlite3
+<span class="keyword">from</span> pathlib <span class="keyword">import</span> Path
+<span class="keyword">import</span> pandas <span class="keyword">as</span> pd
+
+<span class="comment"># A SQLite database is one file. Runtime artifacts live</span>
+<span class="comment"># under ../data/ (gitignored) — Lesson 2's discipline.</span>
+Path(<span class="string">"../data"</span>).mkdir(exist_ok=<span class="keyword">True</span>)
+DB_PATH = Path(<span class="string">"../data"</span>) / <span class="string">"lesson8_retail.sqlite"</span></pre>
+        <div class="panel">
+          <h3>Three facts about the setup</h3>
+          <ul>
+            <li><code class="inline">sqlite3</code> ships with Python — no install, no server, no network.</li>
+            <li>The whole database is <strong>a single file on disk</strong> (Lesson 7's point, still true).</li>
+            <li>Every query runs through <code class="inline">pd.read_sql</code>, so results print as the tidy DataFrames you already know.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">No new tooling. The database engine has been inside your Python all along.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · Materials</div>
+      <h2>Two to three sessions, one notebook, one exercise folder</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel compact"><h3>Session ①</h3><p>Units 1–2: the four clauses, then aggregates, <code class="inline">GROUP BY</code>, and the <code class="inline">HAVING</code> vs <code class="inline">WHERE</code> distinction.</p></div>
+        <div class="panel compact"><h3>Session ②</h3><p>Units 3–4: <code class="inline">NULL</code> honestly, dates and monthly buckets, then the logical evaluation order and six predict-the-output queries.</p></div>
+      </div>
+      <div class="cols-2">
+        <div class="panel compact"><h3>Practice · <span class="mono">lesson8_exercise/</span></h3><p>Write <strong>monthly revenue by country</strong> twice — once as a SQL string, once in pandas — and let <code class="inline">assert_frame_equal</code> prove the twins agree. Graded by pytest, offline.</p></div>
+        <div class="panel compact"><h3>The data</h3><p>The same pinned 60-row UCI Online Retail extract from Lessons 2 and 4 — <code class="inline">transactions</code> and <code class="inline">customers</code> — loaded into SQLite in the first cells.</p></div>
+      </div>
+      <div class="takeaway">Run the notebook top to bottom — later cells reuse the database and helpers built in the first few.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide" data-section="clauses">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · SELECT, WHERE, ORDER BY, LIMIT</div>
+      <h2>Four keywords answer most day-one questions</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>SQL keyword</th><th>Declares…</th><th>Lesson 2 twin</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">SELECT</td><td>which columns come back</td><td><code class="inline">df[["a", "b"]]</code></td></tr>
+          <tr><td class="mono">WHERE</td><td>which rows qualify (a condition)</td><td>a boolean mask</td></tr>
+          <tr><td class="mono">ORDER BY</td><td>the order of the rows</td><td><code class="inline">df.sort_values</code></td></tr>
+          <tr><td class="mono">LIMIT</td><td>how many rows to keep</td><td><code class="inline">df.head</code></td></tr>
+        </tbody>
+      </table>
+      <div class="question">Read each keyword as a <strong>declaration</strong>: you name the property you want, the database delivers rows that satisfy it. You never write the loop.</div>
+      <div class="takeaway">Four properties — columns, condition, order, count. Together they are a complete sentence.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide" data-section="clauses">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Building the database</div>
+      <h2><code>to_sql</code> writes a table; <code>read_sql</code> reads one back</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">transactions = pd.read_csv(<span class="string">"../course_data/lesson2_transactions_base.csv"</span>)
+customers    = pd.read_csv(<span class="string">"../course_data/lesson2_customers_base.csv"</span>)
+
+con = sqlite3.connect(DB_PATH)
+transactions.to_sql(<span class="string">"transactions"</span>, con, index=<span class="keyword">False</span>, if_exists=<span class="string">"replace"</span>)
+customers.to_sql(<span class="string">"customers"</span>, con, index=<span class="keyword">False</span>, if_exists=<span class="string">"replace"</span>)
+
+<span class="keyword">def</span> sql(query):
+    <span class="string">"""Run a query against the retail database; return a DataFrame."""</span>
+    <span class="keyword">return</span> pd.read_sql(query, con)</pre>
+        <div>
+          <pre class="output-block">tables in the database:
+  ['customers', 'transactions']
+transactions rows: 60
+customers rows   : 10</pre>
+          <div class="panel compact" style="margin-top:14px"><p><code class="inline">to_sql</code> and <code class="inline">read_sql</code> are mirror images: DataFrame → table, table → DataFrame. The <code class="inline">sql()</code> helper makes every result land as a pandas object.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">A table is a DataFrame that lives in a file: rows and typed columns. The data is the same 60 rows — only the asking changes.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="slide" data-section="clauses">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1.1 · SELECT and LIMIT</div>
+      <h2>Choose columns, cap the rows</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">pandas twin — Lesson 2</div>
+          <pre class="code-block">transactions[[<span class="string">"transaction_id"</span>, <span class="string">"product"</span>,
+              <span class="string">"unit_price"</span>]].head(<span class="number">5</span>)</pre>
+          <div class="code-title" style="margin-top:12px">SQL — this lesson</div>
+          <pre class="code-block">sql(<span class="string">"""
+    SELECT transaction_id, product, unit_price
+    FROM transactions
+    LIMIT 5
+"""</span>)</pre>
+        </div>
+        <div>
+          <pre class="output-block" style="font-size:14.5px">transaction_id                      product  unit_price
+     536381-01    COOK WITH WINE METAL SIGN        1.95
+     536381-02 YOU'RE CONFUSING ME METAL SIGN      1.69
+     536381-03   GIN + TONIC DIET METAL SIGN       2.10
+     536381-04 DOORMAT FANCY FONT HOME SWEET…      6.75
+     536381-05     RETROSPOT LARGE MILK JUG        4.95</pre>
+          <div class="panel compact" style="margin-top:12px"><p><code class="inline">SELECT col1, col2</code> is <code class="inline">df[["col1","col2"]]</code>; <code class="inline">SELECT *</code> is the whole frame; <code class="inline">LIMIT 5</code> is <code class="inline">head(5)</code>.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Same five rows, same three columns — one asked with brackets, one declared in words.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="slide" data-section="clauses">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1.1 · Checkpoint</div>
+      <h2>What did you <em>not</em> write?</h2>
+    </header>
+    <main class="content">
+      <div class="question">"Fetch at most five rows" — in Lesson 4 that would have been a loop with a counter and a break. Look at the SQL again. Where is the loop? Where is the counter?</div>
+      <div class="answer fragment">
+        There isn't one — and that is the point. You declared <em>"at most five"</em> and the engine chose how to satisfy it. In Lesson 4 you described the procedure step by step; in Lesson 2 pandas vectorized the steps but you still stitched them together; in SQL you state only the <strong>properties of the result</strong>. The engine picks the algorithm — and, as Lesson 7 hinted, it may even use an index to avoid scanning at all.
+      </div>
+      <div class="takeaway">Declaring instead of describing is the whole personality difference between SQL and everything you have written so far.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="slide" data-section="clauses">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1.2 · WHERE</div>
+      <h2>Keep the rows that satisfy a condition</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">pandas twin — a boolean mask</div>
+          <pre class="code-block">transactions[transactions[<span class="string">"quantity"</span>] &gt;= <span class="number">6</span>][
+    [<span class="string">"transaction_id"</span>, <span class="string">"quantity"</span>, <span class="string">"source_country"</span>]
+].head()</pre>
+          <div class="code-title" style="margin-top:12px">SQL — the mask, written as a condition</div>
+          <pre class="code-block">sql(<span class="string">"""
+    SELECT transaction_id, quantity, source_country
+    FROM transactions
+    WHERE quantity &gt;= 6
+"""</span>)</pre>
+        </div>
+        <div>
+          <pre class="output-block">transaction_id  quantity  source_country
+     536381-04        10  United Kingdom
+     536540-10         6  EIRE
+     536540-11         6  EIRE
+     536540-12        12  EIRE
+     536540-13        24  EIRE
+     …               (21 rows total)</pre>
+          <div class="panel compact" style="margin-top:12px"><p><code class="inline">WHERE quantity &gt;= 6</code> is exactly <code class="inline">df[df["quantity"] &gt;= 6]</code> — the mask from Lesson 2, spelled as a sentence.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">21 of the 60 rows qualify. You stated the property; the engine found the rows.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="slide" data-section="clauses">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1.2 · Combining conditions</div>
+      <h2>AND, OR, NOT — the words pandas wrote as symbols</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">sql(<span class="string">"""
+    SELECT transaction_id, quantity, unit_price, source_country
+    FROM transactions
+    WHERE quantity &gt;= 6 AND source_country = 'EIRE'
+"""</span>)</pre>
+        <pre class="output-block">transaction_id  quantity  unit_price
+     536540-10         6        2.25
+     536540-11         6        2.25
+     536540-12        12        1.69
+     536540-13        24        1.25
+(all four rows: source_country EIRE)</pre>
+      </div>
+      <div class="cols-2">
+        <div class="panel compact"><h3>The translation table</h3><p>pandas <code class="inline">&amp;</code> / <code class="inline">|</code> / <code class="inline">~</code> become SQL <code class="inline">AND</code> / <code class="inline">OR</code> / <code class="inline">NOT</code> — spelled out as words.</p></div>
+        <div class="panel compact good"><h3>And no parentheses gymnastics</h3><p>No <code class="inline">(mask1) &amp; (mask2)</code> precedence traps — combined conditions read almost like English.</p></div>
+      </div>
+      <div class="takeaway">One string constant to notice: SQL text uses <em>single quotes</em> — <code class="inline">'EIRE'</code>, not <code class="inline">"EIRE"</code>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 13 -->
+<section class="slide" data-section="clauses">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1.2 · Animated trace</div>
+      <h2>The property you declared becomes a scan the engine runs</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="array">
+        <div class="trace-toolbar">
+          <div class="trace-status" aria-live="polite" aria-atomic="true"></div>
+          <div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div>
+        </div>
+        <div class="trace-board">
+          <div class="array-strip">
+            <div class="trace-pointer" style="width:120px">quantity ≥ 6 ?</div>
+            <div class="array-cell" data-index="…-03" style="width:120px">2</div>
+            <div class="array-cell" data-index="…-04" style="width:120px">10</div>
+            <div class="array-cell" data-index="…-05" style="width:120px">1</div>
+            <div class="array-cell" data-index="…-10" style="width:120px">6</div>
+            <div class="array-cell" data-index="…-12" style="width:120px">12</div>
+            <div class="array-cell" data-index="…-07" style="width:120px">1</div>
+          </div>
+          <div class="trace-variables">
+            <div class="trace-variable" data-var="kept" style="min-width:200px"></div>
+          </div>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"current":null,"vars":{"kept":"kept = 0 rows"},"status":"WHERE quantity >= 6 — six of the real rows, by quantity. You declared the property; conceptually, the engine now checks every row against it."},
+          {"current":0,"processedThrough":0,"discarded":[0],"vars":{"kept":"kept = 0 rows"},"status":"Row 536381-03: quantity 2. 2 >= 6 is FALSE — the row is not returned."},
+          {"current":1,"processedThrough":1,"found":1,"discarded":[0],"vars":{"kept":"kept = 1 row"},"status":"Row 536381-04: quantity 10. TRUE — the row qualifies."},
+          {"current":2,"processedThrough":2,"discarded":[0,2],"vars":{"kept":"kept = 1 row"},"status":"Row 536381-05: quantity 1. FALSE — skipped."},
+          {"current":3,"processedThrough":3,"found":3,"discarded":[0,2],"vars":{"kept":"kept = 2 rows"},"status":"Row 536540-10: quantity 6. 6 >= 6 is TRUE — the boundary case qualifies too."},
+          {"current":4,"processedThrough":4,"found":4,"discarded":[0,2],"vars":{"kept":"kept = 3 rows"},"status":"Row 536540-12: quantity 12. TRUE — kept."},
+          {"current":5,"processedThrough":5,"discarded":[0,2,5],"vars":{"kept":"kept = 3 rows"},"status":"Row 536521-07: quantity 1. FALSE — skipped."},
+          {"current":null,"discarded":[0,2,5],"vars":{"kept":"over all 60 rows: 21 kept"},"status":"The mask is complete: rows where the condition is TRUE survive. Over the full table, 21 of 60 rows qualify. You never wrote this loop — the engine did, and it is free to do better (an index can skip the scan entirely)."}
+        ]</script>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 14 -->
+<section class="slide" data-section="clauses">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1.3 · ORDER BY</div>
+      <h2>Declare the ordering property — and get top-N for free</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">pandas twin — Lesson 4's leaderboard</div>
+          <pre class="code-block">transactions.sort_values(<span class="string">"unit_price"</span>,
+    ascending=<span class="keyword">False</span>).head(<span class="number">5</span>)</pre>
+          <div class="code-title" style="margin-top:12px">SQL — ORDER BY … DESC, then LIMIT</div>
+          <pre class="code-block">sql(<span class="string">"""
+    SELECT transaction_id, product, unit_price
+    FROM transactions
+    ORDER BY unit_price DESC
+    LIMIT 5
+"""</span>)</pre>
+        </div>
+        <div>
+          <pre class="output-block" style="font-size:14.5px">transaction_id                  product  unit_price
+     564764-60           DOTCOM POSTAGE       11.17
+     537040-27 REGENCY CAKESTAND 3 TIER       10.95
+     536540-08        TOOL BOX SOFT TOY        8.95
+     536540-09    DOCTOR'S BAG SOFT TOY        8.95
+     536557-16 ASSORTED COLOUR MINI CAS…       7.95</pre>
+          <div class="panel compact" style="margin-top:12px"><p><code class="inline">ORDER BY unit_price DESC</code> is <code class="inline">sort_values("unit_price", ascending=False)</code>; ascending is the default in both.</p></div>
+        </div>
+      </div>
+      <div class="takeaway"><code class="inline">ORDER BY</code> then <code class="inline">LIMIT</code> is the classic <strong>top-N</strong> pattern — the SQL twin of <code class="inline">sort_values(…).head(n)</code>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 15 -->
+<section class="slide" data-section="clauses">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1.4 · DISTINCT</div>
+      <h2>The unique labels in a column, asked in one word</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div>
+          <div class="code-title">pandas twin — Lesson 2's set-membership x-ray</div>
+          <pre class="code-block">transactions[<span class="string">"source_country"</span>].drop_duplicates().tolist()</pre>
+          <div class="code-title" style="margin-top:12px">SQL — DISTINCT collapses repeats</div>
+          <pre class="code-block">sql(<span class="string">"SELECT DISTINCT source_country FROM transactions "</span>
+    <span class="string">"ORDER BY source_country"</span>)</pre>
+        </div>
+        <div>
+          <pre class="output-block">source_country
+          EIRE
+   Netherlands
+United Kingdom</pre>
+          <div class="panel compact" style="margin-top:12px"><p>60 rows, three distinct labels. This is Lesson 1's <strong>uniqueness</strong> property again: "which distinct labels exist here?"</p></div>
+        </div>
+      </div>
+      <div class="takeaway"><code class="inline">SELECT DISTINCT col</code> is <code class="inline">df["col"].drop_duplicates()</code> (or <code class="inline">unique()</code>).</div>
+    </main>
+  </div>
+</section>
+
+<!-- 16 -->
+<section class="slide" data-section="clauses">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Put it together</div>
+      <h2>A query is one sentence of properties</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">sql(<span class="string">"""
+    SELECT DISTINCT source_country, quantity
+    FROM transactions
+    WHERE quantity &gt;= 6
+    ORDER BY quantity DESC
+    LIMIT 8
+"""</span>)</pre>
+        <pre class="output-block" style="font-size:15px">source_country  quantity
+United Kingdom       144
+United Kingdom        48
+          EIRE        24
+United Kingdom        24
+United Kingdom        16
+          EIRE        12
+United Kingdom        12
+   Netherlands        12</pre>
+      </div>
+      <div class="rule-list">
+        <div class="rule"><b>these columns</b><span>country and quantity — <code class="inline">SELECT</code>, deduplicated by <code class="inline">DISTINCT</code></span></div>
+        <div class="rule"><b>this condition</b><span>quantity at least six — <code class="inline">WHERE</code></span></div>
+        <div class="rule"><b>this order, this many</b><span>largest first, at most eight rows — <code class="inline">ORDER BY … DESC</code>, <code class="inline">LIMIT</code></span></div>
+      </div>
+      <div class="takeaway">Four declarations at once, zero steps written. The engine chose the procedure.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 17 -->
+<section class="slide" data-section="clauses">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Checkpoint</div>
+      <h2>Three ways to ask, one spectrum</h2>
+    </header>
+    <main class="content">
+      <div class="question">Place the three styles you now know — a Lesson 4 loop, a Lesson 2 pandas one-liner, a SQL query — on a spectrum from "describes the procedure" to "declares the result". Where does pandas sit, and why?</div>
+      <div class="answer fragment">
+        <strong>Loop → pandas → SQL.</strong> The loop spells out every step. SQL states only the properties of the answer and lets the engine choose the steps. pandas lives in between: each operation is vectorized (you don't write the inner loop), but <em>you</em> still stitch the operations together in order — mask, then sort, then head. SQL hands even that sequencing to the engine, which is exactly why the next unit's evaluation-order surprises are possible.
+      </div>
+      <div class="takeaway">Unit 1 gave you the sentence shape. Unit 2 adds the verbs that <em>summarize</em>: aggregates and GROUP BY.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 18 -->
+<section class="slide" data-section="groups">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Aggregates and GROUP BY</div>
+      <h2>Aggregates collapse many rows into one number</h2>
+    </header>
+    <main class="content">
+      <div class="flow" style="width:100%">
+        <div class="flow-node"><b>COUNT</b><span>how many</span></div><div class="flow-arrow">·</div>
+        <div class="flow-node"><b>SUM</b><span>total</span></div><div class="flow-arrow">·</div>
+        <div class="flow-node"><b>AVG</b><span>mean</span></div><div class="flow-arrow">·</div>
+        <div class="flow-node"><b>MIN</b><span>smallest</span></div><div class="flow-arrow">·</div>
+        <div class="flow-node"><b>MAX</b><span>largest</span></div>
+      </div>
+      <div class="cols-2">
+        <div class="panel compact"><h3>On their own</h3><p>They summarize the <strong>whole table</strong>: one row out, however many rows in.</p></div>
+        <div class="panel compact"><h3>Paired with GROUP BY</h3><p>They summarize <strong>each group</strong> — the exact split-apply-combine you learned as <code class="inline">groupby</code> in Lesson 2.</p></div>
+      </div>
+      <div class="takeaway">Lesson 4 called this shape a <em>reduce</em>: many values in, one value out. SQL gives the five reduces you use daily their own names.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 19 -->
+<section class="slide" data-section="groups">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2.1 · Whole-table aggregates</div>
+      <h2>Five reductions in one SELECT</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">sql(<span class="string">"""
+    SELECT COUNT(*)                              AS count,
+           ROUND(SUM(quantity * unit_price), 2)  AS sum,
+           ROUND(AVG(unit_price), 2)             AS avg,
+           MIN(unit_price)                       AS min,
+           MAX(unit_price)                       AS max
+    FROM transactions
+"""</span>)</pre>
+        <div>
+          <pre class="output-block">count      sum   avg   min    max
+   60  1421.09  2.88  0.12  11.17</pre>
+          <div class="panel compact" style="margin-top:14px"><p>pandas twins: <code class="inline">COUNT(*)</code> is <code class="inline">len(df)</code>, <code class="inline">SUM(col)</code> is <code class="inline">df[col].sum()</code>, <code class="inline">AVG</code> is <code class="inline">.mean()</code>, and so on down the list.</p></div>
+        </div>
+      </div>
+      <div class="cols-2">
+        <div class="panel compact"><h3><code class="inline">AS name</code></h3><p>Renames the output column — the SQL twin of naming a result in <code class="inline">agg</code>.</p></div>
+        <div class="panel compact"><h3><code class="inline">ROUND(x, 2)</code></h3><p>Is Python's <code class="inline">round(x, 2)</code>; it just keeps the money readable.</p></div>
+      </div>
+      <div class="takeaway">Sixty rows in, one row out. Note that <code class="inline">SUM(quantity * unit_price)</code> aggregates a <em>computed</em> expression — revenue was never a stored column.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 20 -->
+<section class="slide" data-section="groups">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2.2 · GROUP BY, the idea</div>
+      <h2>Split, apply, combine — Lesson 2's groupby by another name</h2>
+    </header>
+    <main class="content">
+      <div class="flow" style="width:100%">
+        <div class="flow-node"><b>Split</b><span><code class="inline">GROUP BY source_country</code> folds the 60 rows into 3 piles — UK, EIRE, Netherlands</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Apply</b><span><code class="inline">SUM(quantity * unit_price)</code> runs <em>inside each pile</em>, producing one number per pile</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Combine</b><span>one output row per group: (country, revenue)</span></div>
+      </div>
+      <div class="question">You already own this idea. <code class="inline">tx.groupby("source_country")["revenue"].sum()</code> — Lesson 2, Unit 6 — is the same three steps. SQL just declares the split key in the query itself.</div>
+      <div class="takeaway"><code class="inline">GROUP BY k</code> + aggregate <strong>is</strong> <code class="inline">groupby(k).agg(…)</code>. Same machine, new spelling.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 21 -->
+<section class="slide" data-section="groups">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2.2 · GROUP BY in code</div>
+      <h2>Revenue by country, both spellings</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div>
+          <div class="code-title">pandas twin</div>
+          <pre class="code-block">tx = transactions.copy()
+tx[<span class="string">"revenue"</span>] = tx[<span class="string">"quantity"</span>] * tx[<span class="string">"unit_price"</span>]
+tx.groupby(<span class="string">"source_country"</span>)[<span class="string">"revenue"</span>].sum().round(<span class="number">2</span>)</pre>
+          <div class="code-title" style="margin-top:12px">SQL</div>
+          <pre class="code-block" style="font-size:15px">sql(<span class="string">"""
+    SELECT source_country                        AS country,
+           ROUND(SUM(quantity * unit_price), 2)  AS revenue,
+           COUNT(*)                              AS n_lines
+    FROM transactions
+    GROUP BY source_country
+    ORDER BY revenue DESC
+"""</span>)</pre>
+        </div>
+        <div>
+          <pre class="output-block">       country  revenue  n_lines
+United Kingdom  1248.80       48
+          EIRE   148.88        6
+   Netherlands    23.41        6</pre>
+          <div class="panel compact" style="margin-top:12px"><p><code class="inline">GROUP BY source_country</code> names the split key; every aggregate in the <code class="inline">SELECT</code> is applied within each group. <code class="inline">ORDER BY revenue DESC</code> then ranks the groups.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">One query: split by country, sum revenue and count lines per pile, sort the piles. Three declarations, no loop.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 22 -->
+<section class="slide" data-section="groups">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2.2 · Animated trace</div>
+      <h2>Watch GROUP BY bucket the rows</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="array">
+        <div class="trace-toolbar">
+          <div class="trace-status" aria-live="polite" aria-atomic="true"></div>
+          <div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div>
+        </div>
+        <div class="trace-board">
+          <div class="array-strip">
+            <div class="trace-pointer" style="width:150px">group by</div>
+            <div class="array-cell" data-index="UK · 1.95" style="width:150px;font-size:17px">UK</div>
+            <div class="array-cell" data-index="EIRE · 35.80" style="width:150px;font-size:17px">EIRE</div>
+            <div class="array-cell" data-index="UK · 67.50" style="width:150px;font-size:17px">UK</div>
+            <div class="array-cell" data-index="NL · 3.48" style="width:150px;font-size:17px">NL</div>
+            <div class="array-cell" data-index="EIRE · 13.50" style="width:150px;font-size:17px">EIRE</div>
+            <div class="array-cell" data-index="UK · 2.55" style="width:150px;font-size:17px">UK</div>
+          </div>
+          <div class="trace-variables">
+            <div class="trace-variable" data-var="uk" style="min-width:190px"></div>
+            <div class="trace-variable" data-var="eire" style="min-width:190px"></div>
+            <div class="trace-variable" data-var="nl" style="min-width:190px"></div>
+          </div>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"current":null,"vars":{"uk":"UK: —","eire":"EIRE: —","nl":"NL: —"},"status":"Six real rows, each labelled country (below: its quantity × unit_price). GROUP BY source_country must fold them into one pile per label, summing revenue inside each pile."},
+          {"current":0,"processedThrough":0,"vars":{"uk":"UK: 1.95","eire":"EIRE: —","nl":"NL: —"},"status":"Row 536381-01 is United Kingdom. A UK pile is created; its running SUM starts at 1.95."},
+          {"current":1,"processedThrough":1,"vars":{"uk":"UK: 1.95","eire":"EIRE: 35.80","nl":"NL: —"},"status":"Row 536540-08 is EIRE — a new label, so a second pile appears with 35.80."},
+          {"current":2,"processedThrough":2,"vars":{"uk":"UK: 69.45","eire":"EIRE: 35.80","nl":"NL: —"},"status":"Row 536381-04 is UK again. No new pile: 1.95 + 67.50 = 69.45 in the existing one."},
+          {"current":3,"processedThrough":3,"vars":{"uk":"UK: 69.45","eire":"EIRE: 35.80","nl":"NL: 3.48"},"status":"Row 539491-47 is Netherlands — the third and last new label."},
+          {"current":4,"processedThrough":4,"vars":{"uk":"UK: 69.45","eire":"EIRE: 49.30","nl":"NL: 3.48"},"status":"Row 536540-11, EIRE: 35.80 + 13.50 = 49.30."},
+          {"current":5,"processedThrough":5,"vars":{"uk":"UK: 72.00","eire":"EIRE: 49.30","nl":"NL: 3.48"},"status":"Row 536591-21, UK: 69.45 + 2.55 = 72.00. The pile keeps absorbing rows; every row lands in exactly one pile."},
+          {"current":null,"processedThrough":5,"vars":{"uk":"UK: 1248.80","eire":"EIRE: 148.88","nl":"NL: 23.41"},"status":"Run over all 60 rows, the piles finish at the numbers you saw: UK 1248.80, EIRE 148.88, NL 23.41. One output row per pile — that is GROUP BY."}
+        ]</script>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 23 -->
+<section class="slide" data-section="groups">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2.2 · The grouping rule</div>
+      <h2>Every SELECT column must be grouped or aggregated</h2>
+    </header>
+    <main class="content">
+      <div class="question">In a <code>GROUP BY source_country</code> query, what should <code>SELECT transaction_id</code> return? The UK group contains 48 different transaction ids.</div>
+      <div class="answer fragment">
+        There is no single honest answer — one output row per group, but 48 candidate ids. That is why the rule exists: <strong>every column in <code class="inline">SELECT</code> must either be grouped by, or wrapped in an aggregate.</strong> A bare column that is neither has no one value per group, so the database refuses to guess. (This trips everyone exactly once; now it has tripped you on a slide instead of in production.)
+      </div>
+      <div class="takeaway">Grouped or aggregated — no third option. The rule is the engine protecting you from an ambiguous answer.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 24 -->
+<section class="slide" data-section="groups">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2.3 · HAVING vs WHERE</div>
+      <h2>Both filter. The difference is <em>when</em></h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3><code class="inline">WHERE</code> filters rows</h3>
+          <p>It runs <strong>before</strong> grouping, on the raw rows. At <code class="inline">WHERE</code> time, no group exists yet.</p>
+        </div>
+        <div class="panel">
+          <h3><code class="inline">HAVING</code> filters groups</h3>
+          <p>It runs <strong>after</strong> grouping, on the aggregated result — one verdict per pile.</p>
+        </div>
+      </div>
+      <div class="panel warning">
+        <h3>Why you cannot put SUM(…) in WHERE</h3>
+        <p>At <code class="inline">WHERE</code> time the groups do not exist, so there is nothing to sum yet. That is precisely why <code class="inline">HAVING</code> had to be invented. Interviewers love this one because getting it wrong is <em>silent</em>.</p>
+      </div>
+      <div class="takeaway">Interview answer in one line: <strong>WHERE filters rows, HAVING filters groups.</strong></div>
+    </main>
+  </div>
+</section>
+
+<!-- 25 -->
+<section class="slide" data-section="groups">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2.3 · WHERE first</div>
+      <h2>Filter the raw rows, <em>then</em> group</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">sql(<span class="string">"""
+    SELECT source_country                        AS country,
+           ROUND(SUM(quantity * unit_price), 2)  AS revenue
+    FROM transactions
+    WHERE unit_price &gt;= 1.0    <span class="comment">-- a condition on each RAW row</span>
+    GROUP BY source_country
+    ORDER BY revenue DESC
+"""</span>)</pre>
+        <div>
+          <pre class="output-block">       country  revenue
+United Kingdom  1220.07
+          EIRE   148.88
+   Netherlands    16.45</pre>
+          <div class="panel compact" style="margin-top:14px"><p>The cheap lines (price under 1.00) were dropped <em>before</em> any pile formed — so every country's total shrank a little (UK 1248.80 → 1220.07).</p></div>
+        </div>
+      </div>
+      <div class="takeaway">All three countries still appear — <code class="inline">WHERE</code> removed rows, not groups.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 26 -->
+<section class="slide" data-section="groups">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2.3 · HAVING after</div>
+      <h2>Group everything first, then keep only the big piles</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">sql(<span class="string">"""
+    SELECT source_country                        AS country,
+           ROUND(SUM(quantity * unit_price), 2)  AS revenue
+    FROM transactions
+    GROUP BY source_country
+    HAVING SUM(quantity * unit_price) &gt; 100   <span class="comment">-- on each GROUP</span>
+    ORDER BY revenue DESC
+"""</span>)</pre>
+        <div>
+          <pre class="output-block">       country  revenue
+United Kingdom  1248.80
+          EIRE   148.88</pre>
+          <div class="panel compact warning" style="margin-top:14px"><p><strong>Netherlands is gone.</strong> Its pile totalled 23.41 — it survived every row filter, formed a group, and was then dropped by <code class="inline">HAVING &gt; 100</code>.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Same table, opposite timing: the aggregate condition could only be checked <em>after</em> the piles existed.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 27 -->
+<section class="slide" data-section="groups">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2.3 · The pandas twin makes the timing obvious</div>
+      <h2>HAVING is simply the <em>second</em> mask</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">per_country = tx.groupby(<span class="string">"source_country"</span>)[<span class="string">"revenue"</span>].sum()   <span class="comment"># group first</span>
+per_country[per_country &gt; <span class="number">100</span>]                                <span class="comment"># HAVING = mask AFTER</span></pre>
+        <div class="panel">
+          <h3>Two masks, two moments</h3>
+          <ul>
+            <li><code class="inline">WHERE</code> = the mask you apply to <code class="inline">tx</code> <strong>before</strong> <code class="inline">groupby</code></li>
+            <li><code class="inline">HAVING</code> = the mask you apply to the grouped result <strong>after</strong></li>
+          </ul>
+        </div>
+      </div>
+      <div class="question">In pandas the timing was never confusing — the two masks are literally two separate lines. SQL packs both into one query, and only the keyword tells you which moment each filter runs at.</div>
+      <div class="takeaway">When a HAVING puzzle stumps you, translate to pandas: which line would the mask sit on?</div>
+    </main>
+  </div>
+</section>
+
+<!-- 28 -->
+<section class="slide" data-section="groups">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Checkpoint</div>
+      <h2>One report, four declarations</h2>
+    </header>
+    <main class="content">
+      <div class="question">"Total revenue per country, but only for countries with more than 10 transaction lines, biggest first." Which clause does each phrase become?</div>
+      <div class="answer fragment">
+        <em>Total revenue per country</em> → <code class="inline">SELECT source_country, SUM(quantity * unit_price)</code> with <code class="inline">GROUP BY source_country</code>. <em>Only countries with more than 10 lines</em> → a condition on a <strong>group aggregate</strong>, so <code class="inline">HAVING COUNT(*) &gt; 10</code> — not WHERE, because the count only exists after grouping. <em>Biggest first</em> → <code class="inline">ORDER BY</code> the revenue <code class="inline">DESC</code>. Four phrases of English, four clauses of SQL, zero steps.
+      </div>
+      <div class="takeaway">Unit 2 done: you can summarize. Unit 3 asks what happens when the data has <em>holes</em>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 29 -->
+<section class="slide" data-section="nulls">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Session 2 warm-up</div>
+      <h2>Five questions from last time — answer from memory first</h2>
+    </header>
+    <main class="content">
+      <div class="rule-list">
+        <div class="rule"><b>Q1</b><span>Name the pandas twin of each: <span class="mono">SELECT</span>, <span class="mono">WHERE</span>, <span class="mono">ORDER BY</span>, <span class="mono">LIMIT</span>.</span></div>
+        <div class="rule"><b>Q2</b><span>What does it mean to say SQL "declares" a result instead of "describing" it?</span></div>
+        <div class="rule"><b>Q3</b><span><span class="mono">WHERE</span> vs <span class="mono">HAVING</span>: which filters rows, which filters groups — and which one can hold a <span class="mono">SUM(...)</span>?</span></div>
+        <div class="rule"><b>Q4</b><span>A table has 8 rows; 2 have a <span class="mono">NULL</span> country. What do <span class="mono">COUNT(*)</span> and <span class="mono">COUNT(country)</span> return? (Preview — you'll know by mid-unit.)</span></div>
+        <div class="rule"><b>Q5</b><span>Every column in a <span class="mono">GROUP BY</span> query's <span class="mono">SELECT</span> must be one of two things. Which two?</span></div>
+      </div>
+      <div class="takeaway">Say your answers out loud before turning the page. Retrieval, not recognition, is what sticks.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 30 -->
+<section class="slide" data-section="nulls">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Session 2 warm-up · answers</div>
+      <h2>Check yourself</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Q</th><th>Answer</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><code class="inline">SELECT</code> → column selection <code class="inline">df[[...]]</code>; <code class="inline">WHERE</code> → boolean mask; <code class="inline">ORDER BY</code> → <code class="inline">sort_values</code>; <code class="inline">LIMIT</code> → <code class="inline">head</code>.</td></tr>
+          <tr><td>2</td><td>You state the <em>properties</em> of the rows you want (columns, condition, order, count); the engine chooses the steps. Loops spell out the procedure yourself.</td></tr>
+          <tr><td>3</td><td><code class="inline">WHERE</code> filters raw rows (before grouping); <code class="inline">HAVING</code> filters groups (after aggregating). Only <code class="inline">HAVING</code> can hold an aggregate — at <code class="inline">WHERE</code> time the groups don't exist yet.</td></tr>
+          <tr><td>4</td><td><code class="inline">COUNT(*)</code> → 8 (all rows); <code class="inline">COUNT(country)</code> → 6 (non-null values only).</td></tr>
+          <tr><td>5</td><td>Either <strong>grouped by</strong>, or wrapped in an <strong>aggregate</strong> (<code class="inline">SUM</code>, <code class="inline">COUNT</code>, <code class="inline">AVG</code>, …).</td></tr>
+        </tbody>
+      </table>
+    </main>
+  </div>
+</section>
+
+<!-- 31 -->
+<section class="slide" data-section="nulls">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · NULL and dates</div>
+      <h2>Two topics that quietly decide whether your numbers are right</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>NULL</h3>
+          <p>The database's word for "no value here" — the twin of pandas' <code class="inline">NaN</code>/<code class="inline">NaT</code> from Lesson 2. It behaves in comparisons like nothing you have met, and getting it wrong is <strong>silent</strong>.</p>
+        </div>
+        <div class="panel">
+          <h3>Dates</h3>
+          <p>SQLite stores dates as <strong>text</strong>; its date functions read that text. Slicing "which month?" out of a timestamp is what turns raw lines into a monthly report.</p>
+        </div>
+      </div>
+      <div class="question">Both have Lesson 2 twins — <code class="inline">isna</code>/<code class="inline">fillna</code>, and <code class="inline">dt.to_period("M")</code>. The twins carry you most of the way; the one genuinely new thing is <em>three-valued logic</em>.</div>
+      <div class="takeaway">Nothing in this unit changes what a query <em>looks</em> like. It changes what your query silently <em>misses</em>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 32 -->
+<section class="slide" data-section="nulls">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · A table with holes</div>
+      <h2>Eight authored order rows, deliberately incomplete</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="output-block" style="font-size:14.5px">order_id customer_id        country  quantity  unit_price order_date
+       1      C15311 United Kingdom       6.0        2.50 2011-01-05
+       2      C14911           EIRE       NaN        3.00 2011-01-20
+       3      C14646           None       4.0        1.25 2011-02-10
+       4      C12748 United Kingdom       2.0        5.00       None
+       5      C13089           None       NaN         NaN 2011-02-28
+       6      C15311 United Kingdom       3.0        1.95 2011-03-02
+       7      C14606 United Kingdom      10.0        0.85       None
+       8      C14298           EIRE       1.0        7.95 2011-03-15</pre>
+        <div class="panel">
+          <h3>An authored teaching fixture</h3>
+          <ul>
+            <li>Hand-made, <strong>not</strong> real UCI data — gaps placed on purpose in country, quantity, and date.</li>
+            <li>Kept in its <strong>own table</strong>, <code class="inline">orders_raw</code>, so the pinned 60 real rows stay pristine.</li>
+            <li>Customer ids borrowed from the real customers, so the story stays coherent.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">Real tables have holes. To learn how SQL treats them, we need a table that <em>has</em> some — clearly labelled as invented.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 33 -->
+<section class="slide" data-section="nulls">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3.1 · COUNT(*) vs COUNT(col)</div>
+      <h2>One counts rows; the other skips the holes</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">sql(<span class="string">"""
+    SELECT COUNT(*)          AS all_rows,
+           COUNT(country)    AS with_country,
+           COUNT(quantity)   AS with_quantity,
+           COUNT(order_date) AS with_date
+    FROM orders_raw
+"""</span>)</pre>
+        <div>
+          <pre class="output-block">all_rows  with_country  with_quantity  with_date
+       8             6              6          6</pre>
+          <div class="panel compact" style="margin-top:14px"><p>pandas twin — the exact same distinction: <code class="inline">len(df)</code> counts rows (8); <code class="inline">df["country"].count()</code> skips <code class="inline">NaN</code> (6). Same rule, same trap.</p></div>
+        </div>
+      </div>
+      <div class="takeaway"><code class="inline">COUNT(*)</code> asks "how many rows?"; <code class="inline">COUNT(country)</code> asks "how many rows <em>have</em> a country?" — it skips NULLs.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 34 -->
+<section class="slide" data-section="nulls">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3.1 · Checkpoint</div>
+      <h2>What does AVG divide by?</h2>
+    </header>
+    <main class="content">
+      <div class="question"><code>orders_raw</code> has 8 rows; two quantities are NULL. <code>AVG(quantity)</code> — does it divide the total by 8, or by 6? And when is the answer it gives you <em>wrong for your purposes</em>?</div>
+      <div class="answer fragment">
+        By <strong>6</strong> — <code class="inline">SUM</code> and <code class="inline">AVG</code> skip NULLs just like <code class="inline">COUNT(col)</code> does, so <code class="inline">AVG(quantity)</code> = 26 ÷ 6 ≈ 4.33. That is correct if missing means "we don't know", but silently wrong if a missing quantity really means <em>zero</em> — then the true mean is 26 ÷ 8 = 3.25, and nothing errored to warn you. Whether a hole means "unknown" or "zero" is a <strong>data decision</strong>, not something the engine can know.
+      </div>
+      <div class="takeaway">Aggregates skip NULLs silently. The number is only right if "skip" matches what missing <em>means</em> in your data.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 35 -->
+<section class="slide" data-section="nulls">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3.2 · Three-valued logic</div>
+      <h2>NULL is not a value — it is the absence of one</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel compact good"><h3>TRUE</h3><p>The condition holds. <code class="inline">WHERE</code> keeps the row.</p></div>
+        <div class="panel compact"><h3>FALSE</h3><p>The condition fails. The row is dropped.</p></div>
+        <div class="panel compact warning"><h3>UNKNOWN</h3><p>The condition <em>cannot be evaluated</em> — some operand is NULL. The row is dropped too.</p></div>
+      </div>
+      <div class="cols-2">
+        <div class="panel"><h3>Why a third value exists</h3><p>"Is an unknown country equal to 'EIRE'?" has no honest yes-or-no answer. Any comparison with NULL — <code class="inline">=</code>, <code class="inline">&lt;&gt;</code>, <code class="inline">&gt;</code>, anything — returns UNKNOWN.</p></div>
+        <div class="panel"><h3>The rule that bites</h3><p><code class="inline">WHERE</code> keeps a row only when its condition is <strong>TRUE</strong> — never when it is UNKNOWN. So NULL rows fail <em>both</em> a test and its opposite.</p></div>
+      </div>
+      <div class="takeaway">Ordinary logic has two answers. Add NULL and you get a third — and <code class="inline">WHERE</code> treats it like FALSE.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 36 -->
+<section class="slide" data-section="nulls">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3.2 · The demo</div>
+      <h2>Two filters that look like exact opposites</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">uk    = sql(<span class="string">"SELECT COUNT(*) AS n FROM orders_raw "</span>
+            <span class="string">"WHERE country =  'United Kingdom'"</span>)
+notuk = sql(<span class="string">"SELECT COUNT(*) AS n FROM orders_raw "</span>
+            <span class="string">"WHERE country &lt;&gt; 'United Kingdom'"</span>)</pre>
+        <pre class="output-block">country =  'United Kingdom' : 4
+country &lt;&gt; 'United Kingdom' : 2
+rows in table                : 8</pre>
+      </div>
+      <div class="question">4 plus 2 is <strong>6, not 8</strong>. The two rows with NULL country satisfy <em>neither</em> filter — for them, both conditions evaluate to UNKNOWN, and WHERE drops UNKNOWN rows.</div>
+      <div class="takeaway">This is the single most common NULL bug: a <code class="inline">&lt;&gt;</code> filter that silently loses the rows you never accounted for. Lesson 2 had the same moment — a <code class="inline">NaN</code> region matched no equality test.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 37 -->
+<section class="slide" data-section="nulls">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3.2 · Animated trace</div>
+      <h2>Three rows meet <code>country &lt;&gt; 'United Kingdom'</code></h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="flow">
+        <div class="trace-toolbar"><div class="trace-status" aria-live="polite"></div><div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div></div>
+        <div class="flowchart-wrap" style="min-height:340px">
+          <svg class="flowchart-svg" viewBox="0 0 1040 340" style="height:340px" role="img" aria-label="Three-valued logic evaluation of a WHERE condition">
+            <defs><marker id="arrow-tvl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0l10 5-10 5z" fill="#94a3b8"/></marker></defs>
+            <path class="fc-edge" data-edge="row-eval" d="M226 170H320" marker-end="url(#arrow-tvl)"/>
+            <path class="fc-edge" data-edge="eval-verdict" d="M500 170H548" marker-end="url(#arrow-tvl)"/>
+            <path class="fc-edge" data-edge="to-true" d="M678 148 L812 92" marker-end="url(#arrow-tvl)"/>
+            <path class="fc-edge" data-edge="to-false" d="M700 170 H812" marker-end="url(#arrow-tvl)"/>
+            <path class="fc-edge" data-edge="to-unknown" d="M678 192 L812 248" marker-end="url(#arrow-tvl)"/>
+            <g class="fc-node" data-node="row"><rect x="46" y="142" width="180" height="56" rx="28"/><text x="136" y="170">next row</text></g>
+            <g class="fc-node" data-node="eval"><rect x="320" y="142" width="180" height="56"/><text x="410" y="162">country &lt;&gt;</text><text x="410" y="180">'United Kingdom'</text></g>
+            <g class="fc-node" data-node="verdict"><path d="M624 116l76 54-76 54-76-54z"/><text x="624" y="170">verdict?</text></g>
+            <g class="fc-node" data-node="keep"><path d="M812 66h196l-16 46H796z"/><text x="902" y="91">TRUE · row kept</text></g>
+            <g class="fc-node" data-node="dropf"><rect x="812" y="144" width="196" height="52"/><text x="910" y="170">FALSE · dropped</text></g>
+            <g class="fc-node" data-node="dropu"><path d="M812 222h196l-16 46H796z"/><text x="902" y="247">UNKNOWN · dropped</text></g>
+            <text x="736" y="106" font-size="13" fill="#536178">value differs</text>
+            <text x="742" y="162" font-size="13" fill="#536178">value matches</text>
+            <text x="736" y="242" font-size="13" fill="#536178">value is NULL</text>
+          </svg>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"activeNode":"row","status":"WHERE keeps a row only when the condition is TRUE. Watch three orders_raw rows go through country <> 'United Kingdom'."},
+          {"activeEdge":"row-eval","activeNode":"eval","status":"Order 1: country = 'United Kingdom'. Substitute it into the condition."},
+          {"activeEdge":"eval-verdict","activeNode":"verdict","status":"'United Kingdom' <> 'United Kingdom' — the values match, so the claim is false."},
+          {"activeEdge":"to-false","activeNode":"dropf","status":"FALSE → dropped. So far, so two-valued: this is the logic you know."},
+          {"activeEdge":"row-eval","activeNode":"eval","status":"Order 2: country = 'EIRE'. Substitute again."},
+          {"activeEdge":"eval-verdict","activeNode":"verdict","status":"'EIRE' <> 'United Kingdom' — the values differ, so the claim holds."},
+          {"activeEdge":"to-true","activeNode":"keep","status":"TRUE → kept. Order 2 is one of the 2 rows the filter returns."},
+          {"activeEdge":"row-eval","activeNode":"eval","status":"Order 3: country is NULL. Substitute… what, exactly? There is no value to compare."},
+          {"activeEdge":"to-unknown","activeNode":"dropu","status":"NULL <> 'United Kingdom' is UNKNOWN — 'is an unknown value different from UK?' has no honest answer. WHERE keeps only TRUE, so the row is dropped."},
+          {"activeNode":"dropu","status":"The same row would ALSO be dropped by country = 'United Kingdom'. NULL rows fail a test and its opposite — which is why 4 + 2 = 6, not 8."}
+        ]</script>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 38 -->
+<section class="slide" data-section="nulls">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3.3 · IS NULL</div>
+      <h2>To find the holes, you need the special verb</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="comment">-- Never  WHERE country = NULL  : that is UNKNOWN for every row.</span>
+sql(<span class="string">"SELECT order_id, customer_id FROM orders_raw "</span>
+    <span class="string">"WHERE country IS NULL"</span>)</pre>
+        <div>
+          <pre class="output-block">order_id customer_id
+       3      C14646
+       5      C13089</pre>
+          <div class="panel compact" style="margin-top:14px"><p><code class="inline">IS NULL</code> is <code class="inline">df["col"].isna()</code>; <code class="inline">IS NOT NULL</code> is <code class="inline">.notna()</code>. They are the only tests that see a hole.</p></div>
+        </div>
+      </div>
+      <div class="panel warning">
+        <h3>Why <code class="inline">= NULL</code> can never work</h3>
+        <p>Equality with NULL evaluates to UNKNOWN — even <code class="inline">NULL = NULL</code> does. A hole is not a value you can compare; it is the absence of one. SQL therefore gives you a dedicated verb, <code class="inline">IS NULL</code>, that asks about <em>absence itself</em>.</p>
+      </div>
+      <div class="takeaway">Test for NULL with <code class="inline">IS NULL</code> / <code class="inline">IS NOT NULL</code> — never with <code class="inline">=</code> or <code class="inline">&lt;&gt;</code>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 39 -->
+<section class="slide" data-section="nulls">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3.3 · COALESCE</div>
+      <h2>Fill the holes — on purpose, and honestly</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="comment">-- COALESCE(x, fallback): the first non-NULL argument.</span>
+sql(<span class="string">"""
+    SELECT order_id,
+           COALESCE(country, 'Unknown') AS country,
+           COALESCE(quantity, 0)        AS quantity
+    FROM orders_raw
+    ORDER BY order_id
+"""</span>)</pre>
+        <div>
+          <pre class="output-block" style="font-size:15px">order_id        country  quantity
+       1 United Kingdom       6.0
+       2           EIRE       0.0
+       3        Unknown       4.0
+       5        Unknown       0.0
+       …        (8 rows)</pre>
+        </div>
+      </div>
+      <div class="panel warning">
+        <h3>Filling is a decision, not a reflex — Lesson 2's discipline still applies</h3>
+        <p><code class="inline">COALESCE(quantity, 0)</code> is only honest if a missing quantity truly means zero. Otherwise you have <strong>invented data</strong> — exactly the trap Lesson 2 warned about with missing prices.</p>
+      </div>
+      <div class="takeaway"><code class="inline">COALESCE(col, fallback)</code> is <code class="inline">df["col"].fillna(fallback)</code> — same power, same responsibility.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 40 -->
+<section class="slide" data-section="nulls">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3.4 · Dates</div>
+      <h2><code>strftime</code> slices time out of a timestamp</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">SQL — pull date parts out of the text</div>
+          <pre class="code-block" style="font-size:15px">sql(<span class="string">"""
+    SELECT transaction_id,
+           transaction_date,
+           strftime('%Y',    transaction_date) AS year,
+           strftime('%Y-%m', transaction_date) AS month
+    FROM transactions
+    ORDER BY transaction_date
+    LIMIT 5
+"""</span>)</pre>
+          <div class="code-title" style="margin-top:12px">pandas twin — Lesson 2, Unit 7</div>
+          <pre class="code-block" style="font-size:15px">tx[<span class="string">"month"</span>] = pd.to_datetime(tx[<span class="string">"transaction_date"</span>])\
+    .dt.to_period(<span class="string">"M"</span>).astype(<span class="keyword">str</span>)</pre>
+        </div>
+        <div>
+          <pre class="output-block">transaction_id  transaction_date  year    month
+     536381-01        2010-12-01  2010  2010-12
+     536381-02        2010-12-01  2010  2010-12
+     536381-03        2010-12-01  2010  2010-12
+     …                    (LIMIT 5)</pre>
+          <div class="panel compact" style="margin-top:12px"><p>SQLite stores dates as <strong>text</strong>; <code class="inline">strftime</code> reads that text. <code class="inline">'%Y-%m'</code> keeps just year and month — <strong>monthly truncation</strong>: every day of a month collapses to one bucket.</p></div>
+        </div>
+      </div>
+      <div class="takeaway"><code class="inline">strftime('%Y-%m', date)</code> is <code class="inline">dt.to_period("M")</code> — the same truncation, spelled for text.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 41 -->
+<section class="slide" data-section="nulls">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3.4 · Revenue by month</div>
+      <h2>Group on the truncated date — the exercise's exact shape</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">sql(<span class="string">"""
+    SELECT strftime('%Y-%m', transaction_date)   AS month,
+           ROUND(SUM(quantity * unit_price), 2)  AS revenue,
+           COUNT(*)                              AS n_lines
+    FROM transactions
+    GROUP BY month
+    ORDER BY month
+"""</span>)</pre>
+        <div>
+          <pre class="output-block">  month  revenue  n_lines
+2010-12  1382.19       48
+2011-01    17.06        6
+2011-08    21.84        6</pre>
+          <div class="panel compact" style="margin-top:14px"><p>December 2010 dominates because that is where most of these pinned rows fall. pandas twin: <code class="inline">tx.groupby("month")["revenue"].sum()</code>.</p></div>
+        </div>
+      </div>
+      <div class="question">Notice what you just grouped by: a <strong>derived</strong> value (the month), not a stored column — the same move as grouping a pandas Series you computed on the fly. Add one more grouping key (country) and you have the exercise.</div>
+      <div class="takeaway">Truncate, group, sum: three declarations turn 60 raw lines into a monthly report.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 42 -->
+<section class="slide" data-section="nulls">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Checkpoint</div>
+      <h2>The audit question</h2>
+    </header>
+    <main class="content">
+      <div class="question">A colleague reports: "I filtered <code>WHERE region &lt;&gt; 'EU'</code> and summed the revenue — non-EU revenue is 40,000." The region column has NULLs. What did they actually compute, and what two-line check exposes it?</div>
+      <div class="answer fragment">
+        They computed revenue over rows whose region is <strong>known and not EU</strong> — every NULL-region row was silently dropped, because <code class="inline">NULL &lt;&gt; 'EU'</code> is UNKNOWN. The check: <code class="inline">SELECT COUNT(*) FROM t</code> versus <code class="inline">COUNT(region)</code> — if the two differ, holes exist, and the honest report either adds <code class="inline">OR region IS NULL</code>, or fills with <code class="inline">COALESCE(region, 'Unknown')</code> and shows the Unknown bucket explicitly.
+      </div>
+      <div class="takeaway">Unit 3 done: your numbers now survive holes. Unit 4 teaches you to read a query the way the <em>engine</em> does.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 43 -->
+<section class="slide" data-section="order">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Reading queries</div>
+      <h2>A query is written top-to-bottom — but it does not run that way</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>How you write it</h3>
+          <p><code class="inline">SELECT</code> first, <code class="inline">FROM</code> second, <code class="inline">WHERE</code> third… the order that reads like English.</p>
+        </div>
+        <div class="panel warning">
+          <h3>How the engine runs it</h3>
+          <p><code class="inline">SELECT</code> is nearly <strong>last</strong>. The rows must exist, be filtered, and be grouped before output columns can be computed.</p>
+        </div>
+      </div>
+      <div class="question">Learning the real order turns SQL from spell-casting into something you can read and predict — and it explains, in one stroke, both "weird" errors beginners hit.</div>
+      <div class="takeaway">Unit 4's promise: by the end you will predict a query's output — or its error — before running it.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 44 -->
+<section class="slide" data-section="order">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · The logical evaluation order</div>
+      <h2>Six steps, always the same</h2>
+    </header>
+    <main class="content">
+      <div class="rule-list">
+        <div class="rule"><b>1 · FROM</b><span>pick the table (and joins) → the raw rows exist</span></div>
+        <div class="rule"><b>2 · WHERE</b><span>keep rows matching a row condition → filter <strong>before</strong> grouping</span></div>
+        <div class="rule"><b>3 · GROUP BY</b><span>fold rows into groups → groups now exist</span></div>
+        <div class="rule"><b>4 · HAVING</b><span>keep groups matching a condition → filter <strong>after</strong> grouping</span></div>
+        <div class="rule"><b>5 · SELECT</b><span>compute the output columns and aliases → <strong>aliases are born here</strong></span></div>
+        <div class="rule"><b>6 · ORDER BY / LIMIT</b><span>sort the finished rows, keep the first n</span></div>
+      </div>
+      <div class="takeaway">Read any query in this order — 1 through 6 — and its behavior stops being surprising.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 45 -->
+<section class="slide" data-section="order">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Two consequences</div>
+      <h2>The order explains both things beginners find "weird"</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel warning">
+          <h3>An aggregate cannot appear in WHERE</h3>
+          <p><code class="inline">WHERE</code> (step 2) runs before <code class="inline">GROUP BY</code> (step 3), so <code class="inline">SUM(…)</code> has nothing to sum yet.</p>
+          <p class="muted">That is why <code class="inline">HAVING</code> (step 4) exists.</p>
+        </div>
+        <div class="panel warning">
+          <h3>A SELECT alias cannot be trusted in WHERE</h3>
+          <p>The alias is created at step 5; <code class="inline">WHERE</code> at step 2 has never heard of it.</p>
+          <p class="muted">But an alias <em>is</em> fine in <code class="inline">ORDER BY</code> (step 6) — by then it exists.</p>
+        </div>
+      </div>
+      <div class="question">Neither rule needs memorizing. Both fall straight out of the six-step order: a clause can only see what earlier steps have already built.</div>
+      <div class="takeaway">One timeline, two "gotchas" dissolved. We now watch the timeline run, then prove both consequences in code.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 46 -->
+<section class="slide" data-section="order">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Animated trace</div>
+      <h2>One query, clause by clause, in evaluation order</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="flow">
+        <div class="trace-toolbar"><div class="trace-status" aria-live="polite"></div><div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div></div>
+        <div class="flowchart-wrap" style="min-height:300px">
+          <svg class="flowchart-svg" viewBox="0 0 1080 300" style="height:300px" role="img" aria-label="Logical evaluation order of a SQL query">
+            <defs><marker id="arrow-evalorder" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0l10 5-10 5z" fill="#94a3b8"/></marker></defs>
+            <path class="fc-edge" data-edge="e1" d="M212 105H262" marker-end="url(#arrow-evalorder)"/>
+            <path class="fc-edge" data-edge="e2" d="M432 105H482" marker-end="url(#arrow-evalorder)"/>
+            <path class="fc-edge" data-edge="e3" d="M652 105H702" marker-end="url(#arrow-evalorder)"/>
+            <path class="fc-edge" data-edge="e4" d="M872 105V160 H320 V212" marker-end="url(#arrow-evalorder)"/>
+            <path class="fc-edge" data-edge="e5" d="M430 240H540" marker-end="url(#arrow-evalorder)"/>
+            <g class="fc-node" data-node="from"><rect x="42" y="77" width="170" height="56" rx="28"/><text x="127" y="97">1 · FROM</text><text x="127" y="115">transactions</text></g>
+            <g class="fc-node" data-node="where"><rect x="262" y="77" width="170" height="56"/><text x="347" y="97">2 · WHERE</text><text x="347" y="115">unit_price ≥ 1.0</text></g>
+            <g class="fc-node" data-node="group"><rect x="482" y="77" width="170" height="56"/><text x="567" y="97">3 · GROUP BY</text><text x="567" y="115">source_country</text></g>
+            <g class="fc-node" data-node="having"><rect x="702" y="77" width="170" height="56"/><text x="787" y="97">4 · HAVING</text><text x="787" y="115">SUM(…) &gt; 100</text></g>
+            <g class="fc-node" data-node="select"><rect x="210" y="212" width="220" height="56"/><text x="320" y="232">5 · SELECT</text><text x="320" y="250">country, revenue (aliases)</text></g>
+            <g class="fc-node" data-node="orderby"><path d="M540 214h220l-17 52H523z"/><text x="648" y="232">6 · ORDER BY revenue</text><text x="648" y="250">DESC · rows out</text></g>
+          </svg>
+        </div>
+        <div class="trace-variables" style="margin-top:0">
+          <div class="trace-variable" data-var="rows" style="min-width:330px"></div>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"activeNode":"from","vars":{"rows":"in play: nothing yet"},"status":"The query names FROM transactions, WHERE unit_price >= 1.0, GROUP BY source_country, HAVING SUM(quantity*unit_price) > 100, ORDER BY revenue DESC. Watch it run in the REAL order."},
+          {"activeNode":"from","vars":{"rows":"in play: 60 raw rows"},"status":"Step 1 — FROM: the raw rows exist. All 60 lines of the transactions table are in play."},
+          {"activeEdge":"e1","activeNode":"where","vars":{"rows":"in play: 51 rows"},"status":"Step 2 — WHERE: each RAW row is tested against unit_price >= 1.0. Nine cheap lines drop; 51 rows survive. No group exists yet — this is why SUM(...) is impossible here."},
+          {"activeEdge":"e2","activeNode":"group","vars":{"rows":"in play: 3 groups"},"status":"Step 3 — GROUP BY: the 51 survivors fold into piles by country: UK, EIRE, Netherlands. Rows stop being individuals."},
+          {"activeEdge":"e3","activeNode":"having","vars":{"rows":"in play: 2 groups"},"status":"Step 4 — HAVING: each PILE is tested. SUM > 100 keeps UK (1220.07) and EIRE (148.88); Netherlands (16.45) is dropped as a group."},
+          {"activeEdge":"e4","activeNode":"select","vars":{"rows":"in play: 2 output rows"},"status":"Step 5 — SELECT: only now are the output columns computed and the aliases born: country, revenue. This is why WHERE (step 2) could never see them."},
+          {"activeEdge":"e5","activeNode":"orderby","vars":{"rows":"out: UK 1220.07 · EIRE 148.88"},"status":"Step 6 — ORDER BY revenue DESC: the alias exists by now, so sorting on it is legal. Two finished rows come out, biggest first."}
+        ]</script>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 47 -->
+<section class="slide" data-section="order">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Demonstration 1</div>
+      <h2>An aggregate in WHERE is a genuine error</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="keyword">try</span>:
+    sql(<span class="string">"""
+        SELECT source_country, SUM(quantity * unit_price) AS revenue
+        FROM transactions
+        WHERE SUM(quantity * unit_price) &gt; 100
+        GROUP BY source_country
+    """</span>)
+<span class="keyword">except</span> Exception <span class="keyword">as</span> error:
+    print(type(error).__name__, <span class="string">"-&gt;"</span>, error)</pre>
+        <div>
+          <pre class="output-block"><span class="error">DatabaseError</span>
+-&gt; misuse of aggregate: SUM()
+
+Diagnosis: WHERE runs before GROUP BY,
+           so there is no SUM yet.
+Fix:       move the aggregate condition
+           into HAVING.</pre>
+        </div>
+      </div>
+      <div class="takeaway">The engine refuses loudly — the good kind of failure (Lesson 5). The fix is never "work around it"; it is <code class="inline">HAVING</code>, the clause that runs at the right time.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 48 -->
+<section class="slide" data-section="order">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Demonstration 2</div>
+      <h2>The alias trap that bites even SQLite</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block" style="font-size:15px"><span class="comment"># The alias `unit_price` is the DOUBLED price. But WHERE</span>
+<span class="comment"># filters on the ORIGINAL column, then SELECT doubles</span>
+<span class="comment"># the survivors — not what the alias suggests.</span>
+sql(<span class="string">"""
+    SELECT transaction_id, unit_price * 2 AS unit_price
+    FROM transactions
+    WHERE unit_price &gt; 5
+    ORDER BY transaction_id
+    LIMIT 4
+"""</span>)</pre>
+        <div>
+          <pre class="output-block" style="font-size:14.5px">returned (doubled)     WHERE actually saw
+   536381-04  13.5        536381-04  6.75
+   536540-08  17.9        536540-08  8.95
+   536540-09  17.9        536540-09  8.95
+   536557-16  15.9        536557-16  7.95</pre>
+          <div class="panel compact warning" style="margin-top:12px"><p>SQLite is unusually lenient and lets aliases into <code class="inline">WHERE</code>; Postgres, SQL Server, and MySQL reject it. Worse: when the alias <strong>reuses a real column's name</strong>, <code class="inline">WHERE</code> silently reads the original column.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Every original price is above 5 — proof <code class="inline">WHERE</code> never touched the alias. Portable habit: never reference a SELECT alias in WHERE.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 49 -->
+<section class="slide" data-section="order">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Predict the output · 1 of 6</div>
+      <h2>WHERE, then GROUP BY, then COUNT</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2 align-center">
+        <pre class="code-block">SELECT source_country AS country, COUNT(*) AS n
+FROM transactions
+WHERE quantity &gt;= 6
+GROUP BY country
+ORDER BY n DESC;</pre>
+        <div class="question">Read it in evaluation order and commit to a prediction: what is <code>n</code> counting?</div>
+      </div>
+      <div class="answer fragment">
+        <code class="inline">WHERE quantity &gt;= 6</code> keeps only the bulk lines <em>first</em>; then they are grouped and counted. So <code class="inline">n</code> is the number of <strong>bulk lines</strong> per country — United Kingdom 15, EIRE 4, Netherlands 2 — not all lines (48/6/6). <code class="inline">WHERE</code> shrank the rows before <code class="inline">COUNT</code> ever ran.
+      </div>
+      <div class="takeaway">Write down your prediction <em>before</em> running a query. Committing first is what makes the surprise stick.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 50 -->
+<section class="slide" data-section="order">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Predict the output · 2 of 6</div>
+      <h2>HAVING on a count</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2 align-center">
+        <pre class="code-block">SELECT source_country AS country, COUNT(*) AS n
+FROM transactions
+GROUP BY country
+HAVING COUNT(*) &gt; 10;</pre>
+        <div class="question">No WHERE this time. How many rows come back, and which countries survive?</div>
+      </div>
+      <div class="answer fragment">
+        Every row is grouped (no <code class="inline">WHERE</code>); then <code class="inline">HAVING COUNT(*) &gt; 10</code> keeps only groups with more than ten lines. Only <strong>United Kingdom (48 lines)</strong> qualifies — EIRE and Netherlands have 6 each and are dropped. One row out. <code class="inline">HAVING</code> filtered the <em>groups</em>, after counting.
+      </div>
+      <div class="takeaway">Q1 filtered rows before counting; Q2 filtered groups after. Same keywords, opposite moments.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 51 -->
+<section class="slide" data-section="order">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Predict the output · 3 of 6</div>
+      <h2>Will this even run?</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2 align-center">
+        <pre class="code-block">SELECT source_country, AVG(quantity) AS avg_q
+FROM transactions
+WHERE AVG(quantity) &gt; 5
+GROUP BY source_country;</pre>
+        <div class="question">Trick question or real query? Decide before peeking.</div>
+      </div>
+      <div class="answer fragment">
+        It <strong>errors</strong>: <code class="inline">DatabaseError -&gt; misuse of aggregate: AVG()</code>. <code class="inline">WHERE</code> (step 2) runs before <code class="inline">GROUP BY</code> (step 3), so there is no average to compare against yet. The fix is <code class="inline">HAVING AVG(quantity) &gt; 5</code>. This is Demonstration 1 again — now as a reflex.
+      </div>
+      <div class="takeaway">If your condition mentions an aggregate, it belongs in <code class="inline">HAVING</code>. No exceptions.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 52 -->
+<section class="slide" data-section="order">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Predict the output · 4 of 6</div>
+      <h2>An alias in ORDER BY</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2 align-center">
+        <pre class="code-block">SELECT transaction_id,
+       ROUND(quantity * unit_price, 2) AS line_total
+FROM transactions
+ORDER BY line_total DESC
+LIMIT 3;</pre>
+        <div class="question">Q3's alias-in-WHERE failed. Is an alias in ORDER BY legal? What comes out, and in what order?</div>
+      </div>
+      <div class="answer fragment">
+        Legal — and it returns the three largest line totals, biggest first: <code class="inline">525.60</code>, <code class="inline">208.80</code>, <code class="inline">81.36</code>. <code class="inline">ORDER BY</code> (step 6) runs <em>after</em> <code class="inline">SELECT</code> (step 5), so by then the alias exists. Contrast with Q3, where the alias-referencing condition sat in <code class="inline">WHERE</code> (step 2).
+      </div>
+      <div class="takeaway">Aliases are born at step 5. Any clause that runs later may use them; any clause that runs earlier may not.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 53 -->
+<section class="slide" data-section="order">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Predict the output · 5 of 6</div>
+      <h2>The alias reuses a column name</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2 align-center">
+        <pre class="code-block">SELECT transaction_id, quantity * 10 AS quantity
+FROM transactions
+WHERE quantity &gt;= 12
+ORDER BY transaction_id
+LIMIT 3;</pre>
+        <div class="question">The alias <code>quantity</code> shadows the real column. What does WHERE filter on, and what values come back?</div>
+      </div>
+      <div class="answer fragment">
+        <code class="inline">WHERE</code> filters on the <strong>original</strong> stored <code class="inline">quantity</code> (the alias does not exist at step 2), keeping rows with 12 or more units. <code class="inline">SELECT</code> then multiplies each survivor by 10 — so the returned values are <code class="inline">120, 240, 240</code>: each is 10 × a stored value that was itself ≥ 12. The name collision is Demonstration 2's trap in miniature.
+      </div>
+      <div class="takeaway">When an alias shadows a column, <code class="inline">WHERE</code> reads the column and never tells you. Avoid the collision entirely.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 54 -->
+<section class="slide" data-section="order">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Predict the output · 6 of 6</div>
+      <h2>NULL meets a &lt;&gt; filter — the units combine</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2 align-center">
+        <pre class="code-block">SELECT order_id, country
+FROM orders_raw
+WHERE country &lt;&gt; 'United Kingdom';</pre>
+        <div class="question">The <code>orders_raw</code> table again: 4 UK rows, 2 EIRE, 2 NULL. Which rows come back?</div>
+      </div>
+      <div class="answer fragment">
+        Only the two <strong>EIRE</strong> rows (order_id 2 and 8). The two NULL-country rows are <em>not</em> returned: <code class="inline">NULL &lt;&gt; 'United Kingdom'</code> is UNKNOWN, and <code class="inline">WHERE</code> keeps only TRUE. Unit 3's three-valued logic, resurfacing inside Unit 4's reading drill — exactly how it will resurface in real reports.
+      </div>
+      <div class="takeaway">Six for six? Then you read queries the way the engine runs them. That skill is the whole unit.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 55 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Wrap-up · misconceptions</div>
+      <h2>Five beliefs this lesson should have broken</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Misconception</th><th>Reality</th></tr></thead>
+        <tbody>
+          <tr><td>"SQL runs top to bottom, like a script"</td><td>It runs <code class="inline">FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY</code> — <code class="inline">SELECT</code> is nearly last</td></tr>
+          <tr><td>"WHERE and HAVING are interchangeable"</td><td><code class="inline">WHERE</code> filters rows before grouping; <code class="inline">HAVING</code> filters groups after — only <code class="inline">HAVING</code> holds an aggregate</td></tr>
+          <tr><td>"COUNT(*) and COUNT(col) are the same"</td><td><code class="inline">COUNT(*)</code> counts rows; <code class="inline">COUNT(col)</code> skips <code class="inline">NULL</code> — just like <code class="inline">len(df)</code> vs <code class="inline">df[col].count()</code></td></tr>
+          <tr><td>"<code class="inline">x &lt;&gt; 'A'</code> returns everything that isn't 'A'"</td><td>Rows where <code class="inline">x</code> is <code class="inline">NULL</code> evaluate to UNKNOWN and are dropped by both <code class="inline">=</code> and <code class="inline">&lt;&gt;</code></td></tr>
+          <tr><td>"An alias I wrote can be used anywhere"</td><td>Aliases are born in <code class="inline">SELECT</code>; <code class="inline">WHERE</code> runs earlier and cannot see them (SQLite's leniency is a portability trap)</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">Each row of this table is a real bug someone ships weekly. You now know why all five happen.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 56 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Practice · your turn</div>
+      <h2>One report, two engines, proven equal</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Function</th><th>Returns</th><th>The contract</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">monthly_revenue_by_country_sql()</td><td>a SQL query <strong>string</strong></td><td>columns <code class="inline">[month, country, revenue]</code>: month = <code class="inline">strftime('%Y-%m', …)</code>, revenue = <code class="inline">ROUND(SUM(quantity*unit_price), 2)</code>, one row per (month, country), ordered by month then country</td></tr>
+          <tr><td class="mono">monthly_revenue_by_country_pandas(df)</td><td>a DataFrame</td><td>the <strong>same</strong> report from the DataFrame: 'YYYY-MM' month <em>string</em>, rounded revenue, sorted, <code class="inline">reset_index(drop=True)</code>, input not mutated</td></tr>
+        </tbody>
+      </table>
+      <div class="cols-2">
+        <div class="panel compact"><h3>Start</h3><p><code class="inline">cd lesson8_exercise/</code>, then <code class="inline">python3 -m pytest test_lesson8.py -v</code>. Every test fails with <code class="inline">NotImplementedError</code> — the intended starting line.</p></div>
+        <div class="panel compact"><h3>The proof</h3><p>The checker runs both, compares them with <code class="inline">assert_frame_equal</code>, and checks pinned reference numbers. If the twins disagree, one of them is wrong — and the test says so without revealing the numbers.</p></div>
+      </div>
+      <div class="takeaway">The lesson's through-line made concrete: a SQL query and its pandas twin are two spellings of the same answer.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 57 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Practice · what "done" looks like</div>
+      <h2>Green means the twins agree</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div class="panel">
+          <h3>The checker proves</h3>
+          <ul>
+            <li>Both reports have the contracted columns, in order: <code class="inline">month, country, revenue</code>.</li>
+            <li>SQL result <code class="inline">==</code> pandas result, byte for byte (<code class="inline">assert_frame_equal</code>).</li>
+            <li>Pinned numbers hold: <strong>5 rows</strong>, grand total <strong>1421.09</strong>, and (2010-12, United Kingdom) = <strong>1209.90</strong>.</li>
+            <li>Sorted by month then country; index reset; input frame not mutated.</li>
+          </ul>
+        </div>
+        <div>
+          <div class="code-title">the report both functions must produce</div>
+          <pre class="output-block" style="font-size:14.5px">  month        country  revenue
+2010-12           EIRE   148.88
+2010-12    Netherlands    23.41
+2010-12 United Kingdom  1209.90
+2011-01 United Kingdom    17.06
+2011-08 United Kingdom    21.84</pre>
+          <p class="small muted" style="margin-top:10px">Common trip-ups the README names: a Period instead of a 'YYYY-MM' string (dtype error), or a forgotten <code class="inline">reset_index(drop=True)</code> (index error).</p>
+        </div>
+      </div>
+      <div class="takeaway">Lesson 5's machinery again: pinned inputs, contracted outputs, failure messages that point at the problem.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 58 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Wrap-up · connections</div>
+      <h2>Where the earlier lessons went</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Earlier idea</th><th>Its Lesson 8 form</th></tr></thead>
+        <tbody>
+          <tr><td>L1 · name the properties, don't guess</td><td>a query <em>is</em> a list of properties: columns, condition, grouping, order</td></tr>
+          <tr><td>L2 · boolean mask / <code class="inline">sort_values</code> / <code class="inline">head</code> / <code class="inline">drop_duplicates</code></td><td><code class="inline">WHERE</code> / <code class="inline">ORDER BY</code> / <code class="inline">LIMIT</code> / <code class="inline">DISTINCT</code></td></tr>
+          <tr><td>L2 · <code class="inline">groupby(…).agg(…)</code>, <code class="inline">isna</code>/<code class="inline">fillna</code>, <code class="inline">dt.to_period("M")</code></td><td><code class="inline">GROUP BY</code> + aggregates, <code class="inline">IS NULL</code>/<code class="inline">COALESCE</code>, <code class="inline">strftime('%Y-%m', …)</code></td></tr>
+          <tr><td>L4 · loops describe the procedure; reduce collapses many to one</td><td>SQL declares the result instead; <code class="inline">SUM</code>/<code class="inline">COUNT</code>/<code class="inline">AVG</code> are named reduces</td></tr>
+          <tr><td>L5 · fail loudly; tests pin behavior</td><td>"misuse of aggregate" errors at the door; <code class="inline">assert_frame_equal</code> proves the twins agree</td></tr>
+          <tr><td>L7 · the schema the engine enforces</td><td>the tables those queries run against — durable, typed, keyed</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">SQL is not a new subject. It is every prior lesson's vocabulary, compiled into one declarative language.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 59 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Wrap-up · inventory</div>
+      <h2>What you can do now</h2>
+    </header>
+    <main class="content">
+      <div class="rule-list" style="max-width:1050px">
+        <div class="rule"><b>Ask in SQL</b><span>read and write <code class="inline">SELECT</code>, <code class="inline">WHERE</code>, <code class="inline">ORDER BY</code>, <code class="inline">LIMIT</code>, <code class="inline">DISTINCT</code> — and see the pandas twin behind each.</span></div>
+        <div class="rule"><b>Summarize</b><span><code class="inline">COUNT</code>, <code class="inline">SUM</code>, <code class="inline">AVG</code>, <code class="inline">MIN</code>, <code class="inline">MAX</code>; split with <code class="inline">GROUP BY</code>; filter groups with <code class="inline">HAVING</code> — knowing exactly how it differs from <code class="inline">WHERE</code>.</span></div>
+        <div class="rule"><b>Handle NULL</b><span>three-valued logic, <code class="inline">IS NULL</code>, <code class="inline">COALESCE</code>, and the <code class="inline">COUNT(*)</code> vs <code class="inline">COUNT(col)</code> distinction.</span></div>
+        <div class="rule"><b>Slice time</b><span><code class="inline">strftime('%Y-%m', …)</code> and a grouped monthly revenue report.</span></div>
+        <div class="rule"><b>Read like the engine</b><span>evaluate a query in logical order and predict its output — or its error — before running it.</span></div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 60 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">The lesson, one sentence</div>
+    </header>
+    <main class="content centered">
+      <p class="big-claim">A SQL query <span style="border-bottom:6px solid var(--teal)">declares the properties of the rows you want</span> — columns, condition, grouping, order — and every clause has a pandas twin you already wrote; the only genuinely new idea is that <span style="border-bottom:6px solid var(--purple)">the engine, not you, chooses the steps</span>.</p>
+      <p class="lead">Declare the properties. Let the engine run the algorithm. Today that stopped being a slogan and became a language.</p>
+    </main>
+  </div>
+</section>
+
+<!-- 61 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Reference desk</div>
+      <h2>Where to go deeper</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel compact"><h3>Documentation</h3><ul>
+          <li><a href="https://sqlbolt.com/">SQLBolt</a> — interactive SQL lessons, browser-only</li>
+          <li><a href="https://pandas.pydata.org/docs/getting_started/comparison/comparison_with_sql.html">pandas · "Comparison with SQL"</a> — this lesson's twins, officially</li>
+          <li><a href="https://www.sqlite.org/lang_select.html">SQLite · SELECT reference</a> — every clause, precisely</li>
+          <li><a href="https://www.sqlite.org/lang_datefunc.html">SQLite · date &amp; time functions</a> — <code class="inline">strftime</code> and friends</li>
+        </ul></div>
+        <div class="panel compact"><h3>Local practice</h3><ul>
+          <li>Lesson 8 notebook — runs top to bottom, offline</li>
+          <li><code class="inline">lesson8_exercise/</code> — the two-engine monthly report</li>
+          <li><code class="inline">sql-two-engines-assignment/</code> — where this exercise's move scales up (A3)</li>
+        </ul></div>
+      </div>
+      <div class="takeaway">The pandas "Comparison with SQL" page is this whole lesson in reference form — bookmark it.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 62 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Final checklist</div>
+      <h2>Declare it. Group it. Doubt the holes. Read it in order.</h2>
+    </header>
+    <main class="content centered">
+      <div class="rule-list" style="width:960px;text-align:left">
+        <div class="rule"><b>Declare</b><span>columns, condition, order, count — <code class="inline">SELECT</code>, <code class="inline">WHERE</code>, <code class="inline">ORDER BY</code>, <code class="inline">LIMIT</code></span></div>
+        <div class="rule"><b>Group</b><span>split with <code class="inline">GROUP BY</code>; every SELECT column grouped or aggregated; filter groups with <code class="inline">HAVING</code></span></div>
+        <div class="rule"><b>Doubt</b><span>check <code class="inline">COUNT(*)</code> vs <code class="inline">COUNT(col)</code>; remember <code class="inline">&lt;&gt;</code> drops NULL rows; fill only on purpose</span></div>
+        <div class="rule"><b>Read</b><span>in evaluation order — FROM, WHERE, GROUP BY, HAVING, SELECT, ORDER BY</span></div>
+      </div>
+      <div class="question" style="width:960px">Exit ticket: predict the output of a query you have never seen — including whether it errors — before running it. That is the whole lesson.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 63 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">What's next</div>
+      <h2>Where the course goes from here</h2>
+    </header>
+    <main class="content centered">
+      <p class="big-claim" style="font-size:38px">Next: Lesson 9 — <em>SQL joins and analytics</em>. Two tables become one answer: <code>INNER</code> and <code>LEFT JOIN</code> beside pandas <code>merge</code>, <code>CASE WHEN</code>, CTEs, and window functions — the interview patterns.</p>
+      <p class="lead">Then Assignment A3, <em>One Analysis, Two Engines</em>: every business question answered in SQL <em>and</em> pandas, both proven to agree. Today's exercise was the dress rehearsal.</p>
+    </main>
+  </div>
+</section>
+
+<div id="hud">
+  <div class="course">Intro to CS · Lesson 8</div>
+  <div id="section-map" aria-hidden="true">
+    <span data-section-name="intro">Setup</span><span data-section-name="clauses">Clauses</span><span data-section-name="groups">Groups</span><span data-section-name="nulls">NULL</span><span data-section-name="order">Order</span><span data-section-name="finish">Finish</span>
+  </div>
+  <div class="nav-controls">
+    <button id="prev" type="button" aria-label="Previous step">‹</button>
+    <button id="next" type="button" aria-label="Next step">›</button>
+    <label id="count" for="slide-number">
+      <input id="slide-number" type="text" value="1" inputmode="numeric" pattern="[0-9]*" aria-label="Jump to slide"> / <span id="slide-total"></span>
+    </label>
+  </div>
+</div>
+
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const stage = document.getElementById("stage");
+  const slides = [...document.querySelectorAll(".slide")];
+  const prevButton = document.getElementById("prev");
+  const nextButton = document.getElementById("next");
+  const slideNumber = document.getElementById("slide-number");
+  const slideTotal = document.getElementById("slide-total");
+  const sectionItems = [...document.querySelectorAll("#section-map [data-section-name]")];
+  let currentSlide = 0;
+  let printSnapshot = null;
+
+  function fitStage() {
+    const viewport = window.visualViewport;
+    const width = viewport ? viewport.width : window.innerWidth;
+    const height = viewport ? viewport.height : window.innerHeight;
+    const scale = Math.min(width / 1280, height / 720);
+    stage.style.transform = `translate(-50%, -50%) scale(${scale})`;
+  }
+
+  class TraceController {
+    constructor(root) {
+      this.root = root;
+      this.type = root.dataset.traceType;
+      const source = root.querySelector(".trace-data");
+      try {
+        this.states = JSON.parse(source ? source.textContent : "[]");
+      } catch (error) {
+        this.states = [];
+        console.error("Invalid trace data", error, root);
+      }
+      this.step = 0;
+      this.status = root.querySelector(".trace-status");
+      this.counter = root.querySelector("[data-trace-counter]");
+      root.querySelector(".trace-reset")?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this.setStep(0);
+      });
+      this.render();
+    }
+
+    canNext() { return this.step < this.states.length - 1; }
+    canPrevious() { return this.step > 0; }
+    next() { if (this.canNext()) this.setStep(this.step + 1); }
+    previous() { if (this.canPrevious()) this.setStep(this.step - 1); }
+    setStep(step) {
+      if (!this.states.length) return;
+      this.step = Math.max(0, Math.min(step, this.states.length - 1));
+      this.render();
+      updateControls();
+    }
+
+    renderVariables(state) {
+      const values = state.vars || {};
+      this.root.querySelectorAll("[data-var]").forEach((element) => {
+        element.textContent = values[element.dataset.var] || "";
+      });
+    }
+
+    renderTranscript() {
+      const slide = this.root.closest(".slide");
+      const rows = [...slide.querySelectorAll(".trace-transcript tr[data-step]")];
+      if (!rows.length) return;
+      let active = rows[0];
+      for (const row of rows) {
+        if (Number(row.dataset.step) <= this.step) active = row;
+      }
+      rows.forEach((row) => row.classList.toggle("is-active", row === active));
+    }
+
+    renderArray(state) {
+      const cells = [...this.root.querySelectorAll(".array-cell")];
+      cells.forEach((cell, index) => {
+        if (Array.isArray(state.values) && index < state.values.length) {
+          cell.textContent = state.values[index];
+        }
+        const outsideRange = Array.isArray(state.range) && (index < state.range[0] || index > state.range[1]);
+        const foundIndex = typeof state.found === "number" ? state.found : (state.found === true ? state.current : null);
+        cell.classList.toggle("is-current", state.current === index);
+        cell.classList.toggle("is-best", state.best === index);
+        cell.classList.toggle("is-min", state.min === index);
+        cell.classList.toggle("is-checked", Number.isInteger(state.processedThrough) && index <= state.processedThrough);
+        cell.classList.toggle("is-sorted", Number.isInteger(state.sortedUntil) && index < state.sortedUntil);
+        cell.classList.toggle("is-discarded", outsideRange || (Array.isArray(state.discarded) && state.discarded.includes(index)));
+        cell.classList.toggle("is-found", foundIndex === index);
+      });
+
+      const pointer = this.root.querySelector(".trace-pointer");
+      if (pointer) {
+        if (state.current == null || !cells[state.current]) {
+          pointer.style.visibility = "hidden";
+        } else {
+          pointer.style.visibility = "visible";
+          const first = cells[0];
+          pointer.style.transform = `translateX(${cells[state.current].offsetLeft - first.offsetLeft}px)`;
+          pointer.style.left = `${first.offsetLeft}px`;
+        }
+      }
+      this.renderVariables(state);
+      this.renderTranscript();
+    }
+
+    renderFlow(state) {
+      this.root.querySelectorAll("[data-node]").forEach((node) => {
+        node.classList.toggle("is-active", node.dataset.node === state.activeNode);
+      });
+      this.root.querySelectorAll("[data-edge]").forEach((edge) => {
+        edge.classList.toggle("is-active", edge.dataset.edge === state.activeEdge);
+      });
+      this.renderVariables(state);
+    }
+
+    renderStack(state) {
+      this.root.querySelectorAll(".token[data-index]").forEach((token) => {
+        token.classList.toggle("is-current", Number(token.dataset.index) === state.token);
+      });
+      const values = state.stack || [];
+      this.root.querySelectorAll(".stack-slot[data-slot]").forEach((slot) => {
+        const index = Number(slot.dataset.slot);
+        slot.textContent = index < values.length ? values[index] : "";
+      });
+      this.renderVariables(state);
+    }
+
+    render() {
+      if (!this.states.length) return;
+      const state = this.states[this.step];
+      if (this.status) this.status.textContent = state.status || "";
+      if (this.counter) this.counter.textContent = `${this.step + 1} / ${this.states.length}`;
+      if (this.type === "array") this.renderArray(state);
+      if (this.type === "flow") this.renderFlow(state);
+      if (this.type === "stack") this.renderStack(state);
+    }
+  }
+
+  const traces = new Map();
+  document.querySelectorAll(".trace[data-trace-type]").forEach((root) => {
+    traces.set(root, new TraceController(root));
+  });
+
+  function traceOnActiveSlide() {
+    const root = slides[currentSlide]?.querySelector(".trace[data-trace-type]");
+    return root ? traces.get(root) : null;
+  }
+
+  function fragmentsOnActiveSlide() {
+    return [...slides[currentSlide].querySelectorAll(".fragment")];
+  }
+
+  function nextHiddenFragment() {
+    return fragmentsOnActiveSlide().find((fragment) => !fragment.classList.contains("visible"));
+  }
+
+  function lastVisibleFragment() {
+    return fragmentsOnActiveSlide().filter((fragment) => fragment.classList.contains("visible")).at(-1);
+  }
+
+  function updateControls() {
+    const trace = traceOnActiveSlide();
+    const hasBackwardStep = (trace && trace.canPrevious()) || Boolean(lastVisibleFragment());
+    const hasForwardStep = (trace && trace.canNext()) || Boolean(nextHiddenFragment());
+    prevButton.disabled = currentSlide === 0 && !hasBackwardStep;
+    nextButton.disabled = currentSlide === slides.length - 1 && !hasForwardStep;
+  }
+
+  function showSlide(index, options = {}) {
+    currentSlide = Math.max(0, Math.min(index, slides.length - 1));
+    slides.forEach((slide, slideIndex) => {
+      const active = slideIndex === currentSlide;
+      slide.classList.toggle("active", active);
+      slide.setAttribute("aria-hidden", active ? "false" : "true");
+      slide.inert = !active;
+    });
+    const activeSlide = slides[currentSlide];
+    const section = activeSlide.dataset.section;
+    const color = getComputedStyle(activeSlide).getPropertyValue("--section-color").trim();
+    stage.style.setProperty("--active-section-color", color);
+    sectionItems.forEach((item) => item.classList.toggle("on", item.dataset.sectionName === section));
+    slideNumber.value = currentSlide + 1;
+    slideTotal.textContent = slides.length;
+    activeSlide.querySelectorAll(".trace[data-trace-type]").forEach((root) => traces.get(root)?.render());
+    if (!options.skipHash) history.replaceState(null, "", `#slide-${currentSlide + 1}`);
+    updateControls();
+  }
+
+  function forward() {
+    const trace = traceOnActiveSlide();
+    if (trace?.canNext()) {
+      trace.next();
+      return;
+    }
+    const fragment = nextHiddenFragment();
+    if (fragment) {
+      fragment.classList.add("visible");
+      updateControls();
+      return;
+    }
+    if (currentSlide < slides.length - 1) showSlide(currentSlide + 1);
+  }
+
+  function backward() {
+    const trace = traceOnActiveSlide();
+    if (trace?.canPrevious()) {
+      trace.previous();
+      return;
+    }
+    const fragment = lastVisibleFragment();
+    if (fragment) {
+      fragment.classList.remove("visible");
+      updateControls();
+      return;
+    }
+    if (currentSlide > 0) showSlide(currentSlide - 1);
+  }
+
+  function jumpToRequestedSlide() {
+    const requested = Number.parseInt(slideNumber.value, 10);
+    if (Number.isNaN(requested)) {
+      slideNumber.value = currentSlide + 1;
+      return;
+    }
+    showSlide(requested - 1);
+  }
+
+  prevButton.addEventListener("click", backward);
+  nextButton.addEventListener("click", forward);
+  slideNumber.addEventListener("change", jumpToRequestedSlide);
+  slideNumber.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      jumpToRequestedSlide();
+      slideNumber.blur();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    const target = event.target;
+    const editing = target instanceof HTMLElement && target.closest("input, textarea, select, [contenteditable='true']");
+    const activatingControl = target instanceof HTMLElement && target.closest("a, button") && event.key === " ";
+    if (editing || activatingControl) return;
+    if (event.repeat) return;
+    if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(event.key)) {
+      event.preventDefault();
+      forward();
+    } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(event.key)) {
+      event.preventDefault();
+      backward();
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      showSlide(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      showSlide(slides.length - 1);
+    } else if (event.key.toLowerCase() === "f") {
+      event.preventDefault();
+      if (document.fullscreenElement) document.exitFullscreen();
+      else stage.requestFullscreen?.();
+    }
+  });
+
+  window.addEventListener("resize", fitStage);
+  window.visualViewport?.addEventListener("resize", fitStage);
+  window.addEventListener("hashchange", () => {
+    const match = location.hash.match(/^#slide-(\d+)$/);
+    if (match) showSlide(Number(match[1]) - 1, { skipHash: true });
+  });
+
+  window.addEventListener("beforeprint", () => {
+    printSnapshot = [...traces.values()].map((trace) => trace.step);
+    [...traces.values()].forEach((trace) => trace.setStep(trace.states.length - 1));
+  });
+  window.addEventListener("afterprint", () => {
+    if (!printSnapshot) return;
+    [...traces.values()].forEach((trace, index) => trace.setStep(printSnapshot[index] || 0));
+    printSnapshot = null;
+    showSlide(currentSlide, { skipHash: true });
+  });
+
+  const initialMatch = location.hash.match(/^#slide-(\d+)$/);
+  const initialSlide = initialMatch ? Number(initialMatch[1]) - 1 : 0;
+  fitStage();
+  showSlide(initialSlide, { skipHash: true });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,2881 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 2 · From Files to Trustworthy Computation</title>
+<style>
+  :root {
+    --paper: #f8fafc;
+    --surface: #ffffff;
+    --surface-2: #edf2f7;
+    --ink: #172033;
+    --muted: #536178;
+    --line: #c9d4e2;
+    --navy: #1e3a5f;
+    --blue: #1e5a89;
+    --teal: #0f766e;
+    --purple: #6d4c7d;
+    --amber: #986018;
+    --cyan: #176b80;
+    --slate: #475569;
+    --red: #b42318;
+    --red-bg: #fff1f0;
+    --green: #176b43;
+    --green-bg: #edf8f2;
+    --yellow-bg: #fff7df;
+    --font-sans: "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif;
+    --font-mono: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; }
+  body {
+    overflow: hidden;
+    background: #111827;
+    color: var(--ink);
+    font-family: var(--font-sans);
+  }
+  a { color: var(--blue); }
+
+  #stage {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 1280px;
+    height: 720px;
+    transform-origin: center center;
+    overflow: hidden;
+    background: var(--paper);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .48);
+  }
+
+  .slide {
+    --section-color: var(--navy);
+    position: absolute;
+    inset: 0;
+    display: none;
+    background: var(--paper);
+  }
+  .slide.active { display: block; }
+  .slide[data-section="intro"] { --section-color: var(--navy); }
+  .slide[data-section="native"] { --section-color: var(--teal); }
+  .slide[data-section="formats"] { --section-color: var(--blue); }
+  .slide[data-section="h5ad"] { --section-color: var(--purple); }
+  .slide[data-section="clean"] { --section-color: var(--cyan); }
+  .slide[data-section="compute"] { --section-color: var(--amber); }
+  .slide[data-section="finish"] { --section-color: var(--slate); }
+  .slide::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 7px;
+    background: var(--section-color);
+  }
+
+  .slide-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 46px 72px 78px;
+  }
+  .slide-header { margin-bottom: 21px; }
+  .section-label {
+    margin-bottom: 9px;
+    color: var(--section-color);
+    font-size: 15px;
+    font-weight: 760;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  h1 {
+    max-width: 1080px;
+    font-size: 58px;
+    line-height: 1.08;
+    letter-spacing: -.025em;
+    font-weight: 740;
+  }
+  h2 {
+    max-width: 1120px;
+    font-size: 40px;
+    line-height: 1.13;
+    letter-spacing: -.018em;
+    font-weight: 730;
+  }
+  h3 {
+    font-size: 23px;
+    line-height: 1.23;
+    font-weight: 730;
+  }
+  p, li { font-size: 20px; line-height: 1.4; }
+  .lead {
+    max-width: 930px;
+    color: var(--muted);
+    font-size: 27px;
+    line-height: 1.42;
+  }
+  .small { font-size: 17px; line-height: 1.4; }
+  .tiny { font-size: 15px; line-height: 1.35; }
+  .muted { color: var(--muted); }
+  .strong { font-weight: 730; color: var(--ink); }
+  code, pre, .mono { font-family: var(--font-mono); }
+  code.inline {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #e8eef5;
+    color: #1d3654;
+    font-size: .9em;
+  }
+
+  .content {
+    min-height: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 17px;
+  }
+  .centered {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  .cols-2, .cols-3, .cols-4 {
+    min-height: 0;
+    display: grid;
+    gap: 21px;
+    align-items: stretch;
+  }
+  .cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ratio-3-2 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+  .ratio-2-3 { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+  .align-center { align-items: center; }
+
+  .panel {
+    min-width: 0;
+    padding: 18px 21px;
+    border: 1px solid var(--line);
+    border-top: 4px solid var(--section-color);
+    background: var(--surface);
+  }
+  .panel h3 { margin-bottom: 9px; }
+  .panel p + p, .panel ul { margin-top: 8px; }
+  .panel ul { padding-left: 23px; }
+  .panel li + li { margin-top: 5px; }
+  .panel.compact { padding: 14px 17px; }
+  .panel.compact p, .panel.compact li { font-size: 17px; }
+  .panel.warning { border-top-color: var(--red); background: var(--red-bg); }
+  .panel.good { border-top-color: var(--green); background: var(--green-bg); }
+
+  .takeaway {
+    margin-top: auto;
+    padding: 12px 16px;
+    border-left: 5px solid var(--section-color);
+    background: #e9f0f6;
+    color: #24364d;
+    font-size: 19px;
+    line-height: 1.4;
+  }
+  .question {
+    padding: 17px 21px;
+    border: 2px solid var(--blue);
+    background: #edf5fb;
+    color: #173b5d;
+    font-size: 23px;
+    line-height: 1.36;
+    font-weight: 680;
+  }
+  .answer {
+    padding: 15px 19px;
+    border-left: 5px solid var(--green);
+    background: var(--green-bg);
+    font-size: 19px;
+    line-height: 1.4;
+  }
+  .fragment { visibility: hidden; opacity: 0; }
+  .fragment.visible { visibility: visible; opacity: 1; }
+
+  .code-title {
+    margin-bottom: 7px;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 740;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .code-block, .output-block {
+    min-width: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    border: 1px solid var(--line);
+    background: #0f172a;
+    color: #e7edf5;
+    padding: 16px 19px;
+    font-family: var(--font-mono);
+    font-size: 17px;
+    line-height: 1.47;
+  }
+  .output-block { background: var(--surface); color: #203047; }
+  .comment { color: #9fb0c5; }
+  .string { color: #8dd3c7; }
+  .number { color: #f4c27a; }
+  .keyword { color: #c6a7e2; }
+  .error { color: #ef6b62; font-weight: 730; }
+  .good-text { color: #4ec08d; font-weight: 730; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    font-size: 18px;
+    line-height: 1.3;
+  }
+  th {
+    padding: 10px 12px;
+    border-top: 2px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+    color: #34445a;
+    background: #e8eef4;
+    text-align: left;
+    font-size: 15px;
+    line-height: 1.24;
+    letter-spacing: .052em;
+    text-transform: uppercase;
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: 2px solid var(--ink); }
+  td:first-child { font-weight: 700; }
+  table.compact { font-size: 16px; }
+  table.compact th { font-size: 14px; }
+  table.compact td { padding-top: 7px; padding-bottom: 7px; }
+
+  .flow {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .flow-node {
+    min-width: 0;
+    flex: 1;
+    padding: 13px 13px;
+    border: 1px solid #a9b6c6;
+    background: var(--surface);
+  }
+  .flow-node b {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--section-color);
+    font-size: 17px;
+  }
+  .flow-node span { font-size: 16px; line-height: 1.3; }
+  .flow-arrow {
+    align-self: center;
+    color: #66758a;
+    font-size: 25px;
+    font-weight: 700;
+  }
+
+  .checklist { display: grid; gap: 9px; }
+  .check-row {
+    display: grid;
+    grid-template-columns: 36px 285px minmax(0, 1fr);
+    align-items: baseline;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .check-row .num { color: var(--section-color); font-size: 20px; font-weight: 780; }
+  .check-row b { font-size: 20px; }
+  .check-row span:last-child { color: var(--muted); font-size: 18px; }
+
+  .rule-list { display: grid; gap: 14px; }
+  .rule {
+    display: grid;
+    grid-template-columns: 210px minmax(0, 1fr);
+    gap: 20px;
+    align-items: baseline;
+    padding-bottom: 11px;
+    border-bottom: 1px solid var(--line);
+  }
+  .rule b { color: var(--section-color); font-size: 21px; }
+  .rule span { font-size: 19px; line-height: 1.36; }
+
+  .shape-strip {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .shape-item {
+    padding: 13px 10px;
+    border: 1px solid var(--line);
+    border-top: 4px solid var(--section-color);
+    background: var(--surface);
+    text-align: center;
+  }
+  .shape-item b { display: block; font-family: var(--font-mono); font-size: 18px; }
+  .shape-item span { display: block; margin-top: 6px; color: var(--muted); font-size: 15px; }
+
+  .matrix {
+    display: grid;
+    grid-template-columns: 86px repeat(4, 86px);
+    justify-content: center;
+    border-top: 2px solid var(--ink);
+    border-left: 1px solid var(--line);
+  }
+  .matrix div {
+    padding: 10px 8px;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    text-align: center;
+    font-size: 16px;
+  }
+  .matrix .head { background: #e8eef4; font-weight: 720; }
+  .matrix .idx { background: #f1f4f8; color: var(--muted); font-family: var(--font-mono); }
+
+  .h5-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+    gap: 26px;
+    min-height: 0;
+  }
+  .h5-figure {
+    min-width: 0;
+    padding: 14px 18px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .h5-figure figcaption {
+    margin-bottom: 8px;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 740;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+  }
+  .h5-tree, .h5-tree ul { list-style: none; }
+  .h5-tree ul {
+    position: relative;
+    margin-left: 22px;
+    padding-left: 18px;
+    border-left: 1px solid #9fb0c2;
+  }
+  .h5-tree li {
+    position: relative;
+    padding: 3px 0;
+    font-size: 15px;
+    line-height: 1.25;
+  }
+  .h5-tree ul > li::before {
+    content: "";
+    position: absolute;
+    left: -18px;
+    top: 14px;
+    width: 13px;
+    border-top: 1px solid #9fb0c2;
+  }
+  .tree-node {
+    display: grid;
+    grid-template-columns: 124px minmax(0, 1fr);
+    gap: 8px;
+    align-items: baseline;
+  }
+  .tree-node code { color: #2f4b70; font-size: 15px; font-weight: 730; white-space: nowrap; }
+  .tree-node span { color: var(--muted); font-size: 14px; }
+  .h5-contracts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
+  .h5-contracts .panel { padding: 13px 14px; }
+  .h5-contracts h3 { font-size: 17px; }
+  .h5-contracts p { font-size: 14px; line-height: 1.34; }
+
+  .axis-map {
+    display: grid;
+    grid-template-columns: 180px 1fr 1fr;
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+  }
+  .axis-map div {
+    padding: 13px 15px;
+    background: var(--surface);
+    font-size: 18px;
+    line-height: 1.3;
+  }
+  .axis-map .head { background: #e7edf4; font-size: 15px; font-weight: 740; text-transform: uppercase; }
+  .axis-map .key { color: var(--section-color); font-family: var(--font-mono); font-weight: 730; }
+
+  .big-claim {
+    max-width: 1010px;
+    font-size: 45px;
+    line-height: 1.24;
+    font-weight: 730;
+    letter-spacing: -.018em;
+  }
+
+  #hud {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    height: 54px;
+    display: grid;
+    grid-template-columns: 205px 1fr 168px;
+    align-items: center;
+    padding: 0 25px;
+    border-top: 1px solid #b8c4d2;
+    background: #edf1f5;
+    color: #4a596d;
+  }
+  #hud .course {
+    font-size: 13px;
+    font-weight: 730;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  #section-map {
+    display: flex;
+    justify-content: center;
+    gap: 13px;
+  }
+  #section-map span {
+    padding: 5px 0 4px;
+    border-bottom: 3px solid transparent;
+    font-size: 10.5px;
+    font-weight: 730;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+    opacity: .38;
+  }
+  #section-map span.on {
+    border-bottom-color: var(--active-section-color, var(--navy));
+    color: var(--ink);
+    opacity: 1;
+  }
+  .nav-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .nav-controls button {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .nav-controls button:disabled { opacity: .35; cursor: default; }
+  .nav-controls button:focus-visible { outline: 3px solid #4e8fc1; outline-offset: 2px; }
+  #count {
+    min-width: 62px;
+    text-align: right;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  #slide-number {
+    width: 34px;
+    padding: 2px 3px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  #slide-number:focus-visible {
+    outline: 3px solid #4e8fc1;
+    outline-offset: 2px;
+  }
+  #rotate-note {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    padding: 28px;
+    background: #111827;
+    color: white;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 22px;
+    line-height: 1.4;
+  }
+
+  @media (max-width: 900px) and (orientation: portrait) {
+    #rotate-note { display: flex; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fragment { transition: none; }
+  }
+  @media print {
+    @page { size: 13.333in 7.5in; margin: 0; }
+    html, body {
+      width: auto;
+      height: auto;
+      overflow: visible;
+      background: white;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    #stage {
+      position: relative;
+      left: auto;
+      top: auto;
+      width: auto;
+      height: auto;
+      transform: none !important;
+      box-shadow: none;
+      overflow: visible;
+    }
+    .slide {
+      position: relative;
+      display: block !important;
+      width: 13.333in;
+      height: 7.5in;
+      break-after: page;
+      page-break-after: always;
+    }
+    .slide:last-of-type { break-after: auto; page-break-after: auto; }
+    .fragment { visibility: visible !important; opacity: 1 !important; }
+    #hud, #rotate-note { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="rotate-note">Rotate your device to landscape for presentation view.</div>
+<div id="stage">
+
+<!-- 1 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Intro to CS · Lesson 2</div>
+      <h1>From files to trustworthy computation</h1>
+    </header>
+    <main class="content centered">
+      <p class="lead">Native Python I/O, pandas, PyArrow, H5AD, and NumPy</p>
+      <div class="question" style="max-width:980px">Reading a file is a translation step. Analysis begins only after we inspect what the translation produced.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · Why files?</div>
+      <h2>Memory is temporary; files make data persistent</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>In memory</h3>
+          <pre class="code-block">orders = [
+  {"id": "T1", "amount": 100},
+  {"id": "T2", "amount": 150},
+]</pre>
+          <p>Fast to use, but the object disappears when the process ends.</p>
+        </div>
+        <div class="panel">
+          <h3>On disk</h3>
+          <pre class="code-block">path.write_text(
+  "T1,100\nT2,150\n",
+  encoding="utf-8"
+)</pre>
+          <p>Slower to access, but reusable, shareable, and auditable.</p>
+        </div>
+      </div>
+      <div class="takeaway">Persistence introduces a boundary: an in-memory object must be encoded into bytes, then reconstructed later.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · The complete workflow</div>
+      <h2>A trustworthy result passes through nine explicit stages</h2>
+    </header>
+    <main class="content centered">
+      <div class="flow" style="width:100%">
+        <div class="flow-node"><b>Path</b><span>locate</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Bytes</b><span>read</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Parser</b><span>decode</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Object</b><span>construct</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Inspect</b><span>question</span></div>
+      </div>
+      <div class="flow" style="width:100%">
+        <div class="flow-node"><b>Validate</b><span>test rules</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Clean</b><span>restore</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Compute</b><span>analyze</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Export</b><span>encode</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Round trip</b><span>verify</span></div>
+      </div>
+      <p class="lead">Every arrow carries assumptions. Good code makes those assumptions visible.</p>
+    </main>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · Running examples</div>
+      <h2>Two datasets connect the tools to concrete questions</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>Retail tables</h3>
+          <p><strong>customers.csv</strong> describes people and regions.</p>
+          <p><strong>transactions.csv</strong> contains dates, quantities, prices, discounts, duplicates, and an unmatched key.</p>
+          <p class="muted">Used for pandas inspection, cleaning, grouping, and joining.</p>
+        </div>
+        <div class="panel">
+          <h3>Cell-by-gene data</h3>
+          <p>A numerical matrix contains measurements.</p>
+          <p>Row and column annotations describe cells and genes; embeddings and analysis metadata must stay aligned.</p>
+          <p class="muted">Used to explain HDF5, H5AD, AnnData, and Scanpy.</p>
+        </div>
+      </div>
+      <div class="takeaway">The question determines the in-memory structure; the reconstruction requirement determines the file format.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="slide" data-section="native">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Native Python I/O</div>
+      <h2>File, format, and Python object are three different layers</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel">
+          <h3>File</h3>
+          <p>A persistent resource located by a path.</p>
+          <p class="mono muted">customers.csv</p>
+        </div>
+        <div class="panel">
+          <h3>Format</h3>
+          <p>Rules for encoding information as bytes.</p>
+          <p class="mono muted">comma-separated text</p>
+        </div>
+        <div class="panel">
+          <h3>Object</h3>
+          <p>A runtime structure created by a parser.</p>
+          <p class="mono muted">list, dict, DataFrame</p>
+        </div>
+      </div>
+      <div class="takeaway">A filename extension is a clue, not a guarantee. The parser must agree with the actual encoding.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide" data-section="native">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Paths</div>
+      <h2>A relative path is interpreted from the working directory</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2 align-center">
+        <div>
+          <div class="code-title">Path objects make the route inspectable</div>
+          <pre class="code-block">from pathlib import Path
+
+RAW = Path("../data/raw")
+path = RAW / "customers.csv"
+
+print(Path.cwd())
+print(path.exists())
+print(path.name, path.suffix)
+print(path.resolve())</pre>
+        </div>
+        <div class="panel">
+          <h3>Ask three questions</h3>
+          <ul>
+            <li>Where is the program standing?</li>
+            <li>What route did I construct?</li>
+            <li>Does that resource exist?</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">Use <code class="inline">Path</code> objects instead of manually joining path strings.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide" data-section="native">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Diagnose the boundary</div>
+      <h2><code>FileNotFoundError</code> is usually an address problem</h2>
+    </header>
+    <main class="content">
+      <div class="question">If the notebook runs from <code>notebooks/</code>, which file does <code>Path("../data/raw/customerz.csv")</code> describe?</div>
+      <div class="cols-2">
+        <pre class="code-block">try:
+    pd.read_csv(
+        Path("../data/raw/customerz.csv")
+    )
+except FileNotFoundError as error:
+    print(error)</pre>
+        <div class="answer fragment">
+          Read the final traceback line first. Then print <code class="inline">Path.cwd()</code>, print the path, and call <code class="inline">path.exists()</code>. The typo is in the filename.
+        </div>
+      </div>
+      <div class="takeaway">Do not change the data-loading code until you have verified the path itself.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide" data-section="native">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Resource lifetime</div>
+      <h2>A context manager closes the file even when work fails</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2 align-center">
+        <pre class="code-block">path = Path("notes.txt")
+
+with path.open(
+    mode="r",
+    encoding="utf-8"
+) as file:
+    text = file.read()
+
+<span class="comment"># file is closed here</span></pre>
+        <div class="panel good">
+          <h3>The ownership pattern</h3>
+          <p><code class="inline">with</code> opens the resource, gives it a local name, and guarantees cleanup when the indented block ends.</p>
+          <p>Use it for files, database connections, locks, and other managed resources.</p>
+        </div>
+      </div>
+      <div class="takeaway">Safe I/O is not only about content; it is also about who owns the open resource and when it is released.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="slide" data-section="native">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Modes</div>
+      <h2>The file mode determines which operations are permitted</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Mode</th><th>Purpose</th><th>If the file exists</th><th>If it does not exist</th></tr></thead>
+        <tbody>
+          <tr><td><code>r</code></td><td>read text</td><td>keeps content</td><td>raises an error</td></tr>
+          <tr><td><code>w</code></td><td>write text</td><td>overwrites content</td><td>creates the file</td></tr>
+          <tr><td><code>a</code></td><td>append text</td><td>writes at the end</td><td>creates the file</td></tr>
+          <tr><td><code>x</code></td><td>create new</td><td>raises an error</td><td>creates the file</td></tr>
+          <tr><td><code>rb</code></td><td>read bytes</td><td>returns byte values</td><td>raises an error</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway"><strong>Most dangerous beginner mistake:</strong> opening an important file with <code class="inline">w</code> before confirming the output path.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="slide" data-section="native">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Text decoding</div>
+      <h2>Encoding is the agreement that connects characters and bytes</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>Text mode</h3>
+          <pre class="code-block">path.open(
+  "r",
+  encoding="utf-8"
+)</pre>
+          <p>Python decodes bytes into a <code class="inline">str</code>.</p>
+        </div>
+        <div class="panel">
+          <h3>Binary mode</h3>
+          <pre class="code-block">path.open("rb")</pre>
+          <p>Python returns <code class="inline">bytes</code>; the caller must interpret them.</p>
+        </div>
+      </div>
+      <div class="panel warning">
+        <h3>Why specify UTF-8?</h3>
+        <p>Platform defaults differ. An explicit encoding turns an environmental guess into part of the program's contract.</p>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="slide" data-section="native">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Reading strategies</div>
+      <h2>Choose a reading pattern from file size and processing needs</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel">
+          <h3>Whole file</h3>
+          <pre class="code-block">text = file.read()</pre>
+          <p>Simple when the file comfortably fits in memory.</p>
+        </div>
+        <div class="panel">
+          <h3>One line</h3>
+          <pre class="code-block">line = file.readline()</pre>
+          <p>Useful when a header or first record has special meaning.</p>
+        </div>
+        <div class="panel">
+          <h3>Stream lines</h3>
+          <pre class="code-block">for line in file:
+    process(line)</pre>
+          <p>Uses bounded memory and supports incremental work.</p>
+        </div>
+      </div>
+      <div class="takeaway">“Load everything” is a convenience, not a universal requirement.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="slide" data-section="native">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Text round trip</div>
+      <h2>Write, reload, and compare what actually persisted</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">path = Path("first-file.txt")
+expected = "alpha\nbeta\n"
+
+path.write_text(expected, encoding="utf-8")
+actual = path.read_text(encoding="utf-8")
+
+print(repr(actual))
+assert actual == expected
+print(path.stat().st_size, "bytes")</pre>
+        <div class="panel">
+          <h3>What the check catches</h3>
+          <ul>
+            <li>Wrong output path</li>
+            <li>Missing newline characters</li>
+            <li>Unexpected encoding behavior</li>
+            <li>Partial or empty output</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">Saving without reloading tests only that the write call finished—not that another program can reconstruct the intended information.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 13 -->
+<section class="slide" data-section="formats">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Structured formats</div>
+      <h2>Formats are designed around different natural shapes</h2>
+    </header>
+    <main class="content centered">
+      <div class="shape-strip" style="width:100%">
+        <div class="shape-item"><b>TXT</b><span>sequence of characters</span></div>
+        <div class="shape-item"><b>CSV</b><span>rectangular table</span></div>
+        <div class="shape-item"><b>JSON</b><span>nested tree</span></div>
+        <div class="shape-item"><b>XLSX</b><span>human workbook</span></div>
+        <div class="shape-item"><b>Parquet</b><span>typed columns</span></div>
+        <div class="shape-item"><b>H5AD</b><span>annotated matrix</span></div>
+      </div>
+      <p class="lead">The same facts can be encoded in many formats, but the cost of reconstruction changes.</p>
+    </main>
+  </div>
+</section>
+
+<!-- 14 -->
+<section class="slide" data-section="formats">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · CSV and TSV</div>
+      <h2>Delimited text represents a rectangle—but not its full schema</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-2-3 align-center">
+        <pre class="output-block">customer_id,name,region
+00101,Alice,West
+00102,Bao,East</pre>
+        <div class="panel">
+          <h3>What the text tells us</h3>
+          <ul>
+            <li>Rows, fields, and a delimiter</li>
+            <li>Quoting and newline rules</li>
+          </ul>
+          <h3 style="margin-top:14px">What it does not guarantee</h3>
+          <ul>
+            <li>Column dtypes or valid ranges</li>
+            <li>Key uniqueness</li>
+            <li>Whether <code class="inline">00101</code> is an ID or number</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">CSV preserves characters in a rectangle. Meaningful column contracts must be supplied or inferred.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 15 -->
+<section class="slide" data-section="formats">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Native CSV</div>
+      <h2>The <code>csv</code> module handles delimiters and quoting safely</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">Read into dictionaries</div>
+          <pre class="code-block">import csv
+
+with path.open(
+    newline="",
+    encoding="utf-8"
+) as file:
+    rows = list(csv.DictReader(file))</pre>
+        </div>
+        <div>
+          <div class="code-title">Write dictionaries</div>
+          <pre class="code-block">with out.open(
+    "w", newline="",
+    encoding="utf-8"
+) as file:
+    writer = csv.DictWriter(
+        file, fieldnames=columns
+    )
+    writer.writeheader()
+    writer.writerows(rows)</pre>
+        </div>
+      </div>
+      <div class="takeaway">Use the CSV parser instead of manually splitting on commas; quoted fields may contain commas themselves.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 16 -->
+<section class="slide" data-section="formats">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · JSON</div>
+      <h2>JSON preserves hierarchy, not arbitrary Python object identity</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block">import json
+
+with path.open(encoding="utf-8") as file:
+    data = json.load(file)
+
+with out.open("w", encoding="utf-8") as file:
+    json.dump(data, file, indent=2)</pre>
+        <div class="panel">
+          <h3>Natural JSON values</h3>
+          <p>Objects, arrays, strings, numbers, booleans, and <code class="inline">null</code>.</p>
+          <h3 style="margin-top:14px">Round-trip changes</h3>
+          <p>Tuples reload as lists. Sets and datetimes require an explicit conversion. Object keys are strings.</p>
+        </div>
+      </div>
+      <div class="takeaway">JSON is a good transport for nested records, but it is not a complete serializer for every Python type.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 17 -->
+<section class="slide" data-section="formats">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Nested data</div>
+      <h2>Before flattening JSON, decide what one output row means</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-2-3">
+        <pre class="output-block">{
+  "portfolio": "P1",
+  "holdings": [
+    {
+      "ticker": "ABC",
+      "trades": [
+        {"date": "2026-01-02", "qty": 10},
+        {"date": "2026-01-08", "qty": -2}
+      ]
+    }
+  ]
+}</pre>
+        <div>
+          <div class="question">Should one row represent a portfolio, a holding, or a trade?</div>
+          <div class="answer fragment" style="margin-top:16px">For trade-level analysis, one row should represent one trade. Portfolio and ticker fields are repeated as context.</div>
+        </div>
+      </div>
+      <div class="takeaway">Flattening is a modeling decision, not a mechanical conversion.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 18 -->
+<section class="slide" data-section="formats">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Excel</div>
+      <h2>An Excel file is a workbook, not merely a table</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>Useful human features</h3>
+          <ul>
+            <li>Multiple named sheets</li>
+            <li>Formulas, formatting, and notes</li>
+            <li>Convenient manual review</li>
+          </ul>
+        </div>
+        <div class="panel warning">
+          <h3>Parsing complications</h3>
+          <ul>
+            <li>Decorative title rows and merged cells</li>
+            <li>Different layouts across sheets</li>
+            <li>Values that depend on workbook recalculation</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">Use Excel for human workflows; inspect workbook structure before assuming a clean rectangular table.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 19 -->
+<section class="slide" data-section="formats">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Parquet</div>
+      <h2>Parquet stores typed columns for analytical access</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel">
+          <h3>Schema</h3>
+          <p>Logical column names and types are stored with the data.</p>
+        </div>
+        <div class="panel">
+          <h3>Columnar layout</h3>
+          <p>Readers can request only the columns needed for a calculation.</p>
+        </div>
+        <div class="panel">
+          <h3>Compression</h3>
+          <p>Repeated values within columns can be encoded efficiently.</p>
+        </div>
+      </div>
+      <div class="panel warning">
+        <h3>Important qualification</h3>
+        <p>Parquet preserves supported table types and schema information; it does not preserve arbitrary Python objects or every pandas-specific detail in every engine.</p>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 20 -->
+<section class="slide" data-section="formats">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Format choice</div>
+      <h2>Choose a format from what must be reconstructed</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Format</th><th>Natural shape</th><th>Strong at preserving</th><th>Common loss or cost</th></tr></thead>
+        <tbody>
+          <tr><td>TXT</td><td>character stream</td><td>readable text</td><td>structure and types</td></tr>
+          <tr><td>CSV / TSV</td><td>rectangle</td><td>portable rows and fields</td><td>schema and constraints</td></tr>
+          <tr><td>JSON</td><td>tree</td><td>nested structure</td><td>specialized types</td></tr>
+          <tr><td>Excel</td><td>workbook</td><td>human presentation</td><td>consistent machine structure</td></tr>
+          <tr><td>Parquet</td><td>typed columns</td><td>analytical schema and compression</td><td>human readability</td></tr>
+          <tr><td>H5AD</td><td>annotated matrix</td><td>aligned scientific data</td><td>domain-specific complexity</td></tr>
+        </tbody>
+      </table>
+    </main>
+  </div>
+</section>
+
+<!-- 21 -->
+<section class="slide" data-section="formats">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Libraries and objects</div>
+      <h2>Library, in-memory object, and file format remain separate choices</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Library</th><th>Main object</th><th>Common formats</th><th>Primary job</th></tr></thead>
+        <tbody>
+          <tr><td>Python standard library</td><td><code>str</code>, <code>list</code>, <code>dict</code></td><td>TXT, CSV, JSON</td><td>general-purpose I/O</td></tr>
+          <tr><td>pandas</td><td><code>Series</code>, <code>DataFrame</code></td><td>CSV, JSON, Excel, Parquet</td><td>labeled tabular analysis</td></tr>
+          <tr><td>PyArrow</td><td><code>Table</code>, <code>Array</code></td><td>Parquet, Arrow IPC</td><td>typed columnar interchange</td></tr>
+          <tr><td>AnnData / Scanpy</td><td><code>AnnData</code></td><td>H5AD</td><td>annotated matrix analysis</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">Parquet is not PyArrow, and H5AD is not Scanpy. One is a format; the other is software that reads and writes it.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 22 -->
+<section class="slide" data-section="formats">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · pandas I/O vocabulary</div>
+      <h2>pandas uses a consistent reader–writer pattern across formats</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Format</th><th>Load</th><th>Write</th><th>Extra dependency</th></tr></thead>
+        <tbody>
+          <tr><td>CSV</td><td><code>pd.read_csv(...)</code></td><td><code>df.to_csv(...)</code></td><td>none</td></tr>
+          <tr><td>JSON</td><td><code>pd.read_json(...)</code></td><td><code>df.to_json(...)</code></td><td>none</td></tr>
+          <tr><td>Excel</td><td><code>pd.read_excel(...)</code></td><td><code>df.to_excel(...)</code></td><td>engine such as openpyxl</td></tr>
+          <tr><td>Parquet</td><td><code>pd.read_parquet(...)</code></td><td><code>df.to_parquet(...)</code></td><td>engine such as pyarrow</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">The method names are simple; the important work is supplying the correct format-specific assumptions.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 23 -->
+<section class="slide" data-section="formats">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Inference</div>
+      <h2>A naive CSV load can reconstruct the wrong contract</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">Stored text</div>
+          <pre class="output-block">customer_id,unit_price
+00101,2.55
+00102,not-available</pre>
+        </div>
+        <div>
+          <div class="code-title">Naive load</div>
+          <pre class="code-block">df = pd.read_csv("sales.csv")
+print(df.dtypes)</pre>
+          <pre class="output-block">customer_id     int64
+unit_price     object   <span class="comment"># pandas 2.x</span>
+               str      <span class="comment"># commonly pandas 3.x</span></pre>
+        </div>
+      </div>
+      <div class="question">What was lost, and why is each inferred dtype dangerous?</div>
+      <div class="answer fragment">Leading zeros disappear from the ID. One nonnumeric price prevents a clean numeric column, so later operations may fail—or do the wrong legal operation.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 24 -->
+<section class="slide" data-section="formats">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Explicit CSV loading</div>
+      <h2>State important parsing decisions at the file boundary</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">customers = pd.read_csv(
+    "customers.csv",
+    dtype={"customer_id": "string"},
+    parse_dates=["signup_date"],
+)
+
+transactions = pd.read_csv(
+    "transactions.csv",
+    dtype={
+        "transaction_id": "string",
+        "customer_id": "string",
+    },
+    na_values=["-", "."],
+    usecols=[
+        "transaction_id", "customer_id",
+        "date", "quantity", "unit_price",
+    ],
+)</pre>
+        <div class="rule-list">
+          <div class="rule"><b><code>dtype</code></b><span>What kind of values should a column hold?</span></div>
+          <div class="rule"><b><code>parse_dates</code></b><span>Which clean fields represent time?</span></div>
+          <div class="rule"><b><code>na_values</code></b><span>Which source-specific tokens mean missing?</span></div>
+          <div class="rule"><b><code>usecols</code></b><span>Which columns are needed?</span></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 25 -->
+<section class="slide" data-section="formats">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · JSON to tables</div>
+      <h2>Normalize nested JSON only after choosing the row grain</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">flat = pd.json_normalize(
+    nested,
+    record_path=["holdings", "trades"],
+    meta=[
+        "portfolio",
+        ["holdings", "ticker"],
+    ],
+)
+
+<span class="comment"># one row per trade</span></pre>
+        <div class="panel">
+          <h3>Two separate steps</h3>
+          <ol style="padding-left:23px">
+            <li>Use <code class="inline">json.load</code> to reconstruct the hierarchy.</li>
+            <li>Use <code class="inline">json_normalize</code> to produce the table required by the analysis.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="takeaway">A DataFrame is rectangular. Deep JSON is not; flattening repeats parent fields to preserve context.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 26 -->
+<section class="slide" data-section="formats">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Excel reconnaissance</div>
+      <h2>Inspect the workbook before selecting a table</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">book = pd.ExcelFile("report.xlsx")
+print(book.sheet_names)
+
+prices = pd.read_excel(
+    book,
+    sheet_name="Daily Prices",
+    skiprows=2,
+    usecols="A:D",
+    parse_dates=["Date"],
+)
+
+prices.to_excel(
+    "prices-clean.xlsx",
+    index=False,
+)</pre>
+        <div class="panel">
+          <h3>Inspect before assuming</h3>
+          <ul>
+            <li>Which sheets exist?</li>
+            <li>Where is the real header?</li>
+            <li>Are decorative rows present?</li>
+            <li>Which columns contain data?</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">Workbook structure is part of the input contract.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 27 -->
+<section class="slide" data-section="formats">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · pandas and Parquet</div>
+      <h2>Parquet usually needs fewer reconstruction instructions than CSV</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">Write a supported table schema</div>
+          <pre class="code-block">clean.to_parquet(
+    "sales.parquet",
+    index=False,
+    engine="pyarrow",
+)</pre>
+        </div>
+        <div>
+          <div class="code-title">Read only the needed columns</div>
+          <pre class="code-block">small = pd.read_parquet(
+    "sales.parquet",
+    columns=["date", "revenue"],
+    engine="pyarrow",
+)</pre>
+        </div>
+      </div>
+      <div class="panel warning">
+        <h3>Still validate the result</h3>
+        <p>Compare columns, dtypes, missing counts, row count, and representative values. “Typed” does not mean “impossible to misuse.”</p>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 28 -->
+<section class="slide" data-section="formats">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Arrow Table</div>
+      <h2>An Arrow Table has named equal-length columns and an explicit schema</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">import pyarrow as pa
+
+table = pa.Table.from_pandas(
+    clean,
+    preserve_index=False,
+)
+
+print(table.schema)
+print(table.num_rows)
+print(table.column_names)</pre>
+        <pre class="output-block">customer_id: string
+date: timestamp[us]
+quantity: int64
+revenue: double
+
+10 rows
+4 columns</pre>
+      </div>
+      <div class="takeaway">The schema is part of the object, not an inference performed separately for every operation.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 29 -->
+<section class="slide" data-section="formats">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · PyArrow Parquet I/O</div>
+      <h2>Column projection avoids decoding data the computation will not use</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">import pyarrow.parquet as pq
+
+pq.write_table(
+    table,
+    "sales.parquet",
+)
+
+subset = pq.read_table(
+    "sales.parquet",
+    columns=["customer_id", "revenue"],
+)
+
+result = subset.to_pandas()</pre>
+        <div class="panel">
+          <h3>Why this matters</h3>
+          <p>A columnar file can skip entire unused columns. For wide analytical tables, this reduces I/O and decoding work.</p>
+          <p class="muted">Filtering and partitioning can reduce the read further.</p>
+        </div>
+      </div>
+      <div class="takeaway">PyArrow is especially useful when storage and data movement—not only DataFrame manipulation—are part of the problem.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 30 -->
+<section class="slide" data-section="formats">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Representation conversion</div>
+      <h2>Convert between pandas and Arrow intentionally</h2>
+    </header>
+    <main class="content centered">
+      <div class="flow" style="width:90%">
+        <div class="flow-node"><b>pandas DataFrame</b><span>labels, indexes, cleaning, groupby</span></div>
+        <div class="flow-arrow">⇄</div>
+        <div class="flow-node"><b>Arrow Table</b><span>explicit schema, typed columns, interchange</span></div>
+        <div class="flow-arrow">⇄</div>
+        <div class="flow-node"><b>Parquet</b><span>compressed columnar persistence</span></div>
+      </div>
+      <pre class="code-block" style="width:90%">table = pa.Table.from_pandas(df, preserve_index=False)
+df_again = table.to_pandas()</pre>
+      <p class="lead">Conversion can change index treatment or dtypes. Verify the contract after crossing the boundary.</p>
+    </main>
+  </div>
+</section>
+
+<!-- 31 -->
+<section class="slide" data-section="formats">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Division of labor</div>
+      <h2>pandas is analysis-facing; Arrow is interchange-facing</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>Stay in pandas when you need</h3>
+          <ul>
+            <li>Index-aware selection and alignment</li>
+            <li>Cleaning, grouping, joining, reshaping</li>
+            <li>Convenient exploratory output</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>Use PyArrow when you need</h3>
+          <ul>
+            <li>Explicit columnar schemas</li>
+            <li>Parquet datasets and selective reads</li>
+            <li>Efficient interchange with other systems</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">These libraries complement each other; one is not a universal replacement for the other.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 32 -->
+<section class="slide" data-section="h5ad">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · HDF5 and H5AD</div>
+      <h2>HDF5 is a hierarchical container; H5AD is a domain schema inside it</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>Generic HDF5</h3>
+          <p>Groups behave like folders. Datasets behave like typed multidimensional arrays.</p>
+          <pre class="code-block">with h5py.File(path, "r") as file:
+    print(list(file.keys()))</pre>
+        </div>
+        <div class="panel">
+          <h3>H5AD</h3>
+          <p>An agreed layout for an <code class="inline">AnnData</code> object: a main matrix plus annotations and analysis results.</p>
+          <pre class="code-block">adata = anndata.read_h5ad(path)</pre>
+        </div>
+      </div>
+      <div class="takeaway">A generic HDF5 reader can inspect the container. AnnData or Scanpy understands what the H5AD branches mean.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 33 -->
+<section class="slide" data-section="h5ad">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · AnnData anatomy</div>
+      <h2>AnnData keeps a matrix aligned with row and column metadata</h2>
+    </header>
+    <main class="content">
+      <div class="axis-map">
+        <div class="head">Element</div><div class="head">Meaning</div><div class="head">Shape contract</div>
+        <div class="key">X</div><div>main measurement matrix</div><div><code>n_obs × n_vars</code></div>
+        <div class="key">obs</div><div>observation metadata</div><div><code>n_obs</code> rows</div>
+        <div class="key">var</div><div>variable metadata</div><div><code>n_vars</code> rows</div>
+        <div class="key">layers</div><div>alternate matrices</div><div>each <code>n_obs × n_vars</code></div>
+        <div class="key">obsm</div><div>multi-dimensional observation annotations</div><div>first axis <code>n_obs</code></div>
+        <div class="key">uns</div><div>unstructured analysis metadata</div><div>no axis-alignment rule</div>
+      </div>
+      <div class="takeaway">For single-cell data, observations are often cells and variables are often genes—but the structure is general.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 34 -->
+<section class="slide" data-section="h5ad">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Constructing the object</div>
+      <h2>NumPy supplies the matrix; pandas supplies aligned annotations</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">import anndata as ad
+import numpy as np
+import pandas as pd
+
+X = np.array([
+  [4, 0, 2, 1], [0, 3, 0, 5],
+  [1, 1, 4, 0],
+], dtype=np.float32)
+
+obs = pd.DataFrame(
+  {"cell_type": ["T", "B", "T"]},
+  index=["cell1", "cell2", "cell3"],
+)
+var = pd.DataFrame(
+  index=["G1", "G2", "G3", "G4"]
+)
+adata = ad.AnnData(X=X, obs=obs, var=var)</pre>
+        <div>
+          <div class="matrix">
+            <div class="head"></div><div class="head">G1</div><div class="head">G2</div><div class="head">G3</div><div class="head">G4</div>
+            <div class="idx">cell1</div><div>4</div><div>0</div><div>2</div><div>1</div>
+            <div class="idx">cell2</div><div>0</div><div>3</div><div>0</div><div>5</div>
+            <div class="idx">cell3</div><div>1</div><div>1</div><div>4</div><div>0</div>
+          </div>
+          <p class="small muted" style="margin-top:14px">Shape: <code>3 observations × 4 variables</code></p>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 35 -->
+<section class="slide" data-section="h5ad">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · H5AD hierarchy</div>
+      <h2>One H5AD file stores several aligned structures</h2>
+    </header>
+    <main class="content">
+      <div class="h5-layout">
+        <figure class="h5-figure">
+          <figcaption>Logical AnnData structure</figcaption>
+          <ul class="h5-tree">
+            <li><div class="tree-node"><code>cells.h5ad /</code><span>AnnData root group</span></div>
+              <ul>
+                <li><div class="tree-node"><code>X</code><span>main n_obs × n_vars matrix</span></div></li>
+                <li><div class="tree-node"><code>obs /</code><span>observation metadata table</span></div></li>
+                <li><div class="tree-node"><code>var /</code><span>variable metadata table</span></div></li>
+                <li><div class="tree-node"><code>layers /</code><span>alternate aligned matrices</span></div>
+                  <ul><li><div class="tree-node"><code>counts</code><span>raw or alternate values</span></div></li></ul>
+                </li>
+                <li><div class="tree-node"><code>obsm /</code><span>observation embeddings</span></div>
+                  <ul>
+                    <li><div class="tree-node"><code>X_pca</code><span>n_obs × components</span></div></li>
+                    <li><div class="tree-node"><code>X_umap</code><span>n_obs × 2</span></div></li>
+                  </ul>
+                </li>
+                <li><div class="tree-node"><code>obsp /</code><span>observation relationships</span></div></li>
+                <li><div class="tree-node"><code>varm / varp /</code><span>variable-aligned data</span></div></li>
+                <li><div class="tree-node"><code>uns /</code><span>nested analysis metadata</span></div></li>
+                <li><div class="tree-node"><code>raw /</code><span>optional raw snapshot</span></div></li>
+              </ul>
+            </li>
+          </ul>
+        </figure>
+        <div>
+          <div class="h5-contracts">
+            <div class="panel"><h3>Matrix-aligned</h3><p><code>X</code> and <code>layers/*</code> have shape <code>n_obs × n_vars</code>.</p></div>
+            <div class="panel"><h3>Observation-aligned</h3><p><code>obs</code>, <code>obsm</code>, and <code>obsp</code> follow observations.</p></div>
+            <div class="panel"><h3>Variable-aligned</h3><p><code>var</code>, <code>varm</code>, and <code>varp</code> follow variables.</p></div>
+            <div class="panel"><h3>Unstructured</h3><p><code>uns</code> stores nested metadata without an axis-shape contract.</p></div>
+          </div>
+          <p class="tiny muted" style="margin-top:12px">Logical hierarchy shown. An HDF5 table or sparse matrix may itself be encoded as a group rather than one leaf dataset.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 36 -->
+<section class="slide" data-section="h5ad">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Read and write H5AD</div>
+      <h2>Scanpy reads the coordinated object; AnnData writes it</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">Scanpy workflow</div>
+          <pre class="code-block">import scanpy as sc
+
+adata = sc.read_h5ad("cells.h5ad")
+
+print(adata.shape)
+print(adata.obs.head())
+print(adata.var.head())
+
+adata.write_h5ad(
+    "cells-clean.h5ad",
+    compression="gzip",
+)</pre>
+          <p class="small muted" style="margin-top:9px">Compression reduces file size but can slow reading and writing.</p>
+        </div>
+        <div>
+          <div class="code-title">AnnData-only equivalent</div>
+          <pre class="code-block">import anndata as ad
+
+adata = ad.read_h5ad("cells.h5ad")
+adata.write_h5ad("cells-clean.h5ad")</pre>
+          <div class="panel" style="margin-top:15px">
+            <h3>Role distinction</h3>
+            <p>AnnData defines the object and H5AD I/O. Scanpy adds a single-cell analysis workflow around that object.</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 37 -->
+<section class="slide" data-section="h5ad">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Large H5AD files</div>
+      <h2>Backed mode keeps the main matrix on disk—but changes the rules</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2 align-center">
+        <pre class="code-block">import scanpy as sc
+
+adata = sc.read_h5ad(
+    "large-cells.h5ad",
+    backed="r",
+)
+
+print(adata.shape)
+print(adata.isbacked)
+
+<span class="comment"># Read subsets as needed.</span></pre>
+        <div class="panel warning">
+          <h3>Do not treat backed mode like normal memory</h3>
+          <ul>
+            <li>Data is loaded from disk on demand.</li>
+            <li>Mutation support is restricted.</li>
+            <li>Write edits to a new file unless you fully understand the backing rules.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">Backed mode is a memory strategy, not a faster default for every dataset.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 38 -->
+<section class="slide" data-section="h5ad">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Reader checkpoint</div>
+      <h2>Match the file, library, and in-memory object</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Input</th><th>Good first reader</th><th>Resulting object</th></tr></thead>
+        <tbody>
+          <tr><td>application log</td><td><code>open</code> or <code>Path.read_text</code></td><td><code>str</code> or line iterator</td></tr>
+          <tr><td>customer CSV</td><td><code>pd.read_csv</code></td><td><code>DataFrame</code></td></tr>
+          <tr><td>nested API JSON</td><td><code>json.load</code></td><td><code>dict</code> / <code>list</code></td></tr>
+          <tr><td>analytical Parquet</td><td><code>pd.read_parquet</code> or <code>pq.read_table</code></td><td><code>DataFrame</code> or Arrow <code>Table</code></td></tr>
+          <tr><td>cell-by-gene H5AD</td><td><code>sc.read_h5ad</code></td><td><code>AnnData</code></td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">Loading is complete only when the object matches the analysis and passes inspection.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 39 -->
+<section class="slide" data-section="clean">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · pandas inspection</div>
+      <h2>Do not calculate immediately after loading</h2>
+    </header>
+    <main class="content centered">
+      <div class="flow" style="width:92%">
+        <div class="flow-node"><b>Load</b><span>reconstruct an object</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Inspect</b><span>observe what arrived</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Validate</b><span>test expectations</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Clean</b><span>record decisions</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Analyze</b><span>answer the question</span></div>
+      </div>
+      <p class="big-claim">A parser can tell you what bytes say. It cannot know whether the values make sense for your domain.</p>
+    </main>
+  </div>
+</section>
+
+<!-- 40 -->
+<section class="slide" data-section="clean">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Rows and columns</div>
+      <h2>Begin with the overall shape and representative records</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block">print(df.shape)
+print(df.columns.tolist())
+
+display(df.head(3))
+display(df.tail(3))
+
+print("rows:", len(df))</pre>
+        <div class="panel">
+          <h3>Questions answered</h3>
+          <ul>
+            <li>Is the row count plausible?</li>
+            <li>Did the header parse correctly?</li>
+            <li>Are expected variables present?</li>
+            <li>Do values and missing markers look plausible?</li>
+            <li>Did a footer become a data row?</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">A preview is evidence, not validation. Follow it with systematic checks.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 41 -->
+<section class="slide" data-section="clean">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Column contracts</div>
+      <h2>Inspect dtypes, non-null counts, and value distributions</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel">
+          <h3><code>dtypes</code></h3>
+          <p>How did pandas represent each column?</p>
+          <pre class="code-block">df.dtypes</pre>
+        </div>
+        <div class="panel">
+          <h3><code>info()</code></h3>
+          <p>Types and non-null counts in one report.</p>
+          <pre class="code-block">df.info()</pre>
+        </div>
+        <div class="panel">
+          <h3><code>describe()</code></h3>
+          <p>Ranges, centers, and frequencies.</p>
+          <pre class="code-block">df.describe(
+  include="all"
+)</pre>
+        </div>
+      </div>
+      <div class="takeaway">A dtype is not only storage metadata; it determines which operations pandas will perform.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 42 -->
+<section class="slide" data-section="clean">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Categories</div>
+      <h2>Counts reveal categories that wear different textual costumes</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">print(
+    customers["region"]
+    .value_counts(dropna=False)
+)
+
+print(
+    customers["region"].nunique(
+        dropna=False
+    )
+)</pre>
+        <pre class="output-block">West      2
+East      1
+ west     1
+WEST      1
+east      1
+NaN       1
+
+6 distinct labels</pre>
+      </div>
+      <div class="takeaway"><code class="inline">value_counts</code> is an x-ray for categorical domains: spelling, whitespace, capitalization, and missingness become visible.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 43 -->
+<section class="slide" data-section="clean">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Missingness and uniqueness</div>
+      <h2>Count problems before deciding how to repair them</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>Missing values</h3>
+          <pre class="code-block">df.isna().sum()
+
+df.loc[
+  df["unit_price"].isna()
+]</pre>
+          <p>Count by column, then inspect the affected rows.</p>
+        </div>
+        <div class="panel">
+          <h3>Duplicates</h3>
+          <pre class="code-block">df.duplicated().sum()
+
+df["transaction_id"]
+  .duplicated()
+  .sum()</pre>
+          <p>Exact duplicate rows and duplicate business keys are different questions.</p>
+        </div>
+      </div>
+      <div class="takeaway">Inspection produces findings. Cleaning requires domain decisions about those findings.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 44 -->
+<section class="slide" data-section="clean">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Predict before computing</div>
+      <h2>What happens when a numeric quantity multiplies a text price?</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 align-center">
+        <pre class="code-block">quantity = 3
+unit_price = "50.0"
+
+quantity * unit_price</pre>
+        <div>
+          <div class="question">Will Python raise an error, or return a value?</div>
+          <pre class="output-block fragment">"50.050.050.0"</pre>
+        </div>
+      </div>
+      <div class="takeaway">String repetition is a legitimate operation. A wrong dtype can therefore create a valid-looking but meaningless result.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 45 -->
+<section class="slide" data-section="clean">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Silent failure</div>
+      <h2>The wrong dtype can answer the wrong question without crashing</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">df["revenue"] = (
+    df["quantity"]
+    * df["unit_price"]
+)
+
+<span class="comment"># unit_price is text</span></pre>
+        <div class="panel warning">
+          <h3>Why this is worse than an exception</h3>
+          <p>The operation finishes. The output column exists. Downstream code continues. A plausible-looking report may be produced.</p>
+          <p><strong>Cleaning must come before arithmetic.</strong></p>
+        </div>
+      </div>
+      <div class="takeaway">Before computing, verify that the operation matches both the dtype and the real-world meaning.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 46 -->
+<section class="slide" data-section="clean">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Type repair</div>
+      <h2>Coercion should turn damage into visible missing values</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block">before = df["unit_price"].isna().sum()
+
+df["unit_price"] = pd.to_numeric(
+    df["unit_price"],
+    errors="coerce",
+)
+
+after = df["unit_price"].isna().sum()
+print(before, "->", after)</pre>
+        <pre class="code-block">before = df["date"].isna().sum()
+
+df["date"] = pd.to_datetime(
+    df["date"],
+    errors="coerce",
+)
+
+after = df["date"].isna().sum()
+print(before, "->", after)</pre>
+      </div>
+      <div class="takeaway">Always count before and after coercion, then inspect the rows that became <code class="inline">NaN</code> or <code class="inline">NaT</code>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 47 -->
+<section class="slide" data-section="clean">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Missing values</div>
+      <h2>Missingness is a domain decision, not a cleanup reflex</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Field</th><th>Missing may mean</th><th>Defensible action</th><th>Dangerous shortcut</th></tr></thead>
+        <tbody>
+          <tr><td>discount</td><td>no discount applied</td><td><code>fillna(0)</code> with a business rule</td><td>assume zero without evidence</td></tr>
+          <tr><td>unit_price</td><td>unknown price</td><td>keep missing or recover from source</td><td>invent a free product</td></tr>
+          <tr><td>date</td><td>invalid or absent timestamp</td><td>flag, recover, or exclude explicitly</td><td>invent a date</td></tr>
+          <tr><td>measurement</td><td>not observed</td><td>model, interpolate, or retain as missing</td><td>drop every incomplete row</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">Ask why the value is missing and how each repair would change the analysis.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 48 -->
+<section class="slide" data-section="clean">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Duplicates</div>
+      <h2>Define a duplicate from what one row represents</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">exact = df.duplicated(keep=False)
+
+same_event = df.duplicated(
+    subset=["transaction_id"],
+    keep=False,
+)
+
+display(df.loc[same_event])
+
+<span class="comment"># Remove only after investigation.</span>
+df = df.drop_duplicates()</pre>
+        <div class="panel">
+          <h3>Not all repetition is duplication</h3>
+          <ul>
+            <li>One customer can have many transactions.</li>
+            <li>Two customers can share a name.</li>
+            <li>One transaction ID should identify one event.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">Uniqueness belongs to a field's meaning, not to the visual appearance of repeated values.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 49 -->
+<section class="slide" data-section="clean">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Text normalization</div>
+      <h2>Normalize categories before filtering, grouping, or validating</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block">customers["region"] = (
+    customers["region"]
+    .astype("string")
+    .str.strip()
+    .str.title()
+)
+
+valid = {"East", "West", "North", "South"}
+outside = ~customers["region"].isin(valid)</pre>
+        <div class="panel">
+          <h3>Common string tools</h3>
+          <ul>
+            <li><code class="inline">str.strip()</code> removes surrounding whitespace</li>
+            <li><code class="inline">str.lower()</code> or <code class="inline">str.title()</code> standardizes case</li>
+            <li><code class="inline">str.replace()</code> repairs known patterns</li>
+            <li><code class="inline">isin(valid)</code> tests the approved set</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">Normalization must be documented; automatic case changes are not correct for every identifier or name.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 50 -->
+<section class="slide" data-section="clean">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Range checks</div>
+      <h2>An anomaly is a question—not automatically an error</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block">suspicious = df.loc[
+    ~df["quantity"].between(0, 100)
+]
+
+display(
+    suspicious[[
+        "transaction_id",
+        "quantity",
+        "unit_price",
+    ]]
+)</pre>
+        <div class="panel">
+          <h3>Decision sequence</h3>
+          <ol style="padding-left:23px">
+            <li>Notice the value.</li>
+            <li>Investigate its source and context.</li>
+            <li>Decide whether it is valid, missing, or erroneous.</li>
+            <li>Record the decision in code.</li>
+          </ol>
+          <p class="muted">A negative quantity may be a legitimate refund.</p>
+        </div>
+      </div>
+      <div class="takeaway">“Unusual” and “wrong” are not synonyms.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 51 -->
+<section class="slide" data-section="clean">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Safe assignment</div>
+      <h2>Use <code>loc</code> to update rows selected by a condition</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel good">
+          <h3>One indexing operation</h3>
+          <pre class="code-block">mask = df["quantity"] >= 3
+
+df.loc[
+    mask,
+    "order_size"
+] = "bulk"</pre>
+        </div>
+        <div class="panel warning">
+          <h3>Chained assignment</h3>
+          <pre class="code-block">df[mask]["order_size"] = "bulk"</pre>
+          <p>This targets an intermediate object. It does not reliably update the parent; with pandas 3.0 Copy-on-Write, chained assignment never works.</p>
+        </div>
+      </div>
+      <div class="takeaway">Select rows and columns in one <code class="inline">loc</code> operation.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 52 -->
+<section class="slide" data-section="clean">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">5 · Quality block</div>
+      <h2>Run a compact validation block after cleaning</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">print("shape:", df.shape)
+print(df.dtypes)
+print("missing:")
+print(df.isna().sum())
+
+assert df["transaction_id"].is_unique
+assert df["region"].dropna().isin(valid).all()
+
+print(
+    df[["quantity", "unit_price"]]
+    .describe()
+)</pre>
+        <div class="checklist">
+          <div class="check-row"><span class="num">1</span><b>Shape</b><span>plausible rows and columns?</span></div>
+          <div class="check-row"><span class="num">2</span><b>Types</b><span>correct operations available?</span></div>
+          <div class="check-row"><span class="num">3</span><b>Missing</b><span>expected and explained?</span></div>
+          <div class="check-row"><span class="num">4</span><b>Keys</b><span>unique where required?</span></div>
+          <div class="check-row"><span class="num">5</span><b>Domains</b><span>categories and ranges valid?</span></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 53 -->
+<section class="slide" data-section="compute">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">6 · Selecting data</div>
+      <h2>One selected column and several selected columns are different objects</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>Series: one dimension</h3>
+          <pre class="code-block">qty = df["quantity"]
+
+print(type(qty))
+print(qty.dtype)
+print(qty.shape)</pre>
+          <p>One labeled array with one dtype.</p>
+        </div>
+        <div class="panel">
+          <h3>DataFrame: two dimensions</h3>
+          <pre class="code-block">small = df[[
+    "quantity",
+    "unit_price",
+]]
+
+print(type(small))
+print(small.dtypes)
+print(small.shape)</pre>
+          <p>A table whose columns may have different dtypes.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 54 -->
+<section class="slide" data-section="compute">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">6 · Row access</div>
+      <h2><code>iloc</code>, <code>loc</code>, and Boolean masks answer different questions</h2>
+    </header>
+    <main class="content">
+      <table>
+        <thead><tr><th>Question</th><th>Tool</th><th>Example</th></tr></thead>
+        <tbody>
+          <tr><td>Which row is at position 0?</td><td><code>iloc</code></td><td><code>df.iloc[0]</code></td></tr>
+          <tr><td>Which row carries label 105?</td><td><code>loc</code></td><td><code>df.loc[105]</code></td></tr>
+          <tr><td>Which rows satisfy a condition?</td><td>Boolean mask</td><td><code>df.loc[df["quantity"] &gt; 0]</code></td></tr>
+          <tr><td>Which rows and columns satisfy a condition?</td><td><code>loc</code></td><td><code>df.loc[mask, ["id", "revenue"]]</code></td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">Positions are re-counted after filtering; index labels travel with their rows.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 55 -->
+<section class="slide" data-section="compute">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">6 · Boolean logic</div>
+      <h2>Combine column conditions element by element</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2 align-center">
+        <pre class="code-block">mask = (
+    (df["quantity"] >= 3)
+    &amp; (df["date"] &lt; "2026-06-01")
+    &amp; df["region"].isin(["East", "West"])
+)
+
+selected = df.loc[
+    mask,
+    ["transaction_id", "date", "quantity"],
+]</pre>
+        <div class="panel">
+          <h3>Operators for Series</h3>
+          <p><code class="inline">&amp;</code> means elementwise AND</p>
+          <p><code class="inline">|</code> means elementwise OR</p>
+          <p><code class="inline">~</code> means elementwise NOT</p>
+          <p><strong>Put parentheses around each comparison.</strong></p>
+        </div>
+      </div>
+      <div class="takeaway">Python's scalar <code class="inline">and</code>/<code class="inline">or</code> are not substitutes for elementwise Series logic.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 56 -->
+<section class="slide" data-section="compute">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">6 · Sorting and labels</div>
+      <h2>Sort explicitly before any order-dependent operation</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block">ordered = df.sort_values(
+    by=["customer_id", "date"],
+    ascending=[True, True],
+)
+
+ordered = ordered.rename(
+    columns={"unit_price": "price"}
+)</pre>
+        <div class="panel">
+          <h3>Operations that depend on order</h3>
+          <ul>
+            <li>Previous value with <code class="inline">shift</code></li>
+            <li>Forward fill with <code class="inline">ffill</code></li>
+            <li>Rolling windows</li>
+            <li>Time-series returns</li>
+          </ul>
+          <p class="muted">Sorting returns a new object unless you assign it back.</p>
+        </div>
+      </div>
+      <div class="takeaway">Row order is a property you must establish, not something to assume from the file.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 57 -->
+<section class="slide" data-section="compute">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">6 · Derived columns</div>
+      <h2>After cleaning, vectorized arithmetic produces an honest result</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">df["revenue"] = (
+    df["quantity"]
+    * df["unit_price"]
+    * (1 - df["discount"])
+)
+
+display(df[[
+    "quantity",
+    "unit_price",
+    "discount",
+    "revenue",
+]])</pre>
+        <div class="panel good">
+          <h3>What now works correctly</h3>
+          <ul>
+            <li>Numeric multiplication</li>
+            <li>Negative revenue for refunds</li>
+            <li>Missing price propagates to missing revenue</li>
+            <li>No explicit Python row loop</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">The expression did not change; the validity of the representation changed.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 58 -->
+<section class="slide" data-section="compute">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">7 · pandas and NumPy</div>
+      <h2>Use pandas for labeled structure and NumPy for homogeneous numerical arrays</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>pandas strengths</h3>
+          <ul>
+            <li>Column names and index alignment</li>
+            <li>Mixed column dtypes</li>
+            <li>Missing-data tools</li>
+            <li>Grouping, joining, reshaping</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>NumPy strengths</h3>
+          <ul>
+            <li>Dense homogeneous arrays</li>
+            <li>Universal functions</li>
+            <li>Broadcasting and reductions</li>
+            <li>Linear algebra and numerical kernels</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">Move to NumPy only for the numerical part that benefits; keep labels nearby so the result can be interpreted.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 59 -->
+<section class="slide" data-section="compute">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">7 · Crossing into NumPy</div>
+      <h2>Select numeric columns before calling <code>to_numpy()</code></h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">columns = [
+    "quantity",
+    "unit_price",
+    "discount",
+]
+
+values = df[columns].to_numpy(
+    dtype="float64",
+)
+
+print(values.shape)
+print(values.dtype)</pre>
+        <div class="panel warning">
+          <h3>Do not convert the whole mixed table blindly</h3>
+          <p>A DataFrame with strings, dates, and numbers may become an <code class="inline">object</code> array. That loses the performance and type clarity you wanted.</p>
+          <p><code class="inline">copy=False</code> does not guarantee zero-copy conversion.</p>
+        </div>
+      </div>
+      <div class="takeaway">Choose the numeric block explicitly and check its <code class="inline">shape</code> and <code class="inline">dtype</code>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 60 -->
+<section class="slide" data-section="compute">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">7 · What conversion removes</div>
+      <h2>A NumPy array carries positions—not DataFrame labels</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 align-center">
+        <div class="panel">
+          <h3>Before conversion</h3>
+          <p><code class="inline">df.loc["T007", "revenue"]</code></p>
+          <p>Row label and column name explain the value.</p>
+        </div>
+        <div class="panel">
+          <h3>After conversion</h3>
+          <p><code class="inline">values[6, 3]</code></p>
+          <p>Meaning depends on remembering the row and column order separately.</p>
+        </div>
+      </div>
+      <pre class="code-block">row_index = df.index.copy()
+column_names = columns.copy()
+values = df[columns].to_numpy(dtype="float64")</pre>
+      <div class="takeaway">Preserve the labels before computation; positional correctness alone is not enough.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 61 -->
+<section class="slide" data-section="compute">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">7 · Vectorized conditions</div>
+      <h2>Use masks or <code>np.where</code> for array-wide conditional computation</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">Boolean mask</div>
+          <pre class="code-block">revenue = df["revenue"].to_numpy()
+refund = revenue &lt; 0
+
+adjusted = revenue.copy()
+adjusted[refund] *= 0.95</pre>
+        </div>
+        <div>
+          <div class="code-title">Conditional result</div>
+          <pre class="code-block">labels = np.where(
+    revenue &lt; 0,
+    "refund",
+    "sale",
+)
+
+df["transaction_type"] = labels</pre>
+        </div>
+      </div>
+      <div class="takeaway"><code class="inline">np.vectorize</code> is mainly a convenience wrapper; it is not itself a promise of faster computation.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 62 -->
+<section class="slide" data-section="compute">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">7 · Broadcasting</div>
+      <h2>Broadcasting applies compatible smaller shapes across larger arrays</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2 align-center">
+        <pre class="code-block">X = np.array([
+    [10.0, 20.0, 30.0],
+    [12.0, 18.0, 33.0],
+    [ 8.0, 22.0, 27.0],
+])
+
+column_means = X.mean(axis=0)
+centered = X - column_means
+
+print(X.shape)             <span class="comment"># (3, 3)</span>
+print(column_means.shape)  <span class="comment"># (3,)</span></pre>
+        <div class="panel">
+          <h3>Compatibility rule</h3>
+          <p>Compare dimensions from the right. Dimensions are compatible when they are equal or one of them is 1.</p>
+          <p class="muted">Broadcasting can be efficient, but very large temporary arrays can increase memory use.</p>
+        </div>
+      </div>
+      <div class="takeaway">The smaller array is conceptually repeated; NumPy usually performs the operation without materializing those repeats.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 63 -->
+<section class="slide" data-section="compute">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">7 · Numerical example</div>
+      <h2>Standardize a wide numeric matrix, then restore its labels</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">values = wide.to_numpy(dtype="float64")
+
+mean = np.nanmean(values, axis=0)
+std = np.nanstd(values, axis=0)
+z = (values - mean) / std
+
+z_scores = pd.DataFrame(
+    z,
+    index=wide.index,
+    columns=wide.columns,
+)</pre>
+        <div class="panel">
+          <h3>Division of labor</h3>
+          <p><strong>pandas:</strong> creates the labeled wide table and preserves dates and variable names.</p>
+          <p><strong>NumPy:</strong> performs broadcasted reductions and arithmetic.</p>
+          <p><strong>pandas again:</strong> makes the numerical result interpretable.</p>
+        </div>
+      </div>
+      <div class="takeaway">Confirm that the output shape matches the saved row and column labels before rebuilding the DataFrame.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 64 -->
+<section class="slide" data-section="compute">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">7 · Grouping</div>
+      <h2><code>groupby</code> repeats an aggregation for each key</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">summary = (
+    df.groupby(
+        "customer_id",
+        dropna=False,
+    )
+    .agg(
+        total_revenue=("revenue", "sum"),
+        n_transactions=("transaction_id", "nunique"),
+        avg_discount=("discount", "mean"),
+    )
+    .reset_index()
+)</pre>
+        <div class="flow" style="flex-direction:column">
+          <div class="flow-node"><b>Split</b><span>rows into one group per customer</span></div>
+          <div class="flow-arrow" style="transform:rotate(90deg)">→</div>
+          <div class="flow-node"><b>Apply</b><span>run named reductions per group</span></div>
+          <div class="flow-arrow" style="transform:rotate(90deg)">→</div>
+          <div class="flow-node"><b>Combine</b><span>produce one row per key</span></div>
+        </div>
+      </div>
+      <div class="takeaway"><code class="inline">dropna=False</code> keeps missing keys visible. When an all-missing group's sum should remain missing, use <code class="inline">sum(min_count=1)</code>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 65 -->
+<section class="slide" data-section="compute">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">7 · Reshaping and time</div>
+      <h2>Dates and pivots turn long observations into numerical matrices</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <pre class="code-block">df["month"] = (
+    df["date"].dt.to_period("M")
+)
+
+monthly = (
+    df.groupby(
+        ["month", "customer_id"],
+        dropna=False,
+    )["revenue"]
+    .sum()
+    .unstack("customer_id")
+)</pre>
+        <div class="panel">
+          <h3>Why wide matrices matter</h3>
+          <p>Rows can represent dates; columns can represent customers, tickers, genes, or features.</p>
+          <p>The resulting numeric block can support correlation, returns, normalization, or matrix operations.</p>
+          <p class="muted">Always preserve the row and column labels.</p>
+        </div>
+      </div>
+      <div class="takeaway">Reshaping changes representation, not the underlying observations; verify that aggregation did not create or discard unintended values.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 66 -->
+<section class="slide" data-section="compute">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">7 · Combining tables</div>
+      <h2>A merge is a claim about keys and cardinality</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">sales = transactions.merge(
+    customers,
+    on="customer_id",
+    how="left",
+    validate="many_to_one",
+    indicator=True,
+)
+
+print(sales["_merge"].value_counts())
+print(len(transactions), "->", len(sales))</pre>
+        <div class="panel">
+          <h3>Declare the expectation</h3>
+          <p><code class="inline">many_to_one</code> says many transactions may share a customer, but each customer key appears once in the customer table.</p>
+          <p><code class="inline">indicator=True</code> identifies unmatched rows.</p>
+        </div>
+      </div>
+      <div class="takeaway">A join can drop rows, create missing annotations, or multiply rows. None of those outcomes must remain silent.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 67 -->
+<section class="slide" data-section="compute">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">7 · Reconciliation</div>
+      <h2>Audit row counts and totals after every join and group</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel warning">
+          <h3>Two silent join failures</h3>
+          <ul>
+            <li>An inner join drops unmatched transactions.</li>
+            <li>Duplicate keys on both sides create a many-to-many multiplication.</li>
+          </ul>
+        </div>
+        <pre class="code-block">before = transactions["revenue"].sum()
+
+after = (
+    sales.groupby(
+        "region",
+        dropna=False,
+    )["revenue"]
+    .sum()
+    .sum()
+)
+
+assert np.isclose(before, after)</pre>
+      </div>
+      <div class="takeaway">Reconciliation connects the summary back to the source and catches silent row loss or inflation.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 68 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">8 · Export and round trip</div>
+      <h2>Reload exported data and test what survived</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">Portable text output</div>
+          <pre class="code-block">clean.to_csv(
+    "sales-clean.csv",
+    index=False,
+)
+csv_back = pd.read_csv(
+    "sales-clean.csv"
+)</pre>
+          <p class="small muted">Expect to reconstruct types again.</p>
+        </div>
+        <div>
+          <div class="code-title">Typed analytical output</div>
+          <pre class="code-block">clean.to_parquet(
+    "sales-clean.parquet",
+    index=False,
+)
+pq_back = pd.read_parquet(
+    "sales-clean.parquet"
+)</pre>
+          <p class="small muted">Expect supported schema information to survive.</p>
+        </div>
+      </div>
+      <pre class="code-block">assert clean.columns.equals(pq_back.columns)
+assert clean.shape == pq_back.shape
+assert clean.dtypes.equals(pq_back.dtypes)</pre>
+    </main>
+  </div>
+</section>
+
+<!-- 69 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">8 · Reproducibility</div>
+      <h2>Raw data is evidence; code is the repeatable recipe</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-2-3 align-center">
+        <pre class="output-block">project/
+├── course_data/      immutable source evidence
+├── data/
+│   ├── raw/          staged teaching inputs
+│   └── processed/    regenerable tables
+├── output/           human-facing results
+└── notebooks/        executable decisions</pre>
+        <div class="panel">
+          <h3>The reproducibility contract</h3>
+          <ol style="padding-left:23px">
+            <li>Never hand-edit or overwrite source evidence.</li>
+            <li>Record every assumption and repair in code.</li>
+            <li>Rerun from the top to regenerate processed files.</li>
+            <li>Reload exports and validate their contract.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="takeaway">If an output cannot be regenerated from raw evidence and code, it is not a trustworthy analytical artifact.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 70 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">References</div>
+      <h2>Use official documentation when APIs and storage behavior change</h2>
+    </header>
+    <main class="content">
+      <div class="rule-list">
+        <div class="rule"><b>pandas I/O</b><span><a href="https://pandas.pydata.org/docs/user_guide/io.html">pandas.pydata.org/docs/user_guide/io.html</a></span></div>
+        <div class="rule"><b>PyArrow</b><span><a href="https://arrow.apache.org/docs/python/parquet.html">arrow.apache.org/docs/python/parquet.html</a> · <a href="https://arrow.apache.org/docs/python/generated/pyarrow.Table.html">Arrow Table API</a></span></div>
+        <div class="rule"><b>AnnData</b><span><a href="https://anndata.readthedocs.io/en/stable/fileformat-prose.html">AnnData on-disk format</a> · <a href="https://anndata.readthedocs.io/en/stable/generated/anndata.AnnData.html">AnnData API</a></span></div>
+        <div class="rule"><b>Scanpy</b><span><a href="https://scanpy.readthedocs.io/en/stable/generated/scanpy.read_h5ad.html">scanpy.read_h5ad</a></span></div>
+        <div class="rule"><b>NumPy</b><span><a href="https://numpy.org/doc/stable/user/basics.broadcasting.html">NumPy broadcasting guide</a></span></div>
+      </div>
+      <p class="small muted">The local Lesson 2 notebook and course datasets supply the retail examples and teaching exercises.</p>
+    </main>
+  </div>
+</section>
+
+<!-- 71 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">The lesson in three ideas</div>
+      <h2>Representation choices determine what work is safe and efficient</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel">
+          <h3>1 · Make I/O explicit</h3>
+          <p>Choose the format, reader, parsing assumptions, and in-memory object deliberately.</p>
+        </div>
+        <div class="panel">
+          <h3>2 · Restore trust before analysis</h3>
+          <p>Inspect dtypes, missingness, keys, categories, and ranges; record cleaning decisions in code.</p>
+        </div>
+        <div class="panel">
+          <h3>3 · Divide computation well</h3>
+          <p>Use pandas for labeled data work and NumPy for homogeneous numerical kernels, then restore labels.</p>
+        </div>
+      </div>
+      <div class="question">Capstone: load one source, state its parsing contract, clean it, compute one grouped or NumPy result, export it, and name two round-trip checks.</div>
+    </main>
+  </div>
+</section>
+
+<footer id="hud">
+  <span class="course">Lesson 2 · Files &amp; data</span>
+  <nav id="section-map" aria-label="Lesson sections">
+    <span data-section="intro">Problem</span>
+    <span data-section="native">Native I/O</span>
+    <span data-section="formats">Formats</span>
+    <span data-section="h5ad">H5AD</span>
+    <span data-section="clean">Cleaning</span>
+    <span data-section="compute">Compute</span>
+    <span data-section="finish">Finish</span>
+  </nav>
+  <div class="nav-controls">
+    <button id="prev" type="button" aria-label="Previous slide">←</button>
+    <button id="next" type="button" aria-label="Next slide">→</button>
+    <label id="count" for="slide-number">
+      <input id="slide-number" type="text" value="1" inputmode="numeric" pattern="[0-9]*" aria-label="Jump to slide"> / <span id="slide-total">71</span>
+    </label>
+  </div>
+</footer>
+</div>
+
+<script>
+(function () {
+  var stage = document.getElementById("stage");
+  var slides = Array.prototype.slice.call(document.querySelectorAll(".slide"));
+  var sectionItems = Array.prototype.slice.call(document.querySelectorAll("#section-map span"));
+  var slideNumber = document.getElementById("slide-number");
+  var slideTotal = document.getElementById("slide-total");
+  var prev = document.getElementById("prev");
+  var next = document.getElementById("next");
+  var current = 0;
+
+  var sectionColors = {
+    intro: "#1e3a5f",
+    native: "#0f766e",
+    formats: "#1e5a89",
+    h5ad: "#6d4c7d",
+    clean: "#176b80",
+    compute: "#986018",
+    finish: "#475569"
+  };
+
+  function fit() {
+    var scale = Math.min(window.innerWidth / 1280, window.innerHeight / 720) * 0.98;
+    stage.style.transform = "translate(-50%, -50%) scale(" + scale + ")";
+  }
+
+  function fragments(slide) {
+    return Array.prototype.slice.call(slide.querySelectorAll(".fragment"));
+  }
+
+  function visibleFragmentCount(slide) {
+    return fragments(slide).filter(function (node) {
+      return node.classList.contains("visible");
+    }).length;
+  }
+
+  function sync() {
+    slides.forEach(function (slide, index) {
+      var active = index === current;
+      slide.classList.toggle("active", active);
+      slide.setAttribute("aria-hidden", active ? "false" : "true");
+      if ("inert" in slide) slide.inert = !active;
+    });
+
+    var section = slides[current].getAttribute("data-section") || "intro";
+    sectionItems.forEach(function (item) {
+      item.classList.toggle("on", item.getAttribute("data-section") === section);
+    });
+    document.documentElement.style.setProperty("--active-section-color", sectionColors[section]);
+    slideNumber.value = current + 1;
+    slideNumber.max = slides.length;
+    slideTotal.textContent = slides.length;
+    prev.disabled = current === 0 && visibleFragmentCount(slides[current]) === 0;
+    next.disabled = current === slides.length - 1 &&
+      visibleFragmentCount(slides[current]) === fragments(slides[current]).length;
+    if (history.replaceState) history.replaceState(null, "", "#slide-" + (current + 1));
+  }
+
+  function forward() {
+    var parts = fragments(slides[current]);
+    var shown = visibleFragmentCount(slides[current]);
+    if (shown < parts.length) {
+      parts[shown].classList.add("visible");
+      sync();
+      return;
+    }
+    if (current < slides.length - 1) {
+      current += 1;
+      sync();
+    }
+  }
+
+  function backward() {
+    var parts = fragments(slides[current]);
+    var shown = visibleFragmentCount(slides[current]);
+    if (shown > 0) {
+      parts[shown - 1].classList.remove("visible");
+      sync();
+      return;
+    }
+    if (current > 0) {
+      current -= 1;
+      sync();
+    }
+  }
+
+  function go(index) {
+    current = Math.max(0, Math.min(slides.length - 1, index));
+    sync();
+  }
+
+  function jumpToRequestedSlide() {
+    var requested = parseInt(slideNumber.value, 10);
+    if (Number.isNaN(requested)) {
+      slideNumber.value = current + 1;
+      return;
+    }
+    go(requested - 1);
+  }
+
+  function isInteractive(target) {
+    return Boolean(target.closest("a, button, input, textarea, select, [contenteditable='true']"));
+  }
+
+  window.addEventListener("resize", fit);
+  prev.addEventListener("click", backward);
+  next.addEventListener("click", forward);
+  slideNumber.addEventListener("change", jumpToRequestedSlide);
+  slideNumber.addEventListener("keydown", function (event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      jumpToRequestedSlide();
+      slideNumber.blur();
+    }
+  });
+  document.addEventListener("keydown", function (event) {
+    if (isInteractive(event.target)) return;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown" ||
+        event.key === "PageDown" || event.key === " ") {
+      event.preventDefault();
+      forward();
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp" ||
+               event.key === "PageUp") {
+      event.preventDefault();
+      backward();
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      go(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      go(slides.length - 1);
+    }
+  });
+  window.addEventListener("hashchange", function () {
+    var match = location.hash.match(/slide-(\d+)/);
+    if (match) go(parseInt(match[1], 10) - 1);
+  });
+
+  var initial = location.hash.match(/slide-(\d+)/);
+  current = initial ? parseInt(initial[1], 10) - 1 : 0;
+  current = Math.max(0, Math.min(slides.length - 1, current));
+  fit();
+  sync();
+})();
+</script>
+</body>
+</html>

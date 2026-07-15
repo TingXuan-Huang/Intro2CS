@@ -1,0 +1,2492 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 7 · Databases and SQLite</title>
+<style>
+  :root {
+    --paper: #f8fafc;
+    --surface: #ffffff;
+    --surface-2: #edf2f7;
+    --ink: #172033;
+    --muted: #536178;
+    --line: #c9d4e2;
+    --navy: #1e3a5f;
+    --blue: #1e5a89;
+    --teal: #0f766e;
+    --purple: #6d4c7d;
+    --amber: #986018;
+    --cyan: #176b80;
+    --green: #176b43;
+    --maroon: #8a3f5f;
+    --slate: #475569;
+    --red: #b42318;
+    --red-bg: #fff1f0;
+    --green-bg: #edf8f2;
+    --yellow-bg: #fff7df;
+    --font-sans: "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif;
+    --font-mono: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; }
+  body {
+    overflow: hidden;
+    background: #111827;
+    color: var(--ink);
+    font-family: var(--font-sans);
+  }
+  a { color: var(--blue); }
+  code, pre, .mono { font-family: var(--font-mono); }
+
+  #stage {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 1280px;
+    height: 720px;
+    transform-origin: center center;
+    overflow: hidden;
+    background: var(--paper);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .48);
+  }
+
+  .slide {
+    --section-color: var(--navy);
+    position: absolute;
+    inset: 0;
+    display: none;
+    background: var(--paper);
+  }
+  .slide.active { display: block; }
+  .slide[data-section="intro"] { --section-color: var(--navy); }
+  .slide[data-section="pain"] { --section-color: var(--amber); }
+  .slide[data-section="schema"] { --section-color: var(--teal); }
+  .slide[data-section="python"] { --section-color: var(--blue); }
+  .slide[data-section="choose"] { --section-color: var(--purple); }
+  .slide[data-section="finish"] { --section-color: var(--slate); }
+  .slide::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 7px;
+    background: var(--section-color);
+  }
+
+  .slide-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 46px 72px 78px;
+  }
+  .slide-header { margin-bottom: 20px; }
+  .section-label {
+    margin-bottom: 8px;
+    color: var(--section-color);
+    font-size: 15px;
+    font-weight: 760;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  h1 {
+    max-width: 1080px;
+    font-size: 58px;
+    line-height: 1.08;
+    letter-spacing: -.025em;
+    font-weight: 740;
+  }
+  h2 {
+    max-width: 1120px;
+    font-size: 39px;
+    line-height: 1.13;
+    letter-spacing: -.018em;
+    font-weight: 730;
+  }
+  h3 {
+    font-size: 23px;
+    line-height: 1.23;
+    font-weight: 730;
+  }
+  p, li { font-size: 20px; line-height: 1.4; }
+  .lead {
+    max-width: 930px;
+    color: var(--muted);
+    font-size: 27px;
+    line-height: 1.42;
+  }
+  .small { font-size: 17px; line-height: 1.4; }
+  .tiny { font-size: 14px; line-height: 1.35; }
+  .muted { color: var(--muted); }
+  .strong { color: var(--ink); font-weight: 730; }
+  code.inline {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #e8eef5;
+    color: #1d3654;
+    font-size: .9em;
+  }
+
+  .content {
+    min-height: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .centered {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  .cols-2, .cols-3, .cols-4 {
+    min-height: 0;
+    display: grid;
+    gap: 20px;
+    align-items: stretch;
+  }
+  .cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ratio-3-2 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+  .ratio-2-3 { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+  .ratio-5-4 { grid-template-columns: minmax(0, 5fr) minmax(0, 4fr); }
+  .align-center { align-items: center; }
+
+  .panel {
+    min-width: 0;
+    padding: 18px 21px;
+    border: 1px solid var(--line);
+    border-top: 4px solid var(--section-color);
+    background: var(--surface);
+  }
+  .panel h3 { margin-bottom: 9px; }
+  .panel p + p, .panel ul, .panel ol { margin-top: 8px; }
+  .panel ul, .panel ol { padding-left: 23px; }
+  .panel li + li { margin-top: 5px; }
+  .panel.compact { padding: 13px 16px; }
+  .panel.compact p, .panel.compact li { font-size: 17px; }
+  .panel.warning { border-top-color: var(--red); background: var(--red-bg); }
+  .panel.good { border-top-color: var(--green); background: var(--green-bg); }
+
+  .takeaway {
+    margin-top: auto;
+    padding: 12px 16px;
+    border-left: 5px solid var(--section-color);
+    background: #e9f0f6;
+    color: #24364d;
+    font-size: 19px;
+    line-height: 1.4;
+  }
+  .question {
+    padding: 17px 21px;
+    border: 2px solid var(--blue);
+    background: #edf5fb;
+    color: #173b5d;
+    font-size: 23px;
+    line-height: 1.36;
+    font-weight: 680;
+  }
+  .answer {
+    padding: 15px 19px;
+    border-left: 5px solid var(--green);
+    background: var(--green-bg);
+    font-size: 19px;
+    line-height: 1.4;
+  }
+  .fragment { visibility: hidden; opacity: 0; }
+  .fragment.visible { visibility: visible; opacity: 1; }
+
+  .code-title {
+    margin-bottom: 7px;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 740;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .code-block, .output-block, .pseudo-block {
+    min-width: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    border: 1px solid var(--line);
+    background: #0f172a;
+    color: #e7edf5;
+    padding: 15px 18px;
+    font-family: var(--font-mono);
+    font-size: 17px;
+    line-height: 1.45;
+  }
+  .output-block, .pseudo-block { background: var(--surface); color: #203047; }
+  .pseudo-block { border-left: 4px solid var(--section-color); }
+  .comment { color: #9fb0c5; }
+  .string { color: #8dd3c7; }
+  .number { color: #f4c27a; }
+  .keyword { color: #c6a7e2; }
+  .error { color: #ef6b62; font-weight: 730; }
+  .ok { color: #7ad3a2; font-weight: 730; }
+  .output-block .comment { color: #8494a9; }
+  .output-block .error { color: var(--red); }
+  .output-block .ok { color: var(--green); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    font-size: 18px;
+    line-height: 1.3;
+  }
+  th {
+    padding: 10px 12px;
+    border-top: 2px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+    color: #34445a;
+    background: #e8eef4;
+    text-align: left;
+    font-size: 15px;
+    line-height: 1.24;
+    letter-spacing: .052em;
+    text-transform: uppercase;
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: 2px solid var(--ink); }
+  td:first-child { font-weight: 700; }
+  table.compact { font-size: 16px; }
+  table.compact th { font-size: 14px; }
+  table.compact td { padding-top: 7px; padding-bottom: 7px; }
+
+  .flow {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .flow-node {
+    min-width: 0;
+    flex: 1;
+    padding: 13px;
+    border: 1px solid #a9b6c6;
+    background: var(--surface);
+  }
+  .flow-node b {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--section-color);
+    font-size: 17px;
+  }
+  .flow-node span { font-size: 16px; line-height: 1.3; }
+  .flow-arrow {
+    align-self: center;
+    color: #66758a;
+    font-size: 25px;
+    font-weight: 700;
+  }
+
+  .rule-list { display: grid; gap: 12px; }
+  .rule {
+    display: grid;
+    grid-template-columns: 205px minmax(0, 1fr);
+    gap: 19px;
+    align-items: baseline;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .rule b { color: var(--section-color); font-size: 21px; }
+  .rule span { font-size: 19px; line-height: 1.35; }
+
+  .big-claim {
+    max-width: 1010px;
+    font-size: 45px;
+    line-height: 1.24;
+    font-weight: 730;
+    letter-spacing: -.018em;
+  }
+
+  .number-strip {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+  }
+  .number-box {
+    min-width: 120px;
+    padding: 18px 15px;
+    border: 2px solid #9bacc0;
+    background: var(--surface);
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 25px;
+    font-weight: 720;
+  }
+  .number-box small {
+    display: block;
+    margin-top: 5px;
+    color: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .trace {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+  }
+  .trace-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 38px;
+  }
+  .trace-status {
+    min-width: 0;
+    flex: 1;
+    color: #26384f;
+    font-size: 18px;
+    line-height: 1.32;
+    font-weight: 650;
+  }
+  .trace-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  .trace-reset {
+    min-width: 76px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .trace-reset:focus-visible { outline: 3px solid #4e8fc1; outline-offset: 2px; }
+  .trace-board {
+    position: relative;
+    min-height: 160px;
+    padding: 28px 18px 16px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .array-strip {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding-top: 28px;
+  }
+  .array-cell {
+    position: relative;
+    width: 92px;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #9bacbf;
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 720;
+    transition: transform .2s ease, background-color .2s ease, border-color .2s ease, opacity .2s ease;
+  }
+  .array-cell::after {
+    content: attr(data-index);
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -22px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+  }
+  .array-cell.is-current { border-color: var(--blue); box-shadow: inset 0 0 0 2px var(--blue); }
+  .array-cell.is-best { border-color: var(--green); background: var(--green-bg); }
+  .array-cell.is-min { border-color: var(--amber); background: var(--yellow-bg); }
+  .array-cell.is-sorted { border-color: var(--teal); background: #e9f7f5; }
+  .array-cell.is-checked { background: #eef2f7; }
+  .array-cell.is-discarded { opacity: .28; }
+  .array-cell.is-found { border-color: var(--green); background: var(--green-bg); }
+  .array-cell.is-found::before {
+    content: "OK";
+    position: absolute;
+    top: -27px;
+    color: var(--green);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 760;
+    letter-spacing: .08em;
+  }
+  .trace-pointer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 92px;
+    color: var(--blue);
+    text-align: center;
+    font-size: 14px;
+    font-weight: 740;
+    transition: transform .22s ease;
+  }
+  .trace-pointer::after { content: "↓"; display: block; font-size: 22px; line-height: 1; }
+  .trace-variables {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 27px;
+  }
+  .trace-variable {
+    min-width: 140px;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    font-family: var(--font-mono);
+    font-size: 15px;
+    text-align: center;
+  }
+  .trace-transcript { font-size: 14px; }
+  .trace-transcript th { padding: 6px 8px; font-size: 12px; }
+  .trace-transcript td { padding: 5px 8px; }
+  .trace-transcript tr.is-active td { background: #e9f0f6; }
+
+  .flowchart-wrap {
+    position: relative;
+    min-height: 360px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .flowchart-svg { width: 100%; height: 360px; display: block; }
+  .flowchart-svg .fc-edge {
+    fill: none;
+    stroke: #94a3b8;
+    stroke-width: 2;
+    transition: stroke .2s ease, stroke-width .2s ease, opacity .2s ease;
+  }
+  .flowchart-svg .fc-node rect,
+  .flowchart-svg .fc-node path {
+    fill: #ffffff;
+    stroke: #8294aa;
+    stroke-width: 2;
+    transition: fill .2s ease, stroke .2s ease, stroke-width .2s ease;
+  }
+  .flowchart-svg .fc-node text {
+    fill: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 650;
+    text-anchor: middle;
+    dominant-baseline: middle;
+  }
+  .flowchart-svg .fc-node.is-active rect,
+  .flowchart-svg .fc-node.is-active path {
+    fill: #e8f2fa;
+    stroke: var(--blue);
+    stroke-width: 4;
+  }
+  .flowchart-svg .fc-edge.is-active { stroke: var(--blue); stroke-width: 4; }
+
+  #hud {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    height: 54px;
+    display: grid;
+    grid-template-columns: 190px 1fr 168px;
+    align-items: center;
+    padding: 0 25px;
+    border-top: 1px solid #b8c4d2;
+    background: #edf1f5;
+    color: #4a596d;
+  }
+  #hud .course {
+    font-size: 13px;
+    font-weight: 730;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  #section-map {
+    display: flex;
+    justify-content: center;
+    gap: 13px;
+  }
+  #section-map span {
+    padding: 5px 0 4px;
+    border-bottom: 3px solid transparent;
+    font-size: 10.5px;
+    font-weight: 730;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+    opacity: .38;
+  }
+  #section-map span.on {
+    border-bottom-color: var(--active-section-color, var(--navy));
+    color: var(--ink);
+    opacity: 1;
+  }
+  .nav-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .nav-controls button {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .nav-controls button:disabled { opacity: .35; cursor: default; }
+  .nav-controls button:focus-visible { outline: 3px solid #4e8fc1; outline-offset: 2px; }
+  #count {
+    min-width: 62px;
+    text-align: right;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  #slide-number {
+    width: 34px;
+    padding: 2px 3px;
+    border: 1px solid #9eacbc;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  #slide-number:focus-visible {
+    outline: 3px solid #4e8fc1;
+    outline-offset: 2px;
+  }
+  #rotate-note {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    padding: 28px;
+    background: #111827;
+    color: white;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 22px;
+    line-height: 1.4;
+  }
+
+  @media (max-width: 900px) and (orientation: portrait) {
+    #rotate-note { display: flex; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .array-cell, .trace-pointer,
+    .flowchart-svg .fc-edge, .flowchart-svg .fc-node rect,
+    .flowchart-svg .fc-node path { transition-duration: 0s !important; }
+  }
+  @media print {
+    @page { size: 13.333in 7.5in; margin: 0; }
+    html, body {
+      width: auto;
+      height: auto;
+      overflow: visible;
+      background: white;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    #stage {
+      position: relative;
+      left: auto;
+      top: auto;
+      width: auto;
+      height: auto;
+      transform: none !important;
+      box-shadow: none;
+      overflow: visible;
+    }
+    .slide {
+      position: relative;
+      display: block !important;
+      width: 13.333in;
+      height: 7.5in;
+      break-after: page;
+      page-break-after: always;
+    }
+    .slide:last-of-type { break-after: auto; page-break-after: auto; }
+    .fragment { visibility: visible !important; opacity: 1 !important; }
+    .trace-reset { display: none !important; }
+    #hud, #rotate-note { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="rotate-note">Rotate your device to landscape for presentation view.</div>
+<div id="stage">
+
+
+<!-- 1 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Intro to CS · Lesson 7</div>
+      <h1>Why databases exist — and SQLite</h1>
+    </header>
+    <main class="content centered">
+      <p class="lead">File failure modes, schemas as enforced checklists, primary and foreign keys, <code>sqlite3</code> with pandas, and choosing the right tool for the job</p>
+      <div class="question" style="max-width:990px">Lesson 6 ended with tidy DataFrames you can regenerate on demand. Tonight's question: where should data <em>live</em>, so that its properties survive without you standing guard?</div>
+    </main>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · The bridge from Lesson 6</div>
+      <h2>You can fetch data. Now, where does it live?</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>What you have</h3>
+          <p>Typed, tidy frames — but every property was restored <strong>by hand</strong>: <code class="inline">to_datetime</code>, <code class="inline">to_numeric</code>, <code class="inline">errors="coerce"</code>, every session, by discipline.</p>
+        </div>
+        <div class="panel good">
+          <h3>What you build today</h3>
+          <p>A store that <strong>enforces the properties on every write</strong> — the engine refuses the bad row for you, whether or not you remembered to check.</p>
+        </div>
+      </div>
+      <div class="question">By the end of this lesson, "save the data" should read as "declare its rules, and let the database reject anything that breaks them."</div>
+      <div class="takeaway">Every prior lesson repaired data after the damage. This one stops the damage from landing at all.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · Three ideas have been waiting</div>
+      <h2>This lesson is where three earlier threads meet</h2>
+    </header>
+    <main class="content">
+      <div class="rule-list" style="max-width:1080px">
+        <div class="rule"><b>L1 · properties</b><span>a structure is a bundle of properties — a type per column, uniqueness, a legal set of values, a key that points at a record. We wrote that checklist down and promised to <em>honour</em> it.</span></div>
+        <div class="rule"><b>L2 · file amnesia</b><span>a file honours nothing. CSV forgot our types; a blank meant three different things; cleaning could only <em>repair</em> damage already on disk.</span></div>
+        <div class="rule"><b>L4 · O(1) membership</b><span>a dictionary answers "have I seen this key?" instantly. A database turns that same trick into a <em>durable</em> guarantee.</span></div>
+      </div>
+      <div class="takeaway">A schema is Lesson 1's property checklist, finally enforced by software instead of by discipline.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · The lesson arc</div>
+      <h2>From rules you hope to keep, to rules the engine keeps for you</h2>
+    </header>
+    <main class="content">
+      <div class="flow" style="width:100%">
+        <div class="flow-node"><b>Business rule</b><span>"every transaction belongs to a real customer"</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Schema</b><span><span class="mono">CREATE TABLE … NOT NULL, PRIMARY KEY, FOREIGN KEY</span></span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Enforcement</b><span>the database <strong>rejects</strong> the bad row on write</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>Python</b><span><span class="mono">sqlite3</span>, <span class="mono">to_sql</span> / <span class="mono">read_sql</span>, the <span class="mono">?</span></span></div>
+      </div>
+      <div class="cols-4">
+        <div class="panel compact"><h3>Unit 1 · The pain</h3><p>three failures a file cannot refuse</p></div>
+        <div class="panel compact"><h3>Unit 2 · The schema</h3><p>tables, keys, constraints — the referee</p></div>
+        <div class="panel compact"><h3>Unit 3 · Python</h3><p>frames in, frames out, values through <code class="inline">?</code></p></div>
+        <div class="panel compact"><h3>Unit 4 · The choice</h3><p>database vs DataFrame, honestly</p></div>
+      </div>
+      <div class="takeaway">From <em>hoping</em> every customer_id is unique to a system that refuses the row that isn't.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · The engine</div>
+      <h2>An entire SQL database, living in a single file</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div>
+          <p class="lead" style="font-size:20px">SQLite runs a full SQL database <strong>inside one ordinary file</strong> — no server, no configuration, no account. It ships inside Python's standard library as <code class="inline">sqlite3</code>, which is why it powers phones, browsers, and aircraft, and why it is perfect for learning.</p>
+          <table class="compact" style="margin-top:14px">
+            <thead><tr><th>Fact</th><th>Consequence</th></tr></thead>
+            <tbody>
+              <tr><td>part of the standard library</td><td><code class="inline">import sqlite3</code> — nothing to install</td></tr>
+              <tr><td>one database = one file</td><td>ours live under <span class="mono">../data/</span>, gitignored</td></tr>
+              <tr><td>full SQL engine</td><td>schemas, keys, constraints, queries — the real thing</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="panel good">
+          <h3>This whole lesson runs offline</h3>
+          <p>Only <code class="inline">pandas</code> and the built-in <code class="inline">sqlite3</code> — no installs, no network, no API keys.</p>
+          <p class="muted">The same "no setup beyond the course environment" rule as Lesson 6, one lesson deeper into the stack.</p>
+        </div>
+      </div>
+      <div class="takeaway">"Database" does not have to mean a server in a basement. Tonight it means a file you can put in <span class="mono">../data/</span>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide" data-section="intro">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">0 · Materials</div>
+      <h2>Two sessions, one notebook, one exercise folder</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel compact"><h3>Session ①</h3><p>Units 1–2: the pain of files, then the schema that ends it — tables, keys, constraints, rejections.</p></div>
+        <div class="panel compact"><h3>Session ②</h3><p>Units 3–4: driving SQLite from Python (<code class="inline">to_sql</code>, <code class="inline">read_sql</code>, <code class="inline">?</code>), then when a database beats a DataFrame.</p></div>
+      </div>
+      <div class="cols-2">
+        <div class="panel compact"><h3>Practice · <span class="mono">lesson7_exercise/</span></h3><p>Design the two-table retail schema yourself, load the real customers and transactions, and make the database <strong>reject one bad row on purpose</strong> — graded by an 11-test pytest checker.</p></div>
+        <div class="panel compact"><h3>House rule</h3><p>The notebook writes only under <code class="inline">../data/</code> (gitignored) — Lesson 2's rule: never commit run-time artifacts. Run top to bottom; later cells depend on earlier ones.</p></div>
+      </div>
+      <div class="takeaway">Same retail extract as Lesson 2 — the 10 customers and 60 transactions you already know — now given a durable home.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide" data-section="pain">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · The pain of files</div>
+      <h2>Bytes cannot make a promise</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>A file's strength</h3>
+          <p>A file is bytes plus an agreed encoding — universal, portable, readable by anything. That is why CSV conquered the world.</p>
+        </div>
+        <div class="panel warning">
+          <h3>And its whole weakness</h3>
+          <p>Bytes cannot <em>insist</em>. A CSV cannot demand that a column stays text, that an id never repeats, that a country is never blank, or that two files agree with each other.</p>
+        </div>
+      </div>
+      <div class="question">Every failure in this unit is a <strong>property from Lesson 1</strong> that the file failed to keep. We line three of them up on purpose — because Unit 2 is where we finally get to enforce each one.</div>
+      <div class="takeaway">Lesson 2 met these failures one at a time and repaired them. Today we ask why the repair was ever necessary.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide" data-section="pain">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1.1 · The leading-zero trap</div>
+      <h2>Write <code>00123</code>, read back <code>123</code></h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">people = pd.DataFrame({<span class="string">"customer_id"</span>: [<span class="string">"00123"</span>, <span class="string">"00204"</span>, <span class="string">"00987"</span>],
+                       <span class="string">"spend"</span>: [<span class="number">40</span>, <span class="number">55</span>, <span class="number">12</span>]})
+
+trap_path = Path(<span class="string">"../data/lesson7_leading_zero.csv"</span>)
+people.to_csv(trap_path, index=<span class="keyword">False</span>)
+
+back = pd.read_csv(trap_path)   <span class="comment"># a naive read, exactly like Lesson 2</span>
+print(back)
+print(<span class="string">"dtype:"</span>, back[<span class="string">"customer_id"</span>].dtype)</pre>
+        <div>
+          <pre class="output-block">   customer_id  spend
+0          <span class="error">123</span>     40
+1          <span class="error">204</span>     55
+2          <span class="error">987</span>     12
+dtype: int64</pre>
+          <div class="panel compact" style="margin-top:14px"><p>The file on disk really says <code class="inline">00123</code> — you can open it and see the zeros. It is the <em>read</em> that destroyed them: all digits, so pandas guessed <code class="inline">int64</code>.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Persistence without a promise: the value survived, the <em>property</em> — "this is a label, not a quantity" — did not.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="slide" data-section="pain">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1.1 · Animated trace</div>
+      <h2>Watch a CSV round trip destroy a label</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <div class="trace" data-trace-type="array">
+          <div class="trace-toolbar">
+            <div class="trace-status" aria-live="polite" aria-atomic="true"></div>
+            <div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div>
+          </div>
+          <div class="trace-board">
+            <div class="array-strip">
+              <div class="trace-pointer" style="width:120px">infer</div>
+              <div class="array-cell" data-index="0" style="width:120px;font-size:19px">"00123"</div>
+              <div class="array-cell" data-index="1" style="width:120px;font-size:19px">"00204"</div>
+              <div class="array-cell" data-index="2" style="width:120px;font-size:19px">"00987"</div>
+            </div>
+            <div class="trace-variables">
+              <div class="trace-variable" data-var="dtype" style="min-width:260px"></div>
+            </div>
+          </div>
+          <script type="application/json" class="trace-data">[
+            {"current":null,"vars":{"dtype":"on disk: text with zeros"},"status":"to_csv wrote the ids as plain text. Open the file: the zeros are genuinely there. So far, nothing lost."},
+            {"current":0,"processedThrough":0,"vars":{"dtype":"'00123' → all digits"},"status":"read_csv scans the column to guess a type. '00123' is nothing but digits — so far it could be a number."},
+            {"current":1,"processedThrough":1,"vars":{"dtype":"'00204' → all digits"},"status":"'00204' — digits again. The evidence for 'this is a number' grows."},
+            {"current":2,"processedThrough":2,"vars":{"dtype":"'00987' → all digits"},"status":"'00987' — every value in the column parses as a number. The guess is locked in: int64."},
+            {"current":null,"values":["123","204","987"],"vars":{"dtype":"customer_id: int64"},"status":"The column becomes int64 — and an int64 has no leading zeros. The label quietly became a quantity."},
+            {"current":null,"values":["123","204","987"],"discarded":[0,1,2],"vars":{"dtype":"property lost on read"},"status":"The CSV had no place to record 'customer_id is a label'. Nothing on disk forces the right reading — hold that word: forces."}
+          ]</script>
+        </div>
+        <table class="trace-transcript compact">
+          <thead><tr><th>Stage</th><th>customer_id</th></tr></thead>
+          <tbody>
+            <tr data-step="0"><td>written</td><td>text, zeros intact</td></tr>
+            <tr data-step="3"><td>scanned</td><td>all digits → guess int</td></tr>
+            <tr data-step="4"><td>read back</td><td>int64, zeros gone</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="slide" data-section="pain">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1.1 · Checkpoint</div>
+      <h2>Did the file lie to us?</h2>
+    </header>
+    <main class="content">
+      <div class="question">We wrote <code>00123</code>; we got back the number <code>123</code>. Was the file at fault — and what was Lesson 2's fix, exactly?</div>
+      <div class="answer fragment">
+        The file did not lie — it faithfully stored the characters <code class="inline">00123</code>. It simply <strong>has no place to record that customer_id is a label, not a quantity</strong>, so the reader had to guess. Lesson 2's fix was <code class="inline">dtype={"customer_id": "string"}</code> on the way in — a <em>repair</em>, applied by whoever remembered to apply it. Nothing on disk <em>forces</em> the right reading, on any read, by anyone.
+      </div>
+      <div class="takeaway">The bug is not in pandas. It is in a format that cannot carry the property — and can therefore never enforce it.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="slide" data-section="pain">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1.2 · Two files, two truths</div>
+      <h2>One customer, two countries, zero complaints</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="comment"># Two separate files, same customer_id, contradicting each other.</span>
+pd.DataFrame({<span class="string">"customer_id"</span>: [<span class="string">"00123"</span>], <span class="string">"country"</span>: [<span class="string">"United Kingdom"</span>]}).to_csv(
+    <span class="string">"../data/lesson7_country_sales.csv"</span>, index=<span class="keyword">False</span>)
+pd.DataFrame({<span class="string">"customer_id"</span>: [<span class="string">"00123"</span>], <span class="string">"country"</span>: [<span class="string">"France"</span>]}).to_csv(
+    <span class="string">"../data/lesson7_country_crm.csv"</span>, index=<span class="keyword">False</span>)
+
+sales = pd.read_csv(<span class="string">"../data/lesson7_country_sales.csv"</span>, dtype={<span class="string">"customer_id"</span>: <span class="string">"string"</span>})
+crm   = pd.read_csv(<span class="string">"../data/lesson7_country_crm.csv"</span>,   dtype={<span class="string">"customer_id"</span>: <span class="string">"string"</span>})</pre>
+        <div>
+          <pre class="output-block">sales file says customer 00123
+  -> United Kingdom
+crm   file says customer 00123
+  -> France
+<span class="comment">same customer_id, different country,
+zero complaints from either file.</span></pre>
+        </div>
+      </div>
+      <div class="takeaway">Real organisations keep the same customer in several files — a sales export here, a CRM dump there. Files cannot notice they disagree.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="slide" data-section="pain">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1.2 · The diagnosis</div>
+      <h2>A file is an island</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel warning">
+          <h3>What just happened</h3>
+          <p>Neither file can say "there is exactly <strong>one true country per customer</strong>, and it lives here." A file knows nothing about any other file — it cannot even see the contradiction, let alone refuse it.</p>
+        </div>
+        <div class="panel good">
+          <h3>What we want instead</h3>
+          <p>A single place that <strong>owns</strong> the customer record and refuses to hold two. One customer_id → one row, and any second row with the same id is rejected at the door.</p>
+          <p class="muted">That place is a table with a <strong>primary key</strong> — the first thing we build in Unit 2.</p>
+        </div>
+      </div>
+      <div class="takeaway">The cure for "two truths" is not a cleverer merge. It is one table that is the truth.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 13 -->
+<section class="slide" data-section="pain">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1.3 · The required column</div>
+      <h2>Try to forbid a blank country — using only a file</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="comment"># Row 00204 is missing its country. A file stores the gap without objection.</span>
+missing = pd.DataFrame({
+    <span class="string">"customer_id"</span>: [<span class="string">"00123"</span>, <span class="string">"00204"</span>, <span class="string">"00987"</span>],
+    <span class="string">"country"</span>:     [<span class="string">"United Kingdom"</span>, <span class="keyword">None</span>, <span class="string">"EIRE"</span>],
+})
+missing.to_csv(<span class="string">"../data/lesson7_missing_country.csv"</span>, index=<span class="keyword">False</span>)
+
+loaded = pd.read_csv(<span class="string">"../data/lesson7_missing_country.csv"</span>,
+                     dtype={<span class="string">"customer_id"</span>: <span class="string">"string"</span>})
+print(<span class="string">"rows with no country:"</span>, loaded[<span class="string">"country"</span>].isna().sum())</pre>
+        <div>
+          <pre class="output-block">what landed on disk:
+customer_id,country
+00123,United Kingdom
+<span class="error">00204,</span>
+00987,EIRE
+
+rows with no country: 1
+<span class="comment">(the file accepted it anyway)</span></pre>
+        </div>
+      </div>
+      <div class="takeaway">A shop survives a missing phone number. It cannot survive a transaction with no customer, or a customer with no country.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 14 -->
+<section class="slide" data-section="pain">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Three failures, one pattern</div>
+      <h2>Every failure is a property; every fix so far is a repair</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Failure</th><th>Property lost (Lesson 1)</th><th>Best a file allows</th><th>What we actually want</th></tr></thead>
+        <tbody>
+          <tr><td>00123 → 123</td><td>type — a label, not a quantity</td><td>re-declare <code class="inline">dtype=</code> on every read</td><td>the type declared once, kept always</td></tr>
+          <tr><td>two countries</td><td>uniqueness — one record per key</td><td>merge, then untangle the conflict</td><td>a second row with the same key is refused</td></tr>
+          <tr><td>blank country</td><td>required-ness — never empty</td><td><code class="inline">isna().sum()</code> the morning after</td><td>the blank row never lands</td></tr>
+        </tbody>
+      </table>
+      <div class="question">There is no CSV syntax for "this column is required." <code>NOT NULL</code> is that syntax — and a database applies it at the moment of writing, not the morning after.</div>
+      <div class="takeaway">Repairs happen after the damage; refusals happen at the door. The whole lesson is the move from one to the other.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 15 -->
+<section class="slide" data-section="pain">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · What persistence really means</div>
+      <h2>"I saved a file" is one third of the job</h2>
+    </header>
+    <main class="content">
+      <div class="cols-3">
+        <div class="panel"><h3>Durability</h3><p>The data outlives the program that made it. <strong>A file gives you this</strong> — necessary, and nowhere near enough.</p></div>
+        <div class="panel"><h3>Integrity</h3><p>A referee that checks every write against the rules and <strong>rejects violations</strong>, so the bad row never lands. Lesson 2 <em>cleaned</em> data; this keeps it from getting dirty.</p></div>
+        <div class="panel"><h3>Coordination</h3><p>Many readers and writers at once, without two of them <strong>clobbering each other's edits</strong>.</p></div>
+      </div>
+      <div class="question">Persistence <em>plus</em> integrity <em>plus</em> coordination is what the word "database" means.</div>
+      <div class="takeaway">The rest of this lesson is those three words made concrete — starting with the referee.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 16 -->
+<section class="slide" data-section="pain">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">1 · Checkpoint</div>
+      <h2>Name what the file could not do</h2>
+    </header>
+    <main class="content">
+      <div class="question">Three demos, three failures. For each one — the vanished zeros, the two countries, the blank country — name the Lesson 1 property that was lost, and say what the file offered instead of enforcement.</div>
+      <div class="answer fragment">
+        <strong>Type</strong>: 00123 became 123 — the file cannot record "label, not quantity"; it offered a re-declared <code class="inline">dtype=</code> repair on every read. <strong>Uniqueness</strong>: two files held two countries for one id — no single owner of the record; it offered a merge and an argument. <strong>Required-ness</strong>: a blank country landed on disk — no syntax for "required"; it offered <code class="inline">isna()</code> archaeology afterwards. In every case: durability without integrity.
+      </div>
+      <div class="takeaway">Unit 2 writes the refusal down in an executable language: <code class="inline">CREATE TABLE</code>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 17 -->
+<section class="slide" data-section="schema">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Tables, schemas, keys</div>
+      <h2>The property checklist, in a language software enforces</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>The vocabulary</h3>
+          <ul>
+            <li><strong>Table</strong> — rows that all share one declared shape.</li>
+            <li><strong>Schema</strong> — that declared shape: the columns <em>and the rules</em>.</li>
+            <li><strong>Key</strong> — the column whose value identifies a record.</li>
+          </ul>
+        </div>
+        <div class="panel good">
+          <h3>The one idea of this unit</h3>
+          <p>When you <code class="inline">CREATE TABLE</code>, you are not only naming columns — you are <strong>declaring the rules and handing the database the authority to reject</strong> anything that breaks them.</p>
+        </div>
+      </div>
+      <div class="question">A schema is Lesson 1's checklist with a referee attached. Everything a file could not refuse in Unit 1, the schema refuses in this one.</div>
+      <div class="takeaway">You stop hoping the rules hold. You declare them, and the engine says no on your behalf.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 18 -->
+<section class="slide" data-section="schema">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Opening a database</div>
+      <h2>Connect — and flip one crucial switch</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">DB = Path(<span class="string">"../data/lesson7_demo.sqlite"</span>)
+<span class="keyword">if</span> DB.exists():
+    DB.unlink()            <span class="comment"># start clean so re-running is repeatable</span>
+
+conn = sqlite3.connect(DB) <span class="comment"># opens (or creates) the database file</span>
+
+<span class="comment"># SURPRISE: SQLite ships with foreign-key checking turned OFF,</span>
+<span class="comment"># per connection. Switch it on every time, or the relationship</span>
+<span class="comment"># rules in 2.3 are silently ignored.</span>
+conn.execute(<span class="string">"PRAGMA foreign_keys = ON"</span>)</pre>
+        <div>
+          <pre class="output-block">database file : ../data/lesson7_demo.sqlite
+foreign keys  : 1 (1 = enforced)</pre>
+          <div class="panel compact warning" style="margin-top:14px"><p>Remember this PRAGMA. It is <strong>per connection</strong> — a habit, not a one-time setting. We return to it when a rule mysteriously fails to fire.</p></div>
+        </div>
+      </div>
+      <div class="takeaway"><code class="inline">connect</code> gives you a live database in one line. The file did not even have to exist yet.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 19 -->
+<section class="slide" data-section="schema">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2.1 · CREATE TABLE</div>
+      <h2>Read this statement as a list of Lesson 1 properties</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">conn.execute(<span class="string">"""
+    CREATE TABLE customers (
+        customer_id TEXT PRIMARY KEY,   -- unique label, never a number
+        country     TEXT NOT NULL,      -- required: no blank countries
+        signup_date TEXT                -- optional
+    )
+"""</span>)
+
+conn.execute(
+    <span class="string">"INSERT INTO customers (customer_id, country, signup_date) VALUES (?, ?, ?)"</span>,
+    (<span class="string">"00123"</span>, <span class="string">"United Kingdom"</span>, <span class="string">"2010-12-01"</span>),
+)
+conn.commit()</pre>
+        <div class="panel">
+          <h3>Line by line</h3>
+          <ul>
+            <li><code class="inline">TEXT PRIMARY KEY</code> — a label (so text; leading zeros are safe) that must be <em>unique</em>.</li>
+            <li><code class="inline">TEXT NOT NULL</code> — required; the blank from 1.3 is now illegal.</li>
+            <li><code class="inline">TEXT</code> alone — optional; no promise made, so none enforced.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">That <code class="inline">CREATE TABLE</code> <em>is</em> the checklist. From now on the database — not your memory, not a comment, not a downstream <code class="inline">assert</code> — guarantees those rules.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 20 -->
+<section class="slide" data-section="schema">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Three promises</div>
+      <h2>Three constraints, kept on every write, forever</h2>
+    </header>
+    <main class="content">
+      <div class="rule-list" style="max-width:1080px">
+        <div class="rule"><b>PRIMARY KEY</b><span>exactly one row per key value — a second row with the same <span class="mono">customer_id</span> is <strong>rejected</strong>, not merged, not appended.</span></div>
+        <div class="rule"><b>NOT NULL</b><span>the column can never be blank — an insert with a missing <span class="mono">country</span> is <strong>rejected</strong> before it lands.</span></div>
+        <div class="rule"><b>FOREIGN KEY</b><span>the value must already exist in the referenced table — a transaction naming an unknown customer is <strong>rejected</strong> as an orphan.</span></div>
+      </div>
+      <div class="takeaway">Each promise is enforced by refusal at write time — the exact move Unit 1's files could not make.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 21 -->
+<section class="slide" data-section="schema">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2.2 · The heart of the lesson</div>
+      <h2>The database rejects a bad row — loudly, specifically, instantly</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block" style="font-size:15px"><span class="comment"># (a) A DUPLICATE primary key -- "two countries" from 1.2.</span>
+<span class="keyword">try</span>:
+    conn.execute(<span class="string">"INSERT INTO customers VALUES (?, ?, ?)"</span>,
+                 (<span class="string">"00123"</span>, <span class="string">"France"</span>, <span class="string">"2011-01-01"</span>))
+<span class="keyword">except</span> sqlite3.<span class="error">IntegrityError</span> <span class="keyword">as</span> err:
+    print(<span class="string">"duplicate customer rejected ->"</span>, err)
+
+<span class="comment"># (b) A BLANK required column -- the missing country from 1.3.</span>
+<span class="keyword">try</span>:
+    conn.execute(<span class="string">"INSERT INTO customers VALUES (?, ?, ?)"</span>,
+                 (<span class="string">"00204"</span>, <span class="keyword">None</span>, <span class="string">"2011-02-01"</span>))
+<span class="keyword">except</span> sqlite3.<span class="error">IntegrityError</span> <span class="keyword">as</span> err:
+    print(<span class="string">"empty country rejected      ->"</span>, err)</pre>
+        <div>
+          <pre class="output-block" style="font-size:14.5px">duplicate customer rejected ->
+  <span class="error">UNIQUE constraint failed:
+  customers.customer_id</span>
+empty country rejected      ->
+  <span class="error">NOT NULL constraint failed:
+  customers.country</span>
+
+customers is still exactly one
+clean row -- the damage never landed:
+  customer_id         country
+0       00123  United Kingdom</pre>
+        </div>
+      </div>
+      <div class="takeaway">Two bad rows, two refusals, one clean table. We <em>catch</em> the <code class="inline">IntegrityError</code> so we can read the refusal out loud.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 22 -->
+<section class="slide" data-section="schema">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2.2 · Animated trace</div>
+      <h2>Every INSERT runs the gauntlet</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="flow">
+        <div class="trace-toolbar"><div class="trace-status" aria-live="polite"></div><div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div></div>
+        <div class="flowchart-wrap" style="min-height:340px">
+          <svg class="flowchart-svg" viewBox="0 0 1000 340" style="height:340px" role="img" aria-label="INSERT passing through PRIMARY KEY and NOT NULL checks">
+            <defs><marker id="arrow-gauntlet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0l10 5-10 5z" fill="#94a3b8"/></marker></defs>
+            <path class="fc-edge" data-edge="ins-pk" d="M216 168H242" marker-end="url(#arrow-gauntlet)"/>
+            <path class="fc-edge" data-edge="pk-nn" d="M414 168H502" marker-end="url(#arrow-gauntlet)"/>
+            <path class="fc-edge" data-edge="nn-write" d="M674 168H806" marker-end="url(#arrow-gauntlet)"/>
+            <path class="fc-edge" data-edge="pk-rej" d="M330 228V292H356" marker-end="url(#arrow-gauntlet)"/>
+            <path class="fc-edge" data-edge="nn-rej" d="M590 228V262" marker-end="url(#arrow-gauntlet)"/>
+            <g class="fc-node" data-node="insert"><rect x="36" y="140" width="180" height="56" rx="28"/><text x="126" y="168">INSERT row</text></g>
+            <g class="fc-node" data-node="pk"><path d="M330 108l84 60-84 60-84-60z"/><text x="330" y="162">key already</text><text x="330" y="180">used?</text></g>
+            <g class="fc-node" data-node="nn"><path d="M590 108l84 60-84 60-84-60z"/><text x="590" y="162">country</text><text x="590" y="180">present?</text></g>
+            <g class="fc-node" data-node="write"><path d="M810 142h180l-15 52h-180z"/><text x="892" y="168">row stored</text></g>
+            <g class="fc-node" data-node="reject"><rect x="360" y="262" width="270" height="54"/><text x="495" y="289">sqlite3.IntegrityError</text></g>
+            <text x="440" y="158" font-size="13" fill="#536178">new</text>
+            <text x="712" y="158" font-size="13" fill="#536178">yes</text>
+            <text x="252" y="256" font-size="13" fill="#536178">duplicate</text>
+            <text x="604" y="252" font-size="13" fill="#536178">NULL</text>
+          </svg>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"activeNode":"insert","status":"Attempt 1: INSERT ('00123', 'United Kingdom', '2010-12-01') — the first row ever offered to the table."},
+          {"activeEdge":"ins-pk","activeNode":"pk","status":"PRIMARY KEY check: is '00123' already in the index of seen keys? No — never seen before."},
+          {"activeEdge":"pk-nn","activeNode":"nn","status":"NOT NULL check: is country present? 'United Kingdom' — yes."},
+          {"activeEdge":"nn-write","activeNode":"write","status":"Every promise holds → the row is written. commit() makes it durable."},
+          {"activeNode":"insert","status":"Attempt 2: INSERT ('00123', 'France', '2011-01-01') — the 1.2 conflict, arriving as a second row for the same id."},
+          {"activeEdge":"ins-pk","activeNode":"pk","status":"PRIMARY KEY check: '00123' IS in the index — found in O(1), Lesson 4's membership test."},
+          {"activeEdge":"pk-rej","activeNode":"reject","status":"Rejected → UNIQUE constraint failed: customers.customer_id. The second country never lands."},
+          {"activeNode":"insert","status":"Attempt 3: INSERT ('00204', None, '2011-02-01') — the blank country from 1.3."},
+          {"activeEdge":"ins-pk","activeNode":"pk","status":"'00204' is new — the key check passes this time."},
+          {"activeEdge":"pk-nn","activeNode":"nn","status":"NOT NULL check: country is None — the promise 'never blank' is about to fire."},
+          {"activeEdge":"nn-rej","activeNode":"reject","status":"Rejected → NOT NULL constraint failed: customers.country. The table still holds exactly one clean row."}
+        ]</script>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 23 -->
+<section class="slide" data-section="schema">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2.2 · Checkpoint</div>
+      <h2>How is that rejection so cheap?</h2>
+    </header>
+    <main class="content">
+      <div class="question"><code>customers</code> could hold ten million rows. How does the database decide, instantly on <em>every</em> insert, whether <code>00123</code> is already taken — and where have you built that structure yourself?</div>
+      <div class="answer fragment">
+        It keeps an <strong>index of the keys it has already seen</strong> and asks "is <code class="inline">00123</code> in here?" — <strong>Lesson 4's O(1) membership test, now durable</strong>. The set-of-seen-keys you built by hand to speed up a join is the very structure a primary key maintains for you permanently — as a <em>rule</em> rather than an optimisation.
+      </div>
+      <div class="takeaway">A primary key is a dictionary lookup with authority: same speed, plus the right to say no.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 24 -->
+<section class="slide" data-section="schema">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2.3 · FOREIGN KEY</div>
+      <h2>A merge is hopeful; a foreign key is a guarantee</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel warning">
+          <h3>Lesson 2's merge</h3>
+          <p>We linked two tables by <code class="inline">customer_id</code> and merged. But a merge is <em>hopeful</em>: it happily kept transaction <strong>T006</strong>, whose customer <code class="inline">00999</code> did not exist, as a row full of <code class="inline">NaN</code>.</p>
+        </div>
+        <div class="panel good">
+          <h3>The enforced relationship</h3>
+          <p>A <strong>FOREIGN KEY</strong> declares: a transaction may only name a customer that <em>actually exists</em>. The orphan is not analysed afterwards — it is refused at the door.</p>
+        </div>
+      </div>
+      <div class="question">The difference in one sentence: <em>analysing</em> a broken relationship versus <em>forbidding</em> it.</div>
+      <div class="takeaway">The merge key you trusted in Lesson 2 becomes a rule the engine enforces on every insert.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 25 -->
+<section class="slide" data-section="schema">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2.3 · FOREIGN KEY in code</div>
+      <h2>One accepted transaction, one rejected orphan</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block" style="font-size:15px">conn.execute(<span class="string">"""
+    CREATE TABLE transactions (
+        transaction_id TEXT PRIMARY KEY,
+        customer_id    TEXT NOT NULL,
+        amount         REAL NOT NULL,
+        FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+    )
+"""</span>)
+
+<span class="comment"># A transaction for a customer who exists -> accepted.</span>
+conn.execute(<span class="string">"INSERT INTO transactions VALUES (?, ?, ?)"</span>, (<span class="string">"T001"</span>, <span class="string">"00123"</span>, <span class="number">9.95</span>))
+
+<span class="comment"># A transaction for customer 00999, who is NOT in customers -> rejected.</span>
+<span class="keyword">try</span>:
+    conn.execute(<span class="string">"INSERT INTO transactions VALUES (?, ?, ?)"</span>, (<span class="string">"T002"</span>, <span class="string">"00999"</span>, <span class="number">5.00</span>))
+<span class="keyword">except</span> sqlite3.<span class="error">IntegrityError</span> <span class="keyword">as</span> err:
+    print(<span class="string">"orphan transaction rejected ->"</span>, err)</pre>
+        <div>
+          <pre class="output-block">orphan transaction rejected ->
+  <span class="error">FOREIGN KEY constraint failed</span>
+
+transactions that made it in:
+  transaction_id customer_id  amount
+0           T001       00123    9.95</pre>
+        </div>
+      </div>
+      <div class="takeaway">The exact row a left join would have kept as <code class="inline">NaN</code>, the database threw out at the door.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 26 -->
+<section class="slide" data-section="schema">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2.3 · Animated trace</div>
+      <h2>The foreign-key check, step by step</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="flow">
+        <div class="trace-toolbar"><div class="trace-status" aria-live="polite"></div><div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div></div>
+        <div class="flowchart-wrap" style="min-height:330px">
+          <svg class="flowchart-svg" viewBox="0 0 1000 320" style="height:320px" role="img" aria-label="Foreign key insert accepted or rejected">
+            <defs><marker id="arrow-fk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0l10 5-10 5z" fill="#94a3b8"/></marker></defs>
+            <path class="fc-edge" data-edge="ins-fk" d="M246 158H300" marker-end="url(#arrow-fk)"/>
+            <path class="fc-edge" data-edge="fk-acc" d="M472 128L654 112" marker-end="url(#arrow-fk)"/>
+            <path class="fc-edge" data-edge="fk-rej" d="M472 188L654 232" marker-end="url(#arrow-fk)"/>
+            <g class="fc-node" data-node="insert"><rect x="36" y="130" width="210" height="56" rx="28"/><text x="141" y="158">INSERT transaction</text></g>
+            <g class="fc-node" data-node="fk"><path d="M400 96l96 62-96 62-96-62z"/><text x="400" y="152">customer_id in</text><text x="400" y="170">customers?</text></g>
+            <g class="fc-node" data-node="accept"><path d="M660 88h210l-16 50h-210z"/><text x="758" y="113">row stored</text></g>
+            <g class="fc-node" data-node="reject"><rect x="660" y="212" width="290" height="54"/><text x="805" y="239">FOREIGN KEY constraint failed</text></g>
+            <text x="540" y="106" font-size="13" fill="#536178">exists</text>
+            <text x="530" y="222" font-size="13" fill="#536178">unknown</text>
+          </svg>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"activeNode":"insert","status":"INSERT ('T001', '00123', 9.95) — a transaction claiming to belong to customer 00123."},
+          {"activeEdge":"ins-fk","activeNode":"fk","status":"FOREIGN KEY check: does '00123' exist in customers.customer_id? It does — we inserted that customer in 2.1."},
+          {"activeEdge":"fk-acc","activeNode":"accept","status":"The relationship is real → the row is stored. Every stored transaction now provably points at a real customer."},
+          {"activeNode":"insert","status":"INSERT ('T002', '00999', 5.00) — customer 00999 does not exist. Lesson 2's orphan T006, reborn."},
+          {"activeEdge":"ins-fk","activeNode":"fk","status":"FOREIGN KEY check: '00999' is NOT in customers. There is nothing for this row to belong to."},
+          {"activeEdge":"fk-rej","activeNode":"reject","status":"Rejected → FOREIGN KEY constraint failed. The row a left join would have kept as NaN never enters the table."},
+          {"activeNode":"fk","status":"One catch: this diamond only exists because we ran PRAGMA foreign_keys = ON. Skip the PRAGMA, and the orphan sails through silently."}
+        ]</script>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 27 -->
+<section class="slide" data-section="schema">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2.3 · The gotcha</div>
+      <h2>Foreign keys are OFF until you switch them on</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel warning">
+          <h3>The silent failure mode</h3>
+          <p>SQLite ships with foreign-key checking <strong>disabled, per connection</strong>. Skip the switch and the orphan insert <em>succeeds</em> — no error, no warning, a broken relationship stored as if it were fine.</p>
+        </div>
+        <div>
+          <div class="code-title">The habit: connect, then switch, every time</div>
+          <pre class="code-block">conn = sqlite3.connect(DB)
+conn.execute(<span class="string">"PRAGMA foreign_keys = ON"</span>)</pre>
+          <div class="panel compact good" style="margin-top:12px"><p>The exercise checker verifies this on your returned connection — <span class="mono">test_foreign_keys_are_enforced_on_the_connection</span> exists precisely because this bite is so quiet.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">A constraint you never switched on is documentation, not enforcement. The rule is only as good as the switch.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 28 -->
+<section class="slide" data-section="schema">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2.4 · One honest caveat</div>
+      <h2>Types are affinities — not always walls</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">conn.execute(<span class="string">"CREATE TABLE loose (n INTEGER)"</span>)
+conn.execute(<span class="string">"INSERT INTO loose VALUES ('banana')"</span>)   <span class="comment"># accepted!</span>
+print(<span class="string">"plain table stored:"</span>, conn.execute(<span class="string">"SELECT n FROM loose"</span>).fetchone())
+
+conn.execute(<span class="string">"CREATE TABLE strict_demo (n INTEGER) STRICT"</span>)
+<span class="keyword">try</span>:
+    conn.execute(<span class="string">"INSERT INTO strict_demo VALUES ('banana')"</span>)
+<span class="keyword">except</span> sqlite3.<span class="error">IntegrityError</span> <span class="keyword">as</span> err:
+    print(<span class="string">"STRICT table rejected the wrong type ->"</span>, err)</pre>
+        <div>
+          <pre class="output-block" style="font-size:14.5px">plain table stored: ('banana',)
+STRICT table rejected the wrong type ->
+  <span class="error">cannot store TEXT value in
+  INTEGER column strict_demo.n</span></pre>
+          <div class="panel compact" style="margin-top:12px"><p>SQLite is strict about <code class="inline">NOT NULL</code>, <code class="inline">PRIMARY KEY</code>, <code class="inline">FOREIGN KEY</code> — and deliberately <em>lenient</em> about column types, unless you declare the table <code class="inline">STRICT</code>.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">A schema enforces most of Lesson 1's checklist out of the box — and the rest (exact types) when you ask for <code class="inline">STRICT</code>.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 29 -->
+<section class="slide" data-section="schema">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">2 · Checkpoint</div>
+      <h2>Walls and suggestions</h2>
+    </header>
+    <main class="content">
+      <div class="question">Which of Lesson 1's properties does a default SQLite table enforce as hard walls — and which one is only a suggestion until you say otherwise?</div>
+      <div class="answer fragment">
+        <strong>Hard walls</strong>: uniqueness (<code class="inline">PRIMARY KEY</code>), required-ness (<code class="inline">NOT NULL</code>), and relationships (<code class="inline">FOREIGN KEY</code> — once <code class="inline">PRAGMA foreign_keys = ON</code> is set). <strong>Suggestion</strong>: the column <em>type</em> — plain SQLite stored <code class="inline">'banana'</code> in an INTEGER column (type <em>affinity</em>). Declaring the table <code class="inline">STRICT</code> turns the type into a wall too.
+      </div>
+      <div class="takeaway">Unit 2 built the referee by hand. Unit 3 drives it from Python, with the real retail data.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 30 -->
+<section class="slide" data-section="python">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Session 2 warm-up</div>
+      <h2>Five questions from last time — answer from memory first</h2>
+    </header>
+    <main class="content">
+      <div class="rule-list">
+        <div class="rule"><b>Q1</b><span>Name three properties a plain CSV file cannot enforce.</span></div>
+        <div class="rule"><b>Q2</b><span>"I saved a file" gives you durability. What two things does a database add on top?</span></div>
+        <div class="rule"><b>Q3</b><span>What does <span class="mono">PRIMARY KEY</span> guarantee, and which Lesson 4 idea makes that check cheap?</span></div>
+        <div class="rule"><b>Q4</b><span>A <span class="mono">FOREIGN KEY</span> would have refused Lesson 2's orphan transaction. What SQLite gotcha could let the orphan slip in anyway?</span></div>
+        <div class="rule"><b>Q5</b><span>SQLite stored <span class="mono">'banana'</span> in an INTEGER column without complaint. What does that tell you about SQLite's types, and how do you make types strict?</span></div>
+      </div>
+      <div class="takeaway">Say your answers out loud before turning the page. Retrieval, not recognition, is what sticks.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 31 -->
+<section class="slide" data-section="python">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Session 2 warm-up · answers</div>
+      <h2>Check yourself</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Q</th><th>Answer</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Any three: a column must stay one type; an id must be unique; a column must not be blank; two files must agree. Files enforce none of them.</td></tr>
+          <tr><td>2</td><td>Integrity (a referee that rejects rule-breaking rows on write) and coordination (many readers/writers at once without clobbering).</td></tr>
+          <tr><td>3</td><td>Uniqueness of the key — no two rows share it. The database keeps an index of seen keys: Lesson 4's O(1) membership test, made durable.</td></tr>
+          <tr><td>4</td><td>Foreign-key checking is OFF by default, per connection; without <code class="inline">PRAGMA foreign_keys = ON</code> the rule is silently ignored.</td></tr>
+          <tr><td>5</td><td>SQLite is lenient about column types (type <em>affinity</em>) but strict about NOT NULL / PRIMARY KEY / FOREIGN KEY. Declare the table <code class="inline">STRICT</code> to enforce types too.</td></tr>
+        </tbody>
+      </table>
+    </main>
+  </div>
+</section>
+
+<!-- 32 -->
+<section class="slide" data-section="python">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Python to SQLite and back</div>
+      <h2>You will drive the database from Python, not from a SQL prompt</h2>
+    </header>
+    <main class="content">
+      <div class="flow" style="width:100%">
+        <div class="flow-node"><b>connect</b><span>open the file, flip the PRAGMA</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>to_sql</b><span>whole DataFrames in</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>read_sql</b><span>query results out, as frames</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>cursor</b><span>row-by-row when you need it</span></div><div class="flow-arrow">→</div>
+        <div class="flow-node"><b>?</b><span>every value, safely</span></div>
+      </div>
+      <div class="question">From here on we use the <strong>real</strong> two-table retail extract from Lesson 2 — the same 10 customers and 60 transactions you merged there.</div>
+      <div class="takeaway">Five moves cover the whole round trip. The last one — the <code class="inline">?</code> — is a rule, not a preference.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 33 -->
+<section class="slide" data-section="python">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · to_sql — frames in</div>
+      <h2>A whole DataFrame becomes a table in one call</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">customers    = pd.read_csv(<span class="string">"../course_data/lesson2_customers_base.csv"</span>)
+transactions = pd.read_csv(<span class="string">"../course_data/lesson2_transactions_base.csv"</span>)
+
+RETAIL = Path(<span class="string">"../data/lesson7_retail.sqlite"</span>)
+retail = sqlite3.connect(RETAIL)
+
+<span class="comment"># df.to_sql writes a whole DataFrame into a table in one call.</span>
+customers.to_sql(<span class="string">"customers"</span>, retail, if_exists=<span class="string">"replace"</span>, index=<span class="keyword">False</span>)
+transactions.to_sql(<span class="string">"transactions"</span>, retail, if_exists=<span class="string">"replace"</span>, index=<span class="keyword">False</span>)</pre>
+        <div>
+          <pre class="output-block">from disk: 10 customers,
+           60 transactions
+tables now in the database:
+  ['customers', 'transactions']</pre>
+          <div class="panel compact" style="margin-top:14px"><p>Two lines, two tables, real data. It feels like magic — which is exactly when to slow down and inspect what the magic did.</p></div>
+        </div>
+      </div>
+      <div class="takeaway"><code class="inline">to_sql</code> is the fast way in — and a quiet warning about our through-line. Look at the schema it invented.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 34 -->
+<section class="slide" data-section="python">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · What to_sql threw away</div>
+      <h2>Convenience invented a schema with no rules</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block"><span class="comment"># The schema to_sql generated.</span>
+<span class="comment"># Field order: (cid, name, type, notnull, default, pk)</span>
+<span class="keyword">for</span> column <span class="keyword">in</span> retail.execute(<span class="string">"PRAGMA table_info(customers)"</span>):
+    print(column)</pre>
+        <div>
+          <pre class="output-block" style="font-size:14.5px">(0, 'customer_id', 'TEXT', <span class="error">0</span>, None, <span class="error">0</span>)
+(1, 'customer_label', 'TEXT', <span class="error">0</span>, None, <span class="error">0</span>)
+(2, 'country', 'TEXT', <span class="error">0</span>, None, <span class="error">0</span>)
+(3, 'first_purchase_date', 'TEXT', <span class="error">0</span>, None, <span class="error">0</span>)</pre>
+        </div>
+      </div>
+      <div class="cols-2">
+        <div class="panel warning"><h3>Every flag is zero</h3><p>No <code class="inline">PRIMARY KEY</code>, no <code class="inline">NOT NULL</code>, no <code class="inline">FOREIGN KEY</code> — the DataFrame → SQLite trip lost exactly the properties Unit 2 spent its time enforcing.</p></div>
+        <div class="panel good"><h3>The fix (and the exercise)</h3><p>Write the <code class="inline">CREATE TABLE</code> yourself first, then load into it with <code class="inline">to_sql(…, if_exists="append")</code> — rows into <em>your</em> schema, not a guessed one.</p></div>
+      </div>
+      <div class="takeaway">The same lesson as CSV amnesia in Lesson 2: a convenient writer drops the properties unless you declare them yourself.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 35 -->
+<section class="slide" data-section="python">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Checkpoint</div>
+      <h2>Where have you seen this before?</h2>
+    </header>
+    <main class="content">
+      <div class="question"><code>to_sql</code> silently produced a table with no keys and no NOT NULL. Which earlier failure did it just re-enact — and why does the exercise insist you create the tables before loading them?</div>
+      <div class="answer fragment">
+        It is <strong>CSV amnesia again</strong>: a convenient save that keeps the values and drops the properties. <code class="inline">to_sql</code> guessed column types from dtypes and stopped there — the checklist never made it into the schema. The exercise makes you <code class="inline">CREATE TABLE</code> first and then <code class="inline">to_sql(…, if_exists="append")</code>, so the rows flow into a schema <em>you</em> declared — keys, NOT NULLs, foreign key and all.
+      </div>
+      <div class="takeaway">Declare, then load. Never let the loader invent the rules.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 36 -->
+<section class="slide" data-section="python">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3.1 · read_sql — frames out</div>
+      <h2>The database is a fine calculator</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">revenue_by_customer = pd.read_sql(
+    <span class="string">"""
+    SELECT customer_id,
+           ROUND(SUM(quantity * unit_price), 2) AS revenue
+    FROM transactions
+    GROUP BY customer_id
+    ORDER BY revenue DESC
+    """</span>,
+    retail,
+)</pre>
+        <div>
+          <pre class="output-block" style="font-size:14.5px">  customer_id  revenue
+0      C13089   868.26
+1      C14298   181.20
+2      C14911   148.88
+3      C15311    89.57
+4      C12748    24.75
+...
+9      C13263    17.06</pre>
+        </div>
+      </div>
+      <div class="takeaway">Ask in SQL, receive a DataFrame — the round trip closes. The answer arrives already aggregated; only 10 rows crossed the wire.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 37 -->
+<section class="slide" data-section="python">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3.1 · GROUP BY is an old friend</div>
+      <h2>Split, apply, combine — run by a different engine</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div>
+          <div class="code-title">Lesson 2 · pandas</div>
+          <pre class="code-block" style="font-size:15px">(transactions
+   .assign(revenue=transactions[<span class="string">"quantity"</span>]
+                 * transactions[<span class="string">"unit_price"</span>])
+   .groupby(<span class="string">"customer_id"</span>)[<span class="string">"revenue"</span>]
+   .sum())</pre>
+        </div>
+        <div>
+          <div class="code-title">Today · SQL</div>
+          <pre class="code-block" style="font-size:15px">SELECT customer_id,
+       SUM(quantity * unit_price) AS revenue
+FROM transactions
+GROUP BY customer_id</pre>
+        </div>
+      </div>
+      <div class="question">Same algorithm underneath — Lesson 4's single scan carrying a running total per key. The engine changed; the work did not.</div>
+      <div class="takeaway">You now have two ways to compute the identical answer. That fact becomes an assignment in Lesson 9.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 38 -->
+<section class="slide" data-section="python">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3.1 · Animated trace</div>
+      <h2>One scan, one running total per key</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="array">
+        <div class="trace-toolbar">
+          <div class="trace-status" aria-live="polite" aria-atomic="true"></div>
+          <div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div>
+        </div>
+        <div class="trace-board">
+          <div class="array-strip">
+            <div class="trace-pointer" style="width:104px">scan</div>
+            <div class="array-cell" data-index="0" style="width:104px;font-size:16px">C1 · 9.95</div>
+            <div class="array-cell" data-index="1" style="width:104px;font-size:16px">C2 · 4.10</div>
+            <div class="array-cell" data-index="2" style="width:104px;font-size:16px">C1 · 3.30</div>
+            <div class="array-cell" data-index="3" style="width:104px;font-size:16px">C3 · 5.00</div>
+            <div class="array-cell" data-index="4" style="width:104px;font-size:16px">C2 · 2.20</div>
+            <div class="array-cell" data-index="5" style="width:104px;font-size:16px">C1 · 1.75</div>
+          </div>
+          <div class="trace-variables">
+            <div class="trace-variable" data-var="totals" style="min-width:420px"></div>
+          </div>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"current":null,"vars":{"totals":"totals = {}"},"status":"GROUP BY customer_id, SUM(amount) — schematically: one scan over the rows, one running total per key. (Our real table: 60 rows, 10 keys.)"},
+          {"current":0,"processedThrough":0,"vars":{"totals":"{C1: 9.95}"},"status":"Row 0 belongs to C1 — a key we have not seen. Open a bucket for it: C1 → 9.95."},
+          {"current":1,"processedThrough":1,"vars":{"totals":"{C1: 9.95, C2: 4.10}"},"status":"Row 1: C2 is new too. Second bucket: C2 → 4.10."},
+          {"current":2,"processedThrough":2,"vars":{"totals":"{C1: 13.25, C2: 4.10}"},"status":"Row 2: C1 again. The O(1) lookup finds the existing bucket and adds: 9.95 + 3.30 = 13.25."},
+          {"current":3,"processedThrough":3,"vars":{"totals":"{C1: 13.25, C2: 4.10, C3: 5.00}"},"status":"Row 3: C3 — third bucket."},
+          {"current":4,"processedThrough":4,"vars":{"totals":"{C1: 13.25, C2: 6.30, C3: 5.00}"},"status":"Row 4: C2's bucket grows to 6.30."},
+          {"current":5,"processedThrough":5,"vars":{"totals":"{C1: 15.00, C2: 6.30, C3: 5.00}"},"status":"Row 5: C1 finishes at 15.00. Every row visited exactly once."},
+          {"current":null,"processedThrough":5,"vars":{"totals":"emit one row per key"},"status":"Emit one output row per bucket — that IS the GROUP BY result. pandas groupby runs the same split-apply-combine; only the engine differs."}
+        ]</script>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 39 -->
+<section class="slide" data-section="python">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3.2 · Cursors</div>
+      <h2>Row by row, when you want to <em>do</em> something with each result</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block">cur = retail.cursor()
+cur.execute(
+    <span class="string">"SELECT transaction_id, product FROM transactions WHERE customer_id = ?"</span>,
+    (<span class="string">"C15311"</span>,),    <span class="comment"># the value goes in the tuple, NOT in the string</span>
+)
+rows = cur.fetchall()
+<span class="keyword">for</span> transaction_id, product <span class="keyword">in</span> rows[:<span class="number">3</span>]:
+    print(<span class="string">"  "</span>, transaction_id, <span class="string">"-"</span>, product)</pre>
+        <div>
+          <pre class="output-block" style="font-size:14.5px">6 transactions for C15311; first three:
+   536381-01 - COOK WITH WINE METAL SIGN
+   536381-02 - YOU'RE CONFUSING ME METAL SIGN
+   536381-03 - GIN + TONIC DIET METAL SIGN</pre>
+          <div class="panel compact" style="margin-top:12px"><p><code class="inline">execute</code> runs the SQL; <code class="inline">fetchall</code> collects the rows as tuples. <code class="inline">read_sql</code> is for tables; cursors are for loops.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Notice the second product: a real name with an apostrophe. It is about to matter enormously.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 40 -->
+<section class="slide" data-section="python">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3.3 · Breaking the rule on purpose</div>
+      <h2>Paste a value into the SQL string and watch it explode</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block" style="font-size:15px">messy_value = <span class="string">"YOU'RE CONFUSING ME METAL SIGN"</span>   <span class="comment"># a genuine product name</span>
+
+<span class="comment"># WRONG: paste the value straight into the query string.</span>
+pasted = f<span class="string">"SELECT * FROM transactions WHERE product = '{messy_value}'"</span>
+<span class="keyword">try</span>:
+    retail.execute(pasted).fetchall()
+<span class="keyword">except</span> sqlite3.<span class="error">OperationalError</span> <span class="keyword">as</span> err:
+    print(<span class="string">"  -> the database choked:"</span>, err)
+
+<span class="comment"># RIGHT: pass the value as a parameter; the driver handles the quoting.</span>
+safe = retail.execute(
+    <span class="string">"SELECT transaction_id FROM transactions WHERE product = ?"</span>,
+    (messy_value,),
+).fetchall()</pre>
+        <div>
+          <pre class="output-block" style="font-size:14px">the string we built:
+  SELECT * FROM transactions
+  WHERE product = 'YOU<span class="error">'RE CONFUSING
+  ME METAL SIGN'</span>
+  -> the database choked:
+     <span class="error">near "RE": syntax error</span>
+
+parameterized query worked:
+  [('536381-02',), ('541509-51',)]</pre>
+        </div>
+      </div>
+      <div class="takeaway">The apostrophe in <code class="inline">YOU'RE</code> closed the string early, and the rest became broken SQL. And that is the <em>harmless</em> version.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 41 -->
+<section class="slide" data-section="python">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3.3 · SQL injection</div>
+      <h2>The dangerous version: when the value <em>wants</em> to break the query</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel warning">
+          <h3>A crafted input</h3>
+          <p>A value like <code class="inline">'; DROP TABLE customers; --</code> pasted into a query turns it into <strong>two commands</strong> — the second of which deletes your table. This is <strong>SQL injection</strong>, and it has emptied real companies' databases.</p>
+        </div>
+        <div class="panel good">
+          <h3>The fix — always the same, always easy</h3>
+          <p>Never build queries with <code class="inline">+</code> or f-strings. Pass every value through a <code class="inline">?</code> placeholder and let the driver quote it. Data stays data; it can never become code.</p>
+        </div>
+      </div>
+      <div class="question">The <code>?</code> is not a style preference. It is the rule — for correctness today (apostrophes) and safety always (injection).</div>
+      <div class="takeaway">One habit covers both failure modes, and it costs a single character.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 42 -->
+<section class="slide" data-section="python">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3.3 · Animated trace</div>
+      <h2>Two routes for one value — pasted vs parameterized</h2>
+    </header>
+    <main class="content">
+      <div class="trace" data-trace-type="flow">
+        <div class="trace-toolbar"><div class="trace-status" aria-live="polite"></div><div class="trace-meta"><span data-trace-counter></span><button class="trace-reset" type="button">Reset trace</button></div></div>
+        <div class="flowchart-wrap" style="min-height:330px">
+          <svg class="flowchart-svg" viewBox="0 0 1040 330" style="height:330px" role="img" aria-label="Pasted query fails, parameterized query succeeds">
+            <defs><marker id="arrow-inj" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0l10 5-10 5z" fill="#94a3b8"/></marker></defs>
+            <path class="fc-edge" data-edge="val-build" d="M226 165H264" marker-end="url(#arrow-inj)"/>
+            <path class="fc-edge" data-edge="build-paste" d="M420 125L514 92" marker-end="url(#arrow-inj)"/>
+            <path class="fc-edge" data-edge="paste-boom" d="M722 87H786" marker-end="url(#arrow-inj)"/>
+            <path class="fc-edge" data-edge="build-param" d="M420 205L514 238" marker-end="url(#arrow-inj)"/>
+            <path class="fc-edge" data-edge="param-safe" d="M722 243H786" marker-end="url(#arrow-inj)"/>
+            <g class="fc-node" data-node="val"><rect x="36" y="137" width="190" height="56" rx="28"/><text x="131" y="159">value with a</text><text x="131" y="177">quote inside</text></g>
+            <g class="fc-node" data-node="build"><path d="M360 105l92 60-92 60-92-60z"/><text x="360" y="159">how does it</text><text x="360" y="177">travel?</text></g>
+            <g class="fc-node" data-node="paste"><rect x="520" y="60" width="200" height="54"/><text x="620" y="87">glued into the SQL text</text></g>
+            <g class="fc-node" data-node="boom"><rect x="790" y="60" width="216" height="54"/><text x="898" y="80">near "RE":</text><text x="898" y="98">syntax error</text></g>
+            <g class="fc-node" data-node="param"><rect x="520" y="216" width="200" height="54"/><text x="620" y="243">passed as ? parameter</text></g>
+            <g class="fc-node" data-node="safe"><path d="M790 216h216l-16 50h-216z"/><text x="890" y="241">rows returned safely</text></g>
+            <text x="440" y="98" font-size="13" fill="#536178">f-string</text>
+            <text x="440" y="242" font-size="13" fill="#536178">tuple</text>
+          </svg>
+        </div>
+        <script type="application/json" class="trace-data">[
+          {"activeNode":"val","status":"The value is a genuine product name in our data: YOU'RE CONFUSING ME METAL SIGN — an apostrophe right in the middle."},
+          {"activeEdge":"val-build","activeNode":"build","status":"It needs to reach WHERE product = … — and there are two ways for it to travel. The choice is the whole game."},
+          {"activeEdge":"build-paste","activeNode":"paste","status":"Route 1: f-string. The value is glued into the SQL text itself — SQL and data become one string."},
+          {"activeEdge":"paste-boom","activeNode":"boom","status":"The apostrophe in YOU'RE closes the SQL string early; everything after it is parsed as SQL → OperationalError: near \"RE\": syntax error."},
+          {"activeNode":"boom","status":"That was the harmless failure. A crafted value like '; DROP TABLE customers; -- turns one query into two commands. SQL injection is exactly this route, weaponised."},
+          {"activeNode":"build","status":"Same value, same query — take the other route."},
+          {"activeEdge":"build-param","activeNode":"param","status":"Route 2: execute('… product = ?', (messy_value,)). The value travels beside the SQL, never inside it."},
+          {"activeEdge":"param-safe","activeNode":"safe","status":"The driver quotes it correctly and finds both matching transactions. Data stayed data — it never had the chance to become code."}
+        ]</script>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 43 -->
+<section class="slide" data-section="python">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">3 · Checkpoint</div>
+      <h2>Convince a teammate</h2>
+    </header>
+    <main class="content">
+      <div class="question">A teammate's dashboard builds its SQL with f-strings and "has worked fine for months." What two arguments do you give for switching to <code>?</code> placeholders — one about correctness, one about safety?</div>
+      <div class="answer fragment">
+        <strong>Correctness:</strong> any legitimate value containing a quote — a product called <code class="inline">YOU'RE …</code>, a name like <code class="inline">O'Brien</code> — breaks the pasted string the day it first appears. "Worked for months" means the data has been lucky. <strong>Safety:</strong> a hostile value rewrites the query itself (<code class="inline">'; DROP TABLE customers; --</code>). The <code class="inline">?</code> fixes both at once, because the driver keeps data and SQL permanently separate.
+      </div>
+      <div class="takeaway">Unit 3 complete: frames in, frames out, values through <code class="inline">?</code>. Unit 4 asks when to use which tool.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 44 -->
+<section class="slide" data-section="choose">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Database vs DataFrame</div>
+      <h2>Two tools, one honest comparison</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th></th><th>SQLite database</th><th>pandas DataFrame</th></tr></thead>
+        <tbody>
+          <tr><td>Lives in</td><td>a file on disk</td><td>memory (RAM)</td></tr>
+          <tr><td>Survives a restart?</td><td>yes — durable</td><td>no — gone with the kernel</td></tr>
+          <tr><td>Enforces the schema?</td><td>yes — NOT NULL, keys, relationships</td><td>no — you check by hand</td></tr>
+          <tr><td>Many writers at once?</td><td>yes — coordinated</td><td>no — one process</td></tr>
+          <tr><td>Bigger than RAM?</td><td>fine — reads only what it needs</td><td>must fit in memory</td></tr>
+          <tr><td>Fast to reshape and explore?</td><td>SQL, less nimble</td><td>its whole reason to exist</td></tr>
+          <tr><td>Plot, model, scikit-learn?</td><td>not directly</td><td>yes — the analytics home</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">They are not rivals; they are good at different things. The next slide proves they even agree on the answers.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 45 -->
+<section class="slide" data-section="choose">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Same answer, two engines</div>
+      <h2>The identical revenue, computed both ways</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="code-block" style="font-size:15px">by_sql = pd.read_sql(
+    <span class="string">"SELECT customer_id, ROUND(SUM(quantity * unit_price), 2) AS revenue "</span>
+    <span class="string">"FROM transactions GROUP BY customer_id"</span>,
+    retail,
+).sort_values(<span class="string">"customer_id"</span>).reset_index(drop=<span class="keyword">True</span>)
+
+by_pandas = (
+    transactions.assign(revenue=transactions[<span class="string">"quantity"</span>] * transactions[<span class="string">"unit_price"</span>])
+    .groupby(<span class="string">"customer_id"</span>)[<span class="string">"revenue"</span>].sum().round(<span class="number">2</span>)
+    .reset_index().sort_values(<span class="string">"customer_id"</span>).reset_index(drop=<span class="keyword">True</span>)
+)
+
+print(<span class="string">"SQL and pandas agree:"</span>, by_sql.equals(by_pandas))</pre>
+        <div>
+          <pre class="output-block">SQL and pandas agree: <span class="ok">True</span>
+  customer_id  revenue
+0      C12748    24.75
+1      C13089   868.26
+2      C13263    17.06</pre>
+          <div class="panel compact" style="margin-top:12px"><p>Identical numbers, because it is the identical algorithm — the two engines just run it in different places.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">The choice between them is never about the answer. It is about durability, enforcement, size, and who else needs the data.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 46 -->
+<section class="slide" data-section="choose">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · The decision guide</div>
+      <h2>When a plain file is genuinely fine — and when it is not</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel good">
+          <h3>Reach for a CSV / DataFrame when…</h3>
+          <ul>
+            <li>the data is <strong>small and fits in memory</strong>, and you are exploring or prototyping;</li>
+            <li>there is <strong>one author</strong> and no concurrent writers to coordinate;</li>
+            <li>it is a <strong>one-off</strong> analysis, or a hand-off a human will open in Excel;</li>
+            <li>the properties barely matter because the data is throwaway.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>Reach for a database when the data must…</h3>
+          <ul>
+            <li><strong>outlive the session</strong> — a system of record, not a scratchpad;</li>
+            <li>be <strong>trusted by many people</strong>, reading and writing at once;</li>
+            <li><strong>enforce its own rules</strong> — a single bad row is a real problem;</li>
+            <li><strong>grow past memory</strong> — query the slice you need, not the whole.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">The honest summary: a DataFrame is a fast workbench; a database is a durable system of record.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 47 -->
+<section class="slide" data-section="choose">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Checkpoint</div>
+      <h2>Diagnose the shared spreadsheet</h2>
+    </header>
+    <main class="content">
+      <div class="question">A three-person shop keeps its orders ledger in <code>orders.xlsx</code> on a shared drive. Of the three database words — durability, integrity, coordination — which is already failing them, and what breaks next?</div>
+      <div class="answer fragment">
+        <strong>Coordination</strong> fails first: two people saving at once, and one person's edits silently overwrite the other's. <strong>Integrity</strong> breaks next: nothing rejects a duplicate order id or an order with no customer, so the errors accumulate quietly. The file only ever gave them <strong>durability</strong>. A ledger that several people must trust is the textbook case for a real database.
+      </div>
+      <div class="takeaway">When you hear "we keep it in a shared spreadsheet," you can now name exactly what will go wrong, and in what order.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 48 -->
+<section class="slide" data-section="choose">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">4 · Where this is heading</div>
+      <h2>One analysis, two engines — the next assignment in miniature</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>What you just did</h3>
+          <p>Computed revenue per customer in SQL and in pandas, and proved the results <strong>equal</strong>. Same algorithm, two engines, one truth.</p>
+        </div>
+        <div class="panel good">
+          <h3>What Assignment A3 will do</h3>
+          <p>Answer real business questions against this very retail database, in both engines, with a checker comparing them to reference outputs — after Lessons 8 and 9 teach you the SQL to ask them.</p>
+        </div>
+      </div>
+      <div class="question">The database you build in this lesson's exercise is the <em>same</em> database Lessons 8, 9, and A3 will query. You are laying the foundation you will stand on for three lessons.</div>
+      <div class="takeaway">A DataFrame answers today's question; a database keeps being able to answer tomorrow's.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 49 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Practice · your turn</div>
+      <h2>Design a schema, load it, break it on purpose</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Function</th><th>Returns</th><th>The contract</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">build_database(db_path, …)</td><td>open connection</td><td>foreign keys <strong>ON</strong>; <span class="mono">customers</span> (customer_id <span class="mono">PRIMARY KEY</span>, country <span class="mono">NOT NULL</span>) and <span class="mono">transactions</span> (transaction_id <span class="mono">PRIMARY KEY</span>, customer_id <span class="mono">NOT NULL</span> + <span class="mono">FOREIGN KEY</span>); all 10 customers and 60 transactions loaded — customers <strong>first</strong></td></tr>
+          <tr><td class="mono">demonstrate_rejection(conn)</td><td>error message (str)</td><td>attempt <strong>one</strong> bad insert — duplicate key, blank required field, or orphan foreign key — catch <span class="mono">sqlite3.IntegrityError</span>, return <span class="mono">str(err)</span>; if the insert succeeds, raise <span class="mono">AssertionError</span></td></tr>
+        </tbody>
+      </table>
+      <div class="cols-2">
+        <div class="panel compact"><h3>Start</h3><p><code class="inline">cd lesson7_exercise/</code>, then <code class="inline">python3 -m pytest test_lesson7.py -v</code>. Every test fails with <code class="inline">NotImplementedError</code> — the intended starting line. Run <code class="inline">python3 build_database.py</code> to see your own rejection message.</p></div>
+        <div class="panel compact"><h3>The loading tip</h3><p><code class="inline">CREATE TABLE</code> first, then <code class="inline">df.to_sql(name, conn, if_exists="append", index=False)</code> — rows into <em>your</em> schema, not one pandas invented (the Unit 3 warning, applied).</p></div>
+      </div>
+      <div class="takeaway">This is Unit 2 in your own hands: you write the checklist down, and the software enforces it.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 50 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Practice · what "done" looks like</div>
+      <h2>Eleven greens, one satisfying refusal</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2 ratio-3-2">
+        <pre class="output-block" style="font-size:13px;line-height:1.5">test_customers_customer_id_is_the_primary_key <span class="ok">PASSED</span>
+test_customers_country_is_not_null <span class="ok">PASSED</span>
+test_transactions_transaction_id_is_the_primary_key <span class="ok">PASSED</span>
+test_transactions_customer_id_is_not_null <span class="ok">PASSED</span>
+test_transactions_have_a_foreign_key_to_customers <span class="ok">PASSED</span>
+test_customers_row_count_is_10 <span class="ok">PASSED</span>
+test_transactions_row_count_is_60 <span class="ok">PASSED</span>
+test_foreign_keys_are_enforced_on_the_connection <span class="ok">PASSED</span>
+test_duplicate_primary_key_is_rejected <span class="ok">PASSED</span>
+test_null_country_is_rejected <span class="ok">PASSED</span>
+test_demonstrate_rejection_reports_a_real_integrity_error <span class="ok">PASSED</span>
+
+<span class="ok">11 passed</span></pre>
+        <div>
+          <div class="panel compact"><h3>Read the test names</h3><p>They are the schema contract, restated: keys, NOT NULLs, the foreign key, both row counts, the PRAGMA, and a genuine rejection (the message must contain "constraint").</p></div>
+          <div class="panel compact" style="margin-top:12px"><h3>Order matters</h3><p>Load customers before transactions — every transaction's <code class="inline">customer_id</code> must already exist when the foreign key is checked.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">All green means your schema enforces the property checklist and refuses a bad row on its own — no discipline required.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 51 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Practice · optional integration</div>
+      <h2>Give Lesson 6's tidy API data a durable home</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel">
+          <h3>The task</h3>
+          <p>Take the tidy <code class="inline">monthly</code> DataFrame from your FRED client and <strong>design an <code class="inline">observations</code> table before calling <code class="inline">to_sql</code></strong>: which columns are NOT NULL? How is the series id represented? Why does SQLite store a month as ISO text?</p>
+        </div>
+        <div class="panel good">
+          <h3>Why it comes after the API lesson</h3>
+          <p>Fetching and caching are <strong>API concerns</strong>; choosing a durable schema is a <strong>database concern</strong>. This step is intentionally placed where you can tell those two apart.</p>
+        </div>
+      </div>
+      <div class="takeaway">Only attempt this after the required retail schema passes — it reuses the same declare-then-load pattern on data you fetched yourself.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 52 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Wrap-up · misconceptions</div>
+      <h2>Five beliefs this lesson should have broken</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Misconception</th><th>Reality</th></tr></thead>
+        <tbody>
+          <tr><td>"Saving a file protects my data"</td><td>a file gives durability only; it enforces no property and refuses no bad row</td></tr>
+          <tr><td>"A schema is just column names"</td><td>it is Lesson 1's checklist made executable — types, required-ness, uniqueness, relationships</td></tr>
+          <tr><td>"The database trusts what I insert"</td><td>it rejects duplicates, blanks, and orphans on write — the heart of Unit 2</td></tr>
+          <tr><td>"Foreign keys are on by default"</td><td>SQLite ships with them OFF; <code class="inline">PRAGMA foreign_keys = ON</code>, per connection</td></tr>
+          <tr><td>"<code class="inline">to_sql</code> gives me a real schema"</td><td>it invents one with no keys and no NOT NULL — you must declare the rules yourself</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">If any row of this table surprises you, revisit that unit before starting the exercise.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 53 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Wrap-up · connections</div>
+      <h2>Where the earlier lessons went</h2>
+    </header>
+    <main class="content">
+      <table class="compact">
+        <thead><tr><th>Earlier idea</th><th>Its Lesson 7 form</th></tr></thead>
+        <tbody>
+          <tr><td>L1 · a structure is a bundle of properties</td><td>the schema: <code class="inline">CREATE TABLE</code> with types, <code class="inline">NOT NULL</code>, keys</td></tr>
+          <tr><td>L1 · keys point at records (dictionaries)</td><td><code class="inline">PRIMARY KEY</code> and <code class="inline">FOREIGN KEY</code> — the key made law</td></tr>
+          <tr><td>L2 · storage is not neutral; repair on read</td><td>the leading-zero trap → a declared <code class="inline">TEXT</code> column that cannot forget</td></tr>
+          <tr><td>L2 · merge kept the orphan as NaN</td><td><code class="inline">FOREIGN KEY</code> rejects the orphan at the door</td></tr>
+          <tr><td>L4 · O(1) dictionary/set membership</td><td>the primary-key index — the same trick, durable and automatic</td></tr>
+          <tr><td>L5 · validate at the door, fail loudly</td><td><code class="inline">sqlite3.IntegrityError</code> — the refusal you catch and read</td></tr>
+          <tr><td>L6 · fetch and tidy on demand</td><td>the tidy frame now has a durable, rule-keeping home</td></tr>
+        </tbody>
+      </table>
+      <div class="takeaway">Nothing in this lesson was truly new — it was every earlier property, finally handed to an enforcer.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 54 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Wrap-up · inventory</div>
+      <h2>What you can do now</h2>
+    </header>
+    <main class="content">
+      <div class="rule-list" style="max-width:1050px">
+        <div class="rule"><b>Explain the pain</b><span>show, with live demos, why files cannot enforce integrity and a database can.</span></div>
+        <div class="rule"><b>Write a schema</b><span><code class="inline">CREATE TABLE</code> with <code class="inline">NOT NULL</code>, <code class="inline">PRIMARY KEY</code>, <code class="inline">FOREIGN KEY</code> — and predict which rows it will reject.</span></div>
+        <div class="rule"><b>Drive it from Python</b><span>move data with <code class="inline">to_sql</code> and <code class="inline">read_sql</code>; walk rows with a cursor.</span></div>
+        <div class="rule"><b>Query it safely</b><span>every value through a <code class="inline">?</code> placeholder — never pasted into the SQL string.</span></div>
+        <div class="rule"><b>Choose the tool</b><span>database or DataFrame for a given job — and say why in the three words that matter.</span></div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- 55 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">The lesson, one sentence</div>
+    </header>
+    <main class="content centered">
+      <p class="big-claim">A schema is Lesson 1's property checklist handed to software that <span style="border-bottom:6px solid var(--teal)">enforces it on every write</span> — so integrity stops being a discipline you hope to keep and becomes a rule the database keeps for you.</p>
+      <p class="lead">Files remember bytes. Databases remember promises.</p>
+    </main>
+  </div>
+</section>
+
+<!-- 56 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Reference desk</div>
+      <h2>Where to go deeper</h2>
+    </header>
+    <main class="content">
+      <div class="cols-2">
+        <div class="panel compact"><h3>Documentation</h3><ul>
+          <li><a href="https://www.sqlite.org/docs.html">SQLite documentation</a> — the official reference for the engine</li>
+          <li><a href="https://www.sqlitetutorial.net/">SQLite Tutorial</a> — a gentle, example-driven walkthrough of SQL on SQLite</li>
+          <li><a href="https://docs.python.org/3/library/sqlite3.html">Python <code class="inline">sqlite3</code> module</a> — the driver you used, with its own tutorial section</li>
+        </ul></div>
+        <div class="panel compact"><h3>Local practice</h3><ul>
+          <li>Lesson 7 notebook — runs top to bottom, offline, stdlib only</li>
+          <li><code class="inline">lesson7_exercise/</code> — design, load, and break the retail schema</li>
+          <li><code class="inline">sql-two-engines-assignment/</code> — where this schema is graded for real (A3)</li>
+        </ul></div>
+      </div>
+      <div class="takeaway">The schema you design in the exercise is the database Lessons 8 and 9 will query — it is worth getting right.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 57 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">Final checklist</div>
+      <h2>Declare it. Switch it on. Load it. Ask it. Choose it.</h2>
+    </header>
+    <main class="content centered">
+      <div class="rule-list" style="width:940px;text-align:left">
+        <div class="rule"><b>Declare</b><span>write the <code class="inline">CREATE TABLE</code> — types, <code class="inline">NOT NULL</code>, keys — before any data moves</span></div>
+        <div class="rule"><b>Switch on</b><span><code class="inline">PRAGMA foreign_keys = ON</code>, every connection, every time</span></div>
+        <div class="rule"><b>Load</b><span>parents before children; <code class="inline">to_sql(…, if_exists="append")</code> into your schema</span></div>
+        <div class="rule"><b>Ask</b><span><code class="inline">read_sql</code> for tables, cursors for rows — every value through <code class="inline">?</code></span></div>
+        <div class="rule"><b>Choose</b><span>workbench or system of record — durability, integrity, coordination decide</span></div>
+      </div>
+      <div class="question" style="width:940px">Exit ticket: make a database refuse a bad row you designed on purpose, and read its reason out loud. That is the whole lesson.</div>
+    </main>
+  </div>
+</section>
+
+<!-- 58 -->
+<section class="slide" data-section="finish">
+  <div class="slide-inner">
+    <header class="slide-header">
+      <div class="section-label">What's next</div>
+      <h2>Where the course goes from here</h2>
+    </header>
+    <main class="content centered">
+      <p class="big-claim" style="font-size:38px">Next: Lesson 8 — <em>SQL fundamentals</em>. The database can store and refuse; now it learns to <em>answer</em>: <code>WHERE</code>, <code>GROUP BY</code>, <code>HAVING</code>, <code>NULL</code>, and the order a query actually evaluates in.</p>
+      <p class="lead">Tonight the database became the source of truth. From next lesson on, you interrogate it — and in Lesson 9 and A3, one analysis runs on two engines.</p>
+    </main>
+  </div>
+</section>
+<div id="hud">
+  <div class="course">Intro to CS · Lesson 7</div>
+  <div id="section-map" aria-hidden="true">
+    <span data-section-name="intro">Setup</span><span data-section-name="pain">Pain</span><span data-section-name="schema">Schema</span><span data-section-name="python">Python</span><span data-section-name="choose">Choose</span><span data-section-name="finish">Finish</span>
+  </div>
+  <div class="nav-controls">
+    <button id="prev" type="button" aria-label="Previous step">‹</button>
+    <button id="next" type="button" aria-label="Next step">›</button>
+    <label id="count" for="slide-number">
+      <input id="slide-number" type="text" value="1" inputmode="numeric" pattern="[0-9]*" aria-label="Jump to slide"> / <span id="slide-total"></span>
+    </label>
+  </div>
+</div>
+
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const stage = document.getElementById("stage");
+  const slides = [...document.querySelectorAll(".slide")];
+  const prevButton = document.getElementById("prev");
+  const nextButton = document.getElementById("next");
+  const slideNumber = document.getElementById("slide-number");
+  const slideTotal = document.getElementById("slide-total");
+  const sectionItems = [...document.querySelectorAll("#section-map [data-section-name]")];
+  let currentSlide = 0;
+  let printSnapshot = null;
+
+  function fitStage() {
+    const viewport = window.visualViewport;
+    const width = viewport ? viewport.width : window.innerWidth;
+    const height = viewport ? viewport.height : window.innerHeight;
+    const scale = Math.min(width / 1280, height / 720);
+    stage.style.transform = `translate(-50%, -50%) scale(${scale})`;
+  }
+
+  class TraceController {
+    constructor(root) {
+      this.root = root;
+      this.type = root.dataset.traceType;
+      const source = root.querySelector(".trace-data");
+      try {
+        this.states = JSON.parse(source ? source.textContent : "[]");
+      } catch (error) {
+        this.states = [];
+        console.error("Invalid trace data", error, root);
+      }
+      this.step = 0;
+      this.status = root.querySelector(".trace-status");
+      this.counter = root.querySelector("[data-trace-counter]");
+      root.querySelector(".trace-reset")?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this.setStep(0);
+      });
+      this.render();
+    }
+
+    canNext() { return this.step < this.states.length - 1; }
+    canPrevious() { return this.step > 0; }
+    next() { if (this.canNext()) this.setStep(this.step + 1); }
+    previous() { if (this.canPrevious()) this.setStep(this.step - 1); }
+    setStep(step) {
+      if (!this.states.length) return;
+      this.step = Math.max(0, Math.min(step, this.states.length - 1));
+      this.render();
+      updateControls();
+    }
+
+    renderVariables(state) {
+      const values = state.vars || {};
+      this.root.querySelectorAll("[data-var]").forEach((element) => {
+        element.textContent = values[element.dataset.var] || "";
+      });
+    }
+
+    renderTranscript() {
+      const slide = this.root.closest(".slide");
+      const rows = [...slide.querySelectorAll(".trace-transcript tr[data-step]")];
+      if (!rows.length) return;
+      let active = rows[0];
+      for (const row of rows) {
+        if (Number(row.dataset.step) <= this.step) active = row;
+      }
+      rows.forEach((row) => row.classList.toggle("is-active", row === active));
+    }
+
+    renderArray(state) {
+      const cells = [...this.root.querySelectorAll(".array-cell")];
+      cells.forEach((cell, index) => {
+        if (Array.isArray(state.values) && index < state.values.length) {
+          cell.textContent = state.values[index];
+        }
+        const outsideRange = Array.isArray(state.range) && (index < state.range[0] || index > state.range[1]);
+        const foundIndex = typeof state.found === "number" ? state.found : (state.found === true ? state.current : null);
+        cell.classList.toggle("is-current", state.current === index);
+        cell.classList.toggle("is-best", state.best === index);
+        cell.classList.toggle("is-min", state.min === index);
+        cell.classList.toggle("is-checked", Number.isInteger(state.processedThrough) && index <= state.processedThrough);
+        cell.classList.toggle("is-sorted", Number.isInteger(state.sortedUntil) && index < state.sortedUntil);
+        cell.classList.toggle("is-discarded", outsideRange || (Array.isArray(state.discarded) && state.discarded.includes(index)));
+        cell.classList.toggle("is-found", foundIndex === index);
+      });
+
+      const pointer = this.root.querySelector(".trace-pointer");
+      if (pointer) {
+        if (state.current == null || !cells[state.current]) {
+          pointer.style.visibility = "hidden";
+        } else {
+          pointer.style.visibility = "visible";
+          const first = cells[0];
+          pointer.style.transform = `translateX(${cells[state.current].offsetLeft - first.offsetLeft}px)`;
+          pointer.style.left = `${first.offsetLeft}px`;
+        }
+      }
+      this.renderVariables(state);
+      this.renderTranscript();
+    }
+
+    renderFlow(state) {
+      this.root.querySelectorAll("[data-node]").forEach((node) => {
+        node.classList.toggle("is-active", node.dataset.node === state.activeNode);
+      });
+      this.root.querySelectorAll("[data-edge]").forEach((edge) => {
+        edge.classList.toggle("is-active", edge.dataset.edge === state.activeEdge);
+      });
+      this.renderVariables(state);
+    }
+
+    renderStack(state) {
+      this.root.querySelectorAll(".token[data-index]").forEach((token) => {
+        token.classList.toggle("is-current", Number(token.dataset.index) === state.token);
+      });
+      const values = state.stack || [];
+      this.root.querySelectorAll(".stack-slot[data-slot]").forEach((slot) => {
+        const index = Number(slot.dataset.slot);
+        slot.textContent = index < values.length ? values[index] : "";
+      });
+      this.renderVariables(state);
+    }
+
+    render() {
+      if (!this.states.length) return;
+      const state = this.states[this.step];
+      if (this.status) this.status.textContent = state.status || "";
+      if (this.counter) this.counter.textContent = `${this.step + 1} / ${this.states.length}`;
+      if (this.type === "array") this.renderArray(state);
+      if (this.type === "flow") this.renderFlow(state);
+      if (this.type === "stack") this.renderStack(state);
+    }
+  }
+
+  const traces = new Map();
+  document.querySelectorAll(".trace[data-trace-type]").forEach((root) => {
+    traces.set(root, new TraceController(root));
+  });
+
+  function traceOnActiveSlide() {
+    const root = slides[currentSlide]?.querySelector(".trace[data-trace-type]");
+    return root ? traces.get(root) : null;
+  }
+
+  function fragmentsOnActiveSlide() {
+    return [...slides[currentSlide].querySelectorAll(".fragment")];
+  }
+
+  function nextHiddenFragment() {
+    return fragmentsOnActiveSlide().find((fragment) => !fragment.classList.contains("visible"));
+  }
+
+  function lastVisibleFragment() {
+    return fragmentsOnActiveSlide().filter((fragment) => fragment.classList.contains("visible")).at(-1);
+  }
+
+  function updateControls() {
+    const trace = traceOnActiveSlide();
+    const hasBackwardStep = (trace && trace.canPrevious()) || Boolean(lastVisibleFragment());
+    const hasForwardStep = (trace && trace.canNext()) || Boolean(nextHiddenFragment());
+    prevButton.disabled = currentSlide === 0 && !hasBackwardStep;
+    nextButton.disabled = currentSlide === slides.length - 1 && !hasForwardStep;
+  }
+
+  function showSlide(index, options = {}) {
+    currentSlide = Math.max(0, Math.min(index, slides.length - 1));
+    slides.forEach((slide, slideIndex) => {
+      const active = slideIndex === currentSlide;
+      slide.classList.toggle("active", active);
+      slide.setAttribute("aria-hidden", active ? "false" : "true");
+      slide.inert = !active;
+    });
+    const activeSlide = slides[currentSlide];
+    const section = activeSlide.dataset.section;
+    const color = getComputedStyle(activeSlide).getPropertyValue("--section-color").trim();
+    stage.style.setProperty("--active-section-color", color);
+    sectionItems.forEach((item) => item.classList.toggle("on", item.dataset.sectionName === section));
+    slideNumber.value = currentSlide + 1;
+    slideTotal.textContent = slides.length;
+    activeSlide.querySelectorAll(".trace[data-trace-type]").forEach((root) => traces.get(root)?.render());
+    if (!options.skipHash) history.replaceState(null, "", `#slide-${currentSlide + 1}`);
+    updateControls();
+  }
+
+  function forward() {
+    const trace = traceOnActiveSlide();
+    if (trace?.canNext()) {
+      trace.next();
+      return;
+    }
+    const fragment = nextHiddenFragment();
+    if (fragment) {
+      fragment.classList.add("visible");
+      updateControls();
+      return;
+    }
+    if (currentSlide < slides.length - 1) showSlide(currentSlide + 1);
+  }
+
+  function backward() {
+    const trace = traceOnActiveSlide();
+    if (trace?.canPrevious()) {
+      trace.previous();
+      return;
+    }
+    const fragment = lastVisibleFragment();
+    if (fragment) {
+      fragment.classList.remove("visible");
+      updateControls();
+      return;
+    }
+    if (currentSlide > 0) showSlide(currentSlide - 1);
+  }
+
+  function jumpToRequestedSlide() {
+    const requested = Number.parseInt(slideNumber.value, 10);
+    if (Number.isNaN(requested)) {
+      slideNumber.value = currentSlide + 1;
+      return;
+    }
+    showSlide(requested - 1);
+  }
+
+  prevButton.addEventListener("click", backward);
+  nextButton.addEventListener("click", forward);
+  slideNumber.addEventListener("change", jumpToRequestedSlide);
+  slideNumber.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      jumpToRequestedSlide();
+      slideNumber.blur();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    const target = event.target;
+    const editing = target instanceof HTMLElement && target.closest("input, textarea, select, [contenteditable='true']");
+    const activatingControl = target instanceof HTMLElement && target.closest("a, button") && event.key === " ";
+    if (editing || activatingControl) return;
+    if (event.repeat) return;
+    if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(event.key)) {
+      event.preventDefault();
+      forward();
+    } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(event.key)) {
+      event.preventDefault();
+      backward();
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      showSlide(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      showSlide(slides.length - 1);
+    } else if (event.key.toLowerCase() === "f") {
+      event.preventDefault();
+      if (document.fullscreenElement) document.exitFullscreen();
+      else stage.requestFullscreen?.();
+    }
+  });
+
+  window.addEventListener("resize", fitStage);
+  window.visualViewport?.addEventListener("resize", fitStage);
+  window.addEventListener("hashchange", () => {
+    const match = location.hash.match(/^#slide-(\d+)$/);
+    if (match) showSlide(Number(match[1]) - 1, { skipHash: true });
+  });
+
+  window.addEventListener("beforeprint", () => {
+    printSnapshot = [...traces.values()].map((trace) => trace.step);
+    [...traces.values()].forEach((trace) => trace.setStep(trace.states.length - 1));
+  });
+  window.addEventListener("afterprint", () => {
+    if (!printSnapshot) return;
+    [...traces.values()].forEach((trace, index) => trace.setStep(printSnapshot[index] || 0));
+    printSnapshot = null;
+    showSlide(currentSlide, { skipHash: true });
+  });
+
+  const initialMatch = location.hash.match(/^#slide-(\d+)$/);
+  const initialSlide = initialMatch ? Number(initialMatch[1]) - 1 : 0;
+  fitStage();
+  showSlide(initialSlide, { skipHash: true });
+})();
+</script>
+</body>
+</html>
